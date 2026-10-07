@@ -19,11 +19,8 @@ class ChatResponse(BaseModel):
     reply: str
 
 
-GEMINI_MODELS = [
-    "gemini-2.5-flash",
-    "gemini-3-flash-preview",
-    "gemini-2.5-pro",
-]
+# Ultra-fast model target (No sequential loops)
+FAST_MODEL = "gemini-2.5-flash"
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -45,7 +42,7 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
                 VideoLecture.topic,
                 VideoLecture.chapter,
                 VideoLecture.subject
-            )
+            ).limit(15)
         )
         all_videos = v_res.all()
 
@@ -54,31 +51,30 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
                 Material.title,
                 Material.chapter,
                 Material.subject
-            )
+            ).limit(15)
         )
         all_materials = m_res.all()
 
         video_summary = "\n".join(
-            [f"- Lec {v[0]}: {v[1]} ({v[2]}, {v[3]})" for v in all_videos[:25]]
+            [f"- Lec {v[0]}: {v[1]} ({v[2]}, {v[3]})" for v in all_videos]
         )
         sheet_summary = "\n".join(
-            [f"- {m[0]} ({m[1]}, {m[2]})" for m in all_materials[:25]]
+            [f"- {m[0]} ({m[1]}, {m[2]})" for m in all_materials]
         )
     except Exception as db_err:
         print(f"[EduTrack DB Warning]: {db_err}")
 
     system_instruction = (
         "You are the official AI Academic Tutor & Platform Guide of 'EduTrack'.\n"
-        "Your role is to help students with Physics, Chemistry, mathematical derivations, step-by-step problem solutions, and platform navigation.\n"
-        "Always provide complete, thorough, and self-contained answers from start to finish. Never stop mid-sentence or cut your explanation short.\n"
-        "Answer warmly, encouragingly, and clearly in Bengali (or English if prompted in English).\n\n"
+        "Your role is to help students with Physics, Chemistry, mathematical derivations, and platform navigation.\n"
+        "Provide direct, complete, and accurate explanations from start to finish without stalling.\n"
+        "Answer warmly and clearly in Bengali (or English if prompted in English).\n\n"
         f"Available Platform Lectures:\n{video_summary or 'None'}\n\n"
         f"Available Platform Sheets:\n{sheet_summary or 'None'}\n"
     )
 
     full_prompt = f"{system_instruction}\n\nStudent Question: {user_text}"
 
-    # maxOutputTokens limit tule dewa hoyeche jate model proshno onujayi dynamically thik jototuk token dorkar tototukui use kore complete uttor dey
     request_payload = {
         "contents": [
             {
@@ -86,33 +82,45 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
             }
         ],
         "generationConfig": {
-            "temperature": 0.7
+            "temperature": 0.5
         }
     }
 
-    headers = {
-        "Content-Type": "application/json",
-    }
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{FAST_MODEL}:generateContent?key={api_key}"
+    headers = {"Content-Type": "application/json"}
 
-    last_err = ""
-    async with httpx.AsyncClient(timeout=90.0) as client:
-        for model_name in GEMINI_MODELS:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
-            try:
-                resp = await client.post(url, headers=headers, json=request_payload)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    candidates = data.get("candidates", [])
-                    if candidates and "content" in candidates[0]:
-                        parts = candidates[0]["content"].get("parts", [])
-                        reply_text = "".join([p.get("text", "") for p in parts if "text" in p])
-                        if reply_text.strip():
-                            return ChatResponse(reply=reply_text.strip())
+    try:
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            resp = await client.post(url, headers=headers, json=request_payload)
 
-                last_err = f"{model_name} HTTP {resp.status_code}: {resp.text}"
-                print(f"[API Attempt Failed]: {last_err}")
-            except Exception as ex:
-                last_err = str(ex)
-                print(f"[API Exception]: {ex}")
+            if resp.status_code == 200:
+                data = resp.json()
+                candidates = data.get("candidates", [])
+                if candidates and "content" in candidates[0]:
+                    parts = candidates[0]["content"].get("parts", [])
+                    reply_text = "".join([p.get("text", "") for p in parts if "text" in p])
+                    if reply_text.strip():
+                        return ChatResponse(reply=reply_text.strip())
 
-    raise HTTPException(status_code=500, detail=f"Google API Error: {last_err[:150]}")
+            # Backup single attempt if 2.5-flash fails
+            backup_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key={api_key}"
+            backup_resp = await client.post(backup_url, headers=headers, json=request_payload)
+            if backup_resp.status_code == 200:
+                b_data = backup_resp.json()
+                candidates = b_data.get("candidates", [])
+                if candidates and "content" in candidates[0]:
+                    parts = candidates[0]["content"].get("parts", [])
+                    reply_text = "".join([p.get("text", "") for p in parts if "text" in p])
+                    if reply_text.strip():
+                        return ChatResponse(reply=reply_text.strip())
+
+            print(f"[API Error]: Status {resp.status_code} - {resp.text}")
+            raise HTTPException(status_code=500, detail="Google API server returned an error.")
+
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="AI response timed out. Please try asking again.")
+    except HTTPException:
+        raise
+    except Exception as ex:
+        print(f"[API Exception]: {ex}")
+        raise HTTPException(status_code=500, detail="Internal server error occurred.")

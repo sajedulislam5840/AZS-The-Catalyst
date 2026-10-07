@@ -17,11 +17,17 @@ UPLOAD_DIR = "uploads/materials"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-# --- MATERIALS (PDF ONLY - LOCAL UPLOAD) ---
+# --- MATERIALS (PDF ONLY) ---
 
 @router.get("/materials", response_model=List[MaterialResponse])
 async def list_materials(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Material).order_by(Material.created_at.desc()))
+    # execution_options দিয়ে মেমোরি কনজাম্পশন কমানো
+    stmt = (
+        select(Material)
+        .order_by(Material.created_at.desc())
+        .execution_options(populate_existing=True)
+    )
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 
@@ -57,8 +63,8 @@ async def upload_material(
     pdf_url = f"{base_url}/static/materials/{unique_filename}"
 
     material = Material(
-        title=title,
-        chapter=chapter,
+        title=title.strip(),
+        chapter=chapter.strip(),
         subject=SubjectEnum(subj_val),
         pdf_url=pdf_url
     )
@@ -92,13 +98,16 @@ async def delete_material(material_id: uuid.UUID, db: AsyncSession = Depends(get
     return {"message": "Material deleted successfully"}
 
 
-# --- VIDEO LECTURES (YOUTUBE WITH LECTURE NO & TOPIC) ---
+# --- VIDEO LECTURES ---
 
 @router.get("/videos", response_model=List[VideoResponse])
 async def list_videos(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(VideoLecture).order_by(VideoLecture.lecture_no.asc(), VideoLecture.created_at.desc())
+    stmt = (
+        select(VideoLecture)
+        .order_by(VideoLecture.lecture_no.asc(), VideoLecture.created_at.desc())
+        .execution_options(populate_existing=True)
     )
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 
@@ -106,10 +115,10 @@ async def list_videos(db: AsyncSession = Depends(get_db)):
 async def create_video(payload: VideoCreate, db: AsyncSession = Depends(get_db)):
     video = VideoLecture(
         lecture_no=payload.lecture_no,
-        topic=payload.topic,
-        chapter=payload.chapter,
+        topic=payload.topic.strip(),
+        chapter=payload.chapter.strip(),
         subject=payload.subject,
-        youtube_url=payload.youtube_url
+        youtube_url=payload.youtube_url.strip()
     )
     db.add(video)
     await db.commit()

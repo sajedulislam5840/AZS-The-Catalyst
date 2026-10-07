@@ -59,7 +59,7 @@ export default function DashboardPage() {
     const [watchedVideos, setWatchedVideos] = useState<string[]>([]);
     const [streakDays, setStreakDays] = useState<number>(1);
 
-    // Filters
+    // Common Filters
     const [activeTab, setActiveTab] = useState<TabType>('VIDEOS');
     const [selectedSubject, setSelectedSubject] = useState<'ALL' | Subject>('ALL');
     const [searchQuery, setSearchQuery] = useState('');
@@ -68,13 +68,14 @@ export default function DashboardPage() {
     const [noticeText, setNoticeText] = useState('');
     const [broadcastingNotice, setBroadcastingNotice] = useState(false);
 
-    // Admin Forms State
+    // Admin Material Form State
     const [mTitle, setMTitle] = useState('');
     const [mChapter, setMChapter] = useState('');
     const [mSubject, setMSubject] = useState<Subject>('PHYSICS');
     const [mFile, setMFile] = useState<File | null>(null);
     const [uploadingPdf, setUploadingPdf] = useState(false);
 
+    // Admin Video Form State
     const [vLectureNo, setVLectureNo] = useState<number | ''>('');
     const [vTopic, setVTopic] = useState('');
     const [vChapter, setVChapter] = useState('');
@@ -82,7 +83,7 @@ export default function DashboardPage() {
     const [vUrl, setVUrl] = useState('');
     const [addingVideo, setAddingVideo] = useState(false);
 
-    // Embedded AI Assistant State
+    // Embedded AI Chat State
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
         {
@@ -293,12 +294,16 @@ export default function DashboardPage() {
         try {
             const res = await api.post('/api/v1/ai/chat', { prompt: textToSend });
             setChatMessages([...newMsgs, { role: 'assistant', content: res.data.reply }]);
-        } catch {
+        } catch (err: any) {
+            const errorDetail =
+                err.response?.data?.detail ||
+                err.message ||
+                'সার্ভার থেকে রেসপন্স পাওয়া যায়নি।';
             setChatMessages([
                 ...newMsgs,
                 {
                     role: 'assistant',
-                    content: 'দুঃখিত, AI সার্ভিসটি এই মুহূর্তে ব্যস্ত আছে। একটু পর আবার চেষ্টা করো!',
+                    content: `⚠️ এরর: ${errorDetail}`,
                 },
             ]);
         } finally {
@@ -329,7 +334,7 @@ export default function DashboardPage() {
         return Object.entries(map);
     }, [videos, watchedVideos]);
 
-    // Filters
+    // Filtering
     const filteredVideos = useMemo(() => {
         return videos.filter((v) => {
             const matchSubj = selectedSubject === 'ALL' || v.subject === selectedSubject;
@@ -393,7 +398,7 @@ export default function DashboardPage() {
                 </div>
             </header>
 
-            {/* Notice Banner */}
+            {/* Global Notice Banner */}
             {!isAdmin && notice && (
                 <div className="bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 border-b border-amber-500/30 px-4 py-3">
                     <div className="max-w-7xl mx-auto flex items-center gap-3">

@@ -19,8 +19,9 @@ class ChatResponse(BaseModel):
     reply: str
 
 
-# Ultra-fast model target (No sequential loops)
-FAST_MODEL = "gemini-2.5-flash"
+# Dedicated Gemini 3.0 Flash Endpoints
+PRIMARY_MODEL = "gemini-3-flash-preview"
+BACKUP_MODEL = "gemini-3.0-flash"
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -66,15 +67,16 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
 
     system_instruction = (
         "You are the official AI Academic Tutor & Platform Guide of 'EduTrack'.\n"
-        "Your role is to help students with Physics, Chemistry, mathematical derivations, and platform navigation.\n"
-        "Provide direct, complete, and accurate explanations from start to finish without stalling.\n"
-        "Answer warmly and clearly in Bengali (or English if prompted in English).\n\n"
+        "Your role is to help students with Physics, Chemistry, Higher Math (such as numerical methods like Runge-Kutta, calculus), derivations, and platform navigation.\n"
+        "Always provide complete, thorough, step-by-step, and fully finished explanations from start to finish without omitting steps.\n"
+        "Answer clearly in Bengali (or English if prompted in English).\n\n"
         f"Available Platform Lectures:\n{video_summary or 'None'}\n\n"
         f"Available Platform Sheets:\n{sheet_summary or 'None'}\n"
     )
 
     full_prompt = f"{system_instruction}\n\nStudent Question: {user_text}"
 
+    # maxOutputTokens বাদ রাখা হয়েছে যাতে সম্পূর্ণ উত্তর আসে, তাপমাত্রা ব্যালেন্সড রাখা হয়েছে
     request_payload = {
         "contents": [
             {
@@ -82,17 +84,17 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
             }
         ],
         "generationConfig": {
-            "temperature": 0.5
+            "temperature": 0.6
         }
     }
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{FAST_MODEL}:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
 
-    try:
-        async with httpx.AsyncClient(timeout=25.0) as client:
+    async with httpx.AsyncClient(timeout=45.0) as client:
+        # Try Primary: gemini-3-flash-preview
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{PRIMARY_MODEL}:generateContent?key={api_key}"
+        try:
             resp = await client.post(url, headers=headers, json=request_payload)
-
             if resp.status_code == 200:
                 data = resp.json()
                 candidates = data.get("candidates", [])
@@ -102,11 +104,11 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
                     if reply_text.strip():
                         return ChatResponse(reply=reply_text.strip())
 
-            # Backup single attempt if 2.5-flash fails
-            backup_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key={api_key}"
-            backup_resp = await client.post(backup_url, headers=headers, json=request_payload)
-            if backup_resp.status_code == 200:
-                b_data = backup_resp.json()
+            # Try Backup: gemini-3.0-flash
+            backup_url = f"https://generativelanguage.googleapis.com/v1beta/models/{BACKUP_MODEL}:generateContent?key={api_key}"
+            b_resp = await client.post(backup_url, headers=headers, json=request_payload)
+            if b_resp.status_code == 200:
+                b_data = b_resp.json()
                 candidates = b_data.get("candidates", [])
                 if candidates and "content" in candidates[0]:
                     parts = candidates[0]["content"].get("parts", [])
@@ -114,13 +116,16 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
                     if reply_text.strip():
                         return ChatResponse(reply=reply_text.strip())
 
-            print(f"[API Error]: Status {resp.status_code} - {resp.text}")
-            raise HTTPException(status_code=500, detail="Google API server returned an error.")
+            print(f"[Gemini 3 Flash Failure]: {resp.status_code} - {resp.text}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Google API Error: {resp.text[:120]}"
+            )
 
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="AI response timed out. Please try asking again.")
-    except HTTPException:
-        raise
-    except Exception as ex:
-        print(f"[API Exception]: {ex}")
-        raise HTTPException(status_code=500, detail="Internal server error occurred.")
+        except httpx.TimeoutException:
+            raise HTTPException(status_code=504, detail="AI response timed out. Please try again.")
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"[Server Exception]: {e}")
+            raise HTTPException(status_code=500, detail="Internal AI service error.")

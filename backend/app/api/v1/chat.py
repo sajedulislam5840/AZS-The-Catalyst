@@ -19,27 +19,19 @@ class ChatResponse(BaseModel):
     reply: str
 
 
-# সমর্থিত আধুনিক মডেলের তালিকা
-CANDIDATE_MODELS = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-flash",
-]
-
-
+# Endpoint path will be exactly: POST /api/v1/ai/chat
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
-        print("[EduTrack AI] Error: GEMINI_API_KEY is missing from environment variables!")
-        raise HTTPException(status_code=500, detail="Gemini API Key is not configured on server")
+        print("[EduTrack AI] Error: GEMINI_API_KEY is not configured!")
+        raise HTTPException(status_code=500, detail="Gemini API Key missing on server")
 
     user_text = payload.prompt.strip()
     if not user_text:
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
-    # কারিকুলাম ডেটাবেস থেকে কনটেক্সট নেওয়া
+    # DB Content summary
     video_summary = ""
     sheet_summary = ""
     try:
@@ -69,20 +61,26 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
             [f"- {m[0]} ({m[1]}, {m[2]})" for m in all_materials[:25]]
         )
     except Exception as db_err:
-        print(f"[EduTrack DB Warning]: {db_err}")
+        print(f"[EduTrack DB Context Error]: {db_err}")
 
     system_instruction = (
         "You are the official AI Academic Tutor & Platform Guide of 'EduTrack'.\n"
-        "Your role is to help students with Physics, Chemistry, formulas, exam problems, and platform navigation.\n"
-        "Respond warmly, encouragingly, and clearly in Bengali (or English if prompted in English).\n\n"
-        "Platform Curriculum Context:\n"
-        f"Videos: {video_summary or 'None'}\n"
-        f"Sheets: {sheet_summary or 'None'}\n"
+        "Help students with Physics, Chemistry, formulas, derivations, and platform navigation.\n"
+        "Respond warmly, encouragingly, and clearly in Bengali (or English if the user asks in English).\n\n"
+        f"Available Videos:\n{video_summary or 'None'}\n\n"
+        f"Available Sheets:\n{sheet_summary or 'None'}\n"
     )
 
     full_prompt = f"{system_instruction}\n\nStudent Question: {user_text}"
 
-    request_payload = {
+    # Google Gemini 1.5 Flash standard v1beta REST endpoint
+    models_to_try = [
+        "gemini-1.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash-latest"
+    ]
+
+    request_body = {
         "contents": [
             {
                 "parts": [{"text": full_prompt}]
@@ -90,7 +88,7 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
         ],
         "generationConfig": {
             "temperature": 0.7,
-            "maxOutputTokens": 1000
+            "maxOutputTokens": 800
         }
     }
 
@@ -99,30 +97,24 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
         "x-goog-api-key": api_key,
     }
 
+    last_error_detail = ""
     async with httpx.AsyncClient(timeout=25.0) as client:
-        last_error = ""
-        for model_name in CANDIDATE_MODELS:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+        for model in models_to_try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
             try:
-                resp = await client.post(url, headers=headers, json=request_payload)
+                resp = await client.post(url, headers=headers, json=request_body)
                 if resp.status_code == 200:
                     data = resp.json()
                     candidates = data.get("candidates", [])
                     if candidates and "content" in candidates[0]:
                         parts = candidates[0]["content"].get("parts", [])
-                        reply_text = "".join([p.get("text", "") for p in parts if "text" in p])
-                        if reply_text.strip():
-                            return ChatResponse(reply=reply_text.strip())
+                        reply = "".join([p.get("text", "") for p in parts if "text" in p])
+                        if reply.strip():
+                            return ChatResponse(reply=reply.strip())
+                last_error_detail = f"Model {model} returned HTTP {resp.status_code}: {resp.text}"
+                print(f"[AI Model Fail] {last_error_detail}")
+            except Exception as e:
+                last_error_detail = str(e)
+                print(f"[AI Request Exception]: {e}")
 
-                last_error = f"Model {model_name} returned status {resp.status_code}: {resp.text}"
-                print(f"[EduTrack AI Attempt Failed] {last_error}")
-            except Exception as req_err:
-                last_error = str(req_err)
-                print(f"[EduTrack AI Request Exception on {model_name}]: {req_err}")
-
-    # কোনো মডেলেই কাজ না হলে আসল মেসেজ ফ্রন্টএন্ডে পাঠাবে যাতে বোঝা যায় কী সমস্যা
-    print(f"[EduTrack AI All Models Failed] Last Error: {last_error}")
-    raise HTTPException(
-        status_code=500,
-        detail=f"Google AI API Error: {last_error[:200]}"
-    )
+    raise HTTPException(status_code=500, detail=f"Google API Error: {last_error_detail[:150]}")

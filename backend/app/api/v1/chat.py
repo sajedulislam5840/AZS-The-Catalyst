@@ -19,12 +19,10 @@ class ChatResponse(BaseModel):
     reply: str
 
 
-# Gemini 3.0 Flash er active endpoints
-GEMINI_3_MODELS = [
+GEMINI_MODELS = [
+    "gemini-2.5-flash",
     "gemini-3-flash-preview",
-    "gemini-3.0-flash-preview",
-    "gemini-3.0-flash",
-    "gemini-3-flash",
+    "gemini-2.5-pro",
 ]
 
 
@@ -71,14 +69,16 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
 
     system_instruction = (
         "You are the official AI Academic Tutor & Platform Guide of 'EduTrack'.\n"
-        "Your role is to help students with Physics, Chemistry, formulas, and platform navigation.\n"
-        "Respond warmly, encouragingly, and clearly in Bengali (or English if prompted in English).\n\n"
-        f"Available Videos:\n{video_summary or 'None'}\n\n"
-        f"Available Sheets:\n{sheet_summary or 'None'}\n"
+        "Your role is to help students with Physics, Chemistry, mathematical derivations, step-by-step problem solutions, and platform navigation.\n"
+        "Always provide complete, thorough, and self-contained answers from start to finish. Never stop mid-sentence or cut your explanation short.\n"
+        "Answer warmly, encouragingly, and clearly in Bengali (or English if prompted in English).\n\n"
+        f"Available Platform Lectures:\n{video_summary or 'None'}\n\n"
+        f"Available Platform Sheets:\n{sheet_summary or 'None'}\n"
     )
 
-    full_prompt = f"{system_instruction}\n\nStudent: {user_text}"
+    full_prompt = f"{system_instruction}\n\nStudent Question: {user_text}"
 
+    # maxOutputTokens limit tule dewa hoyeche jate model proshno onujayi dynamically thik jototuk token dorkar tototukui use kore complete uttor dey
     request_payload = {
         "contents": [
             {
@@ -86,8 +86,7 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
             }
         ],
         "generationConfig": {
-            "temperature": 0.7,
-            "maxOutputTokens": 800
+            "temperature": 0.7
         }
     }
 
@@ -96,8 +95,8 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
     }
 
     last_err = ""
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        for model_name in GEMINI_3_MODELS:
+    async with httpx.AsyncClient(timeout=90.0) as client:
+        for model_name in GEMINI_MODELS:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
             try:
                 resp = await client.post(url, headers=headers, json=request_payload)

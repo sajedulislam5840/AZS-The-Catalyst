@@ -23,7 +23,15 @@ export default function LoginPage() {
             localStorage.setItem('role', res.data.role);
             router.push('/dashboard');
         } catch (err: any) {
-            setError(err.response?.data?.detail || 'Invalid credentials or login failed.');
+            console.error("Login Error Details:", err);
+            const detail = err.response?.data?.detail;
+            if (Array.isArray(detail)) {
+                setError(detail[0]?.msg || 'Validation failed');
+            } else if (typeof detail === 'string') {
+                setError(detail);
+            } else {
+                setError(err.message || 'Server connection failed / CORS error');
+            }
         } finally {
             setLoading(false);
         }

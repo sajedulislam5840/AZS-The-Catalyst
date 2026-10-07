@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, FormEvent, useMemo } from 'react';
+import { useEffect, useState, FormEvent, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 
@@ -32,6 +32,11 @@ interface Notice {
     created_at: string;
 }
 
+interface ChatMessage {
+    role: 'user' | 'assistant';
+    content: string;
+}
+
 function getYouTubeEmbedUrl(url: string): string | null {
     if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=[\\&]?)([^#&?]*).*/;
@@ -54,7 +59,7 @@ export default function DashboardPage() {
     const [watchedVideos, setWatchedVideos] = useState<string[]>([]);
     const [streakDays, setStreakDays] = useState<number>(1);
 
-    // Common Filters
+    // Filters
     const [activeTab, setActiveTab] = useState<TabType>('VIDEOS');
     const [selectedSubject, setSelectedSubject] = useState<'ALL' | Subject>('ALL');
     const [searchQuery, setSearchQuery] = useState('');
@@ -63,20 +68,31 @@ export default function DashboardPage() {
     const [noticeText, setNoticeText] = useState('');
     const [broadcastingNotice, setBroadcastingNotice] = useState(false);
 
-    // Admin Material Form State
+    // Admin Forms State
     const [mTitle, setMTitle] = useState('');
     const [mChapter, setMChapter] = useState('');
     const [mSubject, setMSubject] = useState<Subject>('PHYSICS');
     const [mFile, setMFile] = useState<File | null>(null);
     const [uploadingPdf, setUploadingPdf] = useState(false);
 
-    // Admin Video Form State
     const [vLectureNo, setVLectureNo] = useState<number | ''>('');
     const [vTopic, setVTopic] = useState('');
     const [vChapter, setVChapter] = useState('');
     const [vSubject, setVSubject] = useState<Subject>('PHYSICS');
     const [vUrl, setVUrl] = useState('');
     const [addingVideo, setAddingVideo] = useState(false);
+
+    // Embedded AI Assistant State
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+        {
+            role: 'assistant',
+            content: 'সালাম! আমি EduTrack AI Tutor & Guide। ফিজিক্স ও কেমিস্ট্রির যেকোনো কনসেপ্ট, অঙ্ক বা প্ল্যাটফর্মের ক্লাস খুঁজতে আমাকে প্রশ্ন করতে পারো!',
+        },
+    ]);
+    const [chatInput, setChatInput] = useState('');
+    const [chatLoading, setChatLoading] = useState(false);
+    const chatEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setMounted(true);
@@ -127,6 +143,12 @@ export default function DashboardPage() {
 
         fetchData();
     }, [router]);
+
+    useEffect(() => {
+        if (isChatOpen) {
+            chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [chatMessages, isChatOpen]);
 
     const fetchData = async () => {
         try {
@@ -259,6 +281,31 @@ export default function DashboardPage() {
         }
     };
 
+    const handleSendChat = async (customPrompt?: string) => {
+        const textToSend = (customPrompt || chatInput).trim();
+        if (!textToSend || chatLoading) return;
+
+        const newMsgs: ChatMessage[] = [...chatMessages, { role: 'user', content: textToSend }];
+        setChatMessages(newMsgs);
+        setChatInput('');
+        setChatLoading(true);
+
+        try {
+            const res = await api.post('/api/v1/ai/chat', { prompt: textToSend });
+            setChatMessages([...newMsgs, { role: 'assistant', content: res.data.reply }]);
+        } catch {
+            setChatMessages([
+                ...newMsgs,
+                {
+                    role: 'assistant',
+                    content: 'দুঃখিত, AI সার্ভিসটি এই মুহূর্তে ব্যস্ত আছে। একটু পর আবার চেষ্টা করো!',
+                },
+            ]);
+        } finally {
+            setChatLoading(false);
+        }
+    };
+
     const handleLogout = () => {
         localStorage.clear();
         router.push('/login');
@@ -282,7 +329,7 @@ export default function DashboardPage() {
         return Object.entries(map);
     }, [videos, watchedVideos]);
 
-    // Filtering
+    // Filters
     const filteredVideos = useMemo(() => {
         return videos.filter((v) => {
             const matchSubj = selectedSubject === 'ALL' || v.subject === selectedSubject;
@@ -346,7 +393,7 @@ export default function DashboardPage() {
                 </div>
             </header>
 
-            {/* Global Notice Banner (Visible to Students) */}
+            {/* Notice Banner */}
             {!isAdmin && notice && (
                 <div className="bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 border-b border-amber-500/30 px-4 py-3">
                     <div className="max-w-7xl mx-auto flex items-center gap-3">
@@ -362,13 +409,9 @@ export default function DashboardPage() {
 
             {/* Main Container */}
             <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 flex-1 space-y-8">
-
-                {/* ============================================================== */}
-                {/* ====================== ADMIN VIEW ============================ */}
-                {/* ============================================================== */}
                 {isAdmin ? (
+                    /* ================= ADMIN VIEW ================= */
                     <div className="space-y-8">
-                        {/* Top Metrics Row */}
                         <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg">
                                 <p className="text-xs text-slate-400 font-medium">Published Lectures</p>
@@ -394,7 +437,7 @@ export default function DashboardPage() {
                             </div>
                         </section>
 
-                        {/* Live Notice Broadcaster */}
+                        {/* Broadcast Notice Form */}
                         <section className="bg-slate-900 border border-amber-500/30 rounded-3xl p-6 shadow-xl space-y-4">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -438,7 +481,7 @@ export default function DashboardPage() {
                             </form>
                         </section>
 
-                        {/* Content Publishing Studio (Forms) */}
+                        {/* Publishing Forms */}
                         <section className="grid md:grid-cols-2 gap-6">
                             {/* PDF Form */}
                             <form onSubmit={handleUploadMaterial} className="space-y-4 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
@@ -590,7 +633,7 @@ export default function DashboardPage() {
                             </form>
                         </section>
 
-                        {/* Admin Content Repository Tables */}
+                        {/* Repositories Tables */}
                         <section className="space-y-6">
                             <h2 className="text-base font-bold text-white">Repository Manager</h2>
 
@@ -687,11 +730,8 @@ export default function DashboardPage() {
                         </section>
                     </div>
                 ) : (
-                    /* ============================================================== */
-                    /* ===================== STUDENT VIEW =========================== */
-                    /* ============================================================== */
+                    /* ================= STUDENT VIEW ================= */
                     <div className="space-y-8">
-                        {/* Student Progress Hub */}
                         <section className="grid lg:grid-cols-3 gap-6">
                             {/* Mastery Bar */}
                             <div className="lg:col-span-2 rounded-3xl bg-gradient-to-br from-indigo-950/70 via-slate-900 to-slate-900 border border-indigo-500/20 p-6 sm:p-8 flex flex-col justify-between shadow-xl">
@@ -765,7 +805,7 @@ export default function DashboardPage() {
                             </div>
                         </section>
 
-                        {/* Navigation & Filtering Controls */}
+                        {/* Filter Tabs */}
                         <section className="space-y-4">
                             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
                                 <div className="flex p-1 bg-slate-900 border border-slate-800 rounded-2xl">
@@ -823,7 +863,7 @@ export default function DashboardPage() {
                             </div>
                         </section>
 
-                        {/* Video Lectures Grid */}
+                        {/* Videos Grid */}
                         {activeTab === 'VIDEOS' && (
                             <section>
                                 {loading ? (
@@ -910,7 +950,7 @@ export default function DashboardPage() {
                             </section>
                         )}
 
-                        {/* Study Materials Grid */}
+                        {/* Materials Grid */}
                         {activeTab === 'MATERIALS' && (
                             <section>
                                 {loading ? (
@@ -973,6 +1013,114 @@ export default function DashboardPage() {
                     </div>
                 )}
             </main>
+
+            {/* Embedded Floating AI Chat Assistant */}
+            <div className="fixed bottom-6 right-6 z-50">
+                {!isChatOpen && (
+                    <button
+                        onClick={() => setIsChatOpen(true)}
+                        className="flex items-center gap-2.5 px-4 py-3 rounded-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 text-white shadow-xl shadow-indigo-600/30 hover:scale-105 active:scale-95 transition-all text-xs font-bold"
+                    >
+                        <span className="text-base">✨</span>
+                        <span>Ask EduTrack AI</span>
+                    </button>
+                )}
+
+                {isChatOpen && (
+                    <div className="w-[340px] sm:w-[380px] h-[520px] bg-slate-900 border border-indigo-500/30 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200">
+                        <div className="px-5 py-4 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm shadow">
+                                    ✨
+                                </div>
+                                <div>
+                                    <h3 className="text-xs font-bold text-white">EduTrack AI Tutor</h3>
+                                    <p className="text-[10px] text-emerald-400 flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                        Online • Guide & Solver
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsChatOpen(false)}
+                                className="text-slate-400 hover:text-white text-sm font-bold p-1"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="px-4 py-2 bg-slate-950/40 border-b border-slate-800/60 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                            <button
+                                onClick={() => handleSendChat("Faraday's Law সহজ বাংলায় বুঝিয়ে দাও")}
+                                className="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-[10px] text-slate-300 hover:text-indigo-300"
+                            >
+                                ⚡ Faraday's Law
+                            </button>
+                            <button
+                                onClick={() => handleSendChat("প্ল্যাটফর্মে কোন কোন চ্যাপ্টারের ক্লাস আছে?")}
+                                className="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-[10px] text-slate-300 hover:text-indigo-300"
+                            >
+                                📚 Class Guide
+                            </button>
+                            <button
+                                onClick={() => handleSendChat("আর্কিমিডিসের সূত্র ও প্লবতার সমীকরণ ব্যাখ্যা কর")}
+                                className="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-[10px] text-slate-300 hover:text-indigo-300"
+                            >
+                                🌊 Archimedes
+                            </button>
+                        </div>
+
+                        <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs">
+                            {chatMessages.map((m, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                >
+                                    <div
+                                        className={`max-w-[82%] px-3.5 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === 'user'
+                                                ? 'bg-indigo-600 text-white rounded-br-none'
+                                                : 'bg-slate-800 text-slate-200 border border-slate-700/60 rounded-bl-none'
+                                            }`}
+                                    >
+                                        {m.content}
+                                    </div>
+                                </div>
+                            ))}
+                            {chatLoading && (
+                                <div className="flex justify-start">
+                                    <div className="bg-slate-800 border border-slate-700/60 text-slate-400 px-3.5 py-2 rounded-2xl text-[11px] animate-pulse">
+                                        AI ভাবছে...
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={chatEndRef} />
+                        </div>
+
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                handleSendChat();
+                            }}
+                            className="p-3 bg-slate-950/80 border-t border-slate-800 flex items-center gap-2"
+                        >
+                            <input
+                                type="text"
+                                placeholder="Ask anything (Theory, Math, Guide)..."
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 placeholder-slate-500"
+                            />
+                            <button
+                                type="submit"
+                                disabled={chatLoading || !chatInput.trim()}
+                                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-3 py-2 rounded-xl text-xs transition"
+                            >
+                                ➤
+                            </button>
+                        </form>
+                    </div>
+                )}
+            </div>
 
             {/* Footer */}
             <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-600">

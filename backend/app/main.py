@@ -4,6 +4,7 @@ from app.api.v1.auth import router as auth_router
 
 app = FastAPI(title="EduTrack API")
 
+# Allow all origins for Vercel connection
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -12,7 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# router-এ ইতিমধ্যেই prefix="/auth" দেওয়া আছে, তাই এখানে শুধু prefix="/api/v1" হবে
+
 app.include_router(auth_router, prefix="/api/v1")
 
 @app.get("/health")

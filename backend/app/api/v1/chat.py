@@ -19,19 +19,56 @@ class ChatResponse(BaseModel):
     reply: str
 
 
-# Endpoint path will be exactly: POST /api/v1/ai/chat
+# ক্যাশে অ্যাক্টিভ মডেলের নাম সেভ রাখা যাতে বারবার গুগলকে জিজ্ঞেস করতে না হয়
+DETECTED_MODEL = None
+
+
+async def get_active_gemini_model(api_key: str) -> str:
+    global DETECTED_MODEL
+    if DETECTED_MODEL:
+        return DETECTED_MODEL
+
+    list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        res = await client.get(list_url)
+        if res.status_code == 200:
+            data = res.json()
+            models = data.get("models", [])
+            # যে মডেলগুলো generateContent সাপোর্ট করে
+            valid_models = [
+                m["name"].replace("models/", "")
+                for m in models
+                if "generateContent" in m.get("supportedGenerationMethods", [])
+            ]
+            
+            # পছন্দের অগ্রাধিকার: 2.5-flash > 2.0-flash > 3-flash > যেকোনো ফ্ল্যাশ
+            for pref in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-exp", "gemini-flash"]:
+                for vm in valid_models:
+                    if pref in vm:
+                        DETECTED_MODEL = vm
+                        print(f"[EduTrack AI] Auto-detected best active model: {DETECTED_MODEL}")
+                        return DETECTED_MODEL
+
+            if valid_models:
+                DETECTED_MODEL = valid_models[0]
+                print(f"[EduTrack AI] Falling back to available model: {DETECTED_MODEL}")
+                return DETECTED_MODEL
+
+    # ডিফল্ট সেফ মডেল
+    return "gemini-2.5-flash"
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
-        print("[EduTrack AI] Error: GEMINI_API_KEY is not configured!")
-        raise HTTPException(status_code=500, detail="Gemini API Key missing on server")
+        raise HTTPException(status_code=500, detail="Gemini API Key is not configured on server")
 
     user_text = payload.prompt.strip()
     if not user_text:
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
-    # DB Content summary
+    # কারিকুলাম সামারি
     video_summary = ""
     sheet_summary = ""
     try:
@@ -65,22 +102,27 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
 
     system_instruction = (
         "You are the official AI Academic Tutor & Platform Guide of 'EduTrack'.\n"
-        "Help students with Physics, Chemistry, formulas, derivations, and platform navigation.\n"
-        "Respond warmly, encouragingly, and clearly in Bengali (or English if the user asks in English).\n\n"
-        f"Available Videos:\n{video_summary or 'None'}\n\n"
-        f"Available Sheets:\n{sheet_summary or 'None'}\n"
+        "Your mission is to help students learn Physics, Chemistry, solve problems, and guide them around the platform.\n"
+        "Reply warmly, encouragingly, and clearly in Bengali (or English if the user asks in English).\n\n"
+        f"Platform Lectures:\n{video_summary or 'None'}\n\n"
+        f"Platform Study Sheets:\n{sheet_summary or 'None'}\n"
     )
 
-    full_prompt = f"{system_instruction}\n\nStudent Question: {user_text}"
+    full_prompt = f"{system_instruction}\n\nStudent: {user_text}"
 
-    # Google Gemini 1.5 Flash standard v1beta REST endpoint
-    models_to_try = [
-        "gemini-1.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash-latest"
-    ]
+    # ডায়নামিকালি সঠিক মডেল বের করা
+    try:
+        active_model = await get_active_gemini_model(api_key)
+    except Exception:
+        active_model = "gemini-2.5-flash"
 
-    request_body = {
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{active_model}:generateContent?key={api_key}"
+
+    headers = {
+        "Content-Type": "application/json",
+    }
+
+    body = {
         "contents": [
             {
                 "parts": [{"text": full_prompt}]
@@ -92,29 +134,27 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
         }
     }
 
-    headers = {
-        "Content-Type": "application/json",
-        "x-goog-api-key": api_key,
-    }
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(url, headers=headers, json=body)
 
-    last_error_detail = ""
-    async with httpx.AsyncClient(timeout=25.0) as client:
-        for model in models_to_try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-            try:
-                resp = await client.post(url, headers=headers, json=request_body)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    candidates = data.get("candidates", [])
-                    if candidates and "content" in candidates[0]:
-                        parts = candidates[0]["content"].get("parts", [])
-                        reply = "".join([p.get("text", "") for p in parts if "text" in p])
-                        if reply.strip():
-                            return ChatResponse(reply=reply.strip())
-                last_error_detail = f"Model {model} returned HTTP {resp.status_code}: {resp.text}"
-                print(f"[AI Model Fail] {last_error_detail}")
-            except Exception as e:
-                last_error_detail = str(e)
-                print(f"[AI Request Exception]: {e}")
+        if resp.status_code != 200:
+            # যদি অটো-ডিটেক্ট করা মডেলেও সমস্যা হয়, তবে gemini-2.0-flash দিয়ে ফাইনাল ট্রাই
+            fallback_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+            resp = await client.post(fallback_url, headers=headers, json=body)
 
-    raise HTTPException(status_code=500, detail=f"Google API Error: {last_error_detail[:150]}")
+        if resp.status_code != 200:
+            print(f"[Gemini API Failed]: {resp.status_code} - {resp.text}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Google API Error {resp.status_code}: {resp.text[:120]}"
+            )
+
+        data = resp.json()
+        candidates = data.get("candidates", [])
+        if candidates and "content" in candidates[0]:
+            parts = candidates[0]["content"].get("parts", [])
+            reply_text = "".join([p.get("text", "") for p in parts if "text" in p])
+            if reply_text.strip():
+                return ChatResponse(reply=reply_text.strip())
+
+    return ChatResponse(reply="দুঃখিত, কোনো উত্তর জেনারেট করা সম্ভব হয়নি। আবার চেষ্টা করো।")

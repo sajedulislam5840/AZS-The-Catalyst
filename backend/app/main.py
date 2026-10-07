@@ -1,4 +1,3 @@
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.auth import router as auth_router
@@ -13,6 +12,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# router-এ ইতিমধ্যেই prefix="/auth" দেওয়া আছে, তাই এখানে শুধু prefix="/api/v1" হবে
 app.include_router(auth_router, prefix="/api/v1")
 
 @app.get("/health")

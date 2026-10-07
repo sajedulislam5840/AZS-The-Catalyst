@@ -9,7 +9,7 @@ export default function RegisterPage() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState('STUDENT');
+    const [role, setRole] = useState('ADMIN');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -19,12 +19,21 @@ export default function RegisterPage() {
         setLoading(true);
 
         try {
-            const res = await api.post('/api/v1/auth/register', { email, password, role });
+            const res = await api.post('/api/v1/auth/register', {
+                email,
+                password,
+                role: role.toUpperCase()
+            });
             localStorage.setItem('token', res.data.access_token);
             localStorage.setItem('role', res.data.role);
             router.push('/dashboard');
         } catch (err: any) {
-            setError(err.response?.data?.detail || 'Registration failed');
+            const detail = err.response?.data?.detail;
+            if (Array.isArray(detail)) {
+                setError(detail[0]?.msg || 'Validation failed');
+            } else {
+                setError(detail || err.message || 'Registration failed');
+            }
         } finally {
             setLoading(false);
         }
@@ -76,8 +85,8 @@ export default function RegisterPage() {
                             onChange={(e) => setRole(e.target.value)}
                             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
                         >
-                            <option value="STUDENT">Student</option>
                             <option value="ADMIN">Admin</option>
+                            <option value="STUDENT">Student</option>
                         </select>
                     </div>
 

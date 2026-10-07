@@ -42,7 +42,7 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [mounted, setMounted] = useState(false);
 
-    // Material Form State (Upload from PC)
+    // Material Form State (Upload from Local PC)
     const [mTitle, setMTitle] = useState('');
     const [mChapter, setMChapter] = useState('');
     const [mSubject, setMSubject] = useState<Subject>('PHYSICS');
@@ -55,6 +55,7 @@ export default function DashboardPage() {
     const [vChapter, setVChapter] = useState('');
     const [vSubject, setVSubject] = useState<Subject>('PHYSICS');
     const [vUrl, setVUrl] = useState('');
+    const [addingVideo, setAddingVideo] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -93,6 +94,7 @@ export default function DashboardPage() {
             return;
         }
 
+        const token = localStorage.getItem('token');
         const formData = new FormData();
         formData.append('title', mTitle);
         formData.append('chapter', mChapter);
@@ -102,7 +104,10 @@ export default function DashboardPage() {
         try {
             setUploadingPdf(true);
             await api.post('/api/v1/academic/materials/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${token}`,
+                },
             });
             setMTitle('');
             setMChapter('');
@@ -110,7 +115,9 @@ export default function DashboardPage() {
             const fileInput = document.getElementById('pdf-file-input') as HTMLInputElement;
             if (fileInput) fileInput.value = '';
             fetchData();
+            alert('PDF uploaded successfully!');
         } catch (err: any) {
+            console.error('PDF upload error:', err.response || err);
             alert(err.response?.data?.detail || 'Failed to upload PDF');
         } finally {
             setUploadingPdf(false);
@@ -120,7 +127,10 @@ export default function DashboardPage() {
     const handleDeleteMaterial = async (id: string) => {
         if (!confirm('Are you sure you want to delete this sheet?')) return;
         try {
-            await api.delete(`/api/v1/academic/materials/${id}`);
+            const token = localStorage.getItem('token');
+            await api.delete(`/api/v1/academic/materials/${id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
             fetchData();
         } catch (err: any) {
             alert(err.response?.data?.detail || 'Failed to delete PDF');
@@ -135,27 +145,44 @@ export default function DashboardPage() {
         }
 
         try {
-            await api.post('/api/v1/academic/videos', {
-                lecture_no: Number(vLectureNo),
-                topic: vTopic,
-                chapter: vChapter,
-                subject: vSubject,
-                youtube_url: vUrl,
-            });
+            setAddingVideo(true);
+            const token = localStorage.getItem('token');
+            await api.post(
+                '/api/v1/academic/videos',
+                {
+                    lecture_no: Number(vLectureNo),
+                    topic: vTopic,
+                    chapter: vChapter,
+                    subject: vSubject,
+                    youtube_url: vUrl,
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
             setVLectureNo('');
             setVTopic('');
             setVChapter('');
             setVUrl('');
             fetchData();
+            alert('Video lecture added successfully!');
         } catch (err: any) {
+            console.error('Video add error:', err.response || err);
             alert(err.response?.data?.detail || 'Failed to add video lecture');
+        } finally {
+            setAddingVideo(false);
         }
     };
 
     const handleDeleteVideo = async (id: string) => {
         if (!confirm('Are you sure you want to delete this video lecture?')) return;
         try {
-            await api.delete(`/api/v1/academic/videos/${id}`);
+            const token = localStorage.getItem('token');
+            await api.delete(`/api/v1/academic/videos/${id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
             fetchData();
         } catch (err: any) {
             alert(err.response?.data?.detail || 'Failed to delete video');
@@ -191,7 +218,7 @@ export default function DashboardPage() {
             </header>
 
             <main className="max-w-7xl mx-auto px-4 mt-8 space-y-10">
-                {/* Admin Control Panel */}
+                {/* Admin Management Section */}
                 {isAdmin && (
                     <section className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-6">
                         <h2 className="text-lg font-bold text-gray-800">Admin Control Panel</h2>
@@ -262,7 +289,7 @@ export default function DashboardPage() {
                                 </button>
                             </form>
 
-                            {/* Video Upload Form with Lecture No, Topic & Chapter */}
+                            {/* Video Upload Form (Lecture No, Topic, Chapter, URL) */}
                             <form onSubmit={handleAddVideo} className="space-y-3 bg-gray-50 p-5 rounded-lg border border-gray-100">
                                 <h3 className="font-semibold text-sm text-indigo-600">Add YouTube Class Lecture</h3>
 
@@ -333,9 +360,10 @@ export default function DashboardPage() {
 
                                 <button
                                     type="submit"
-                                    className="w-full mt-2 bg-indigo-600 text-white text-xs font-semibold py-2.5 rounded-lg hover:bg-indigo-500 transition"
+                                    disabled={addingVideo}
+                                    className="w-full mt-2 bg-indigo-600 text-white text-xs font-semibold py-2.5 rounded-lg hover:bg-indigo-500 transition disabled:opacity-50"
                                 >
-                                    + Add Video Lecture
+                                    {addingVideo ? 'Adding Lecture...' : '+ Add Video Lecture'}
                                 </button>
                             </form>
 

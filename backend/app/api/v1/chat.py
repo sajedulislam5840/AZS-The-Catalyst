@@ -1,7 +1,7 @@
 import os
+import httpx
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-import google.generativeai as genai
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -25,13 +25,12 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
     if not api_key:
         raise HTTPException(status_code=500, detail="Gemini API Key is not configured on server")
 
-    if not payload.prompt.strip():
+    user_text = payload.prompt.strip()
+    if not user_text:
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
-    genai.configure(api_key=api_key)
-
     try:
-        # ডেটাবেস থেকে ক্লাস এবং শিটের তথ্য নেওয়া
+        # Fetch current platform context
         v_res = await db.execute(
             select(
                 VideoLecture.lecture_no,
@@ -62,7 +61,7 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
 You are the official AI Academic Tutor & Platform Guide of 'EduTrack'.
 Your role is to help students with Physics, Chemistry, math derivations, formulas, conceptual questions, and platform navigation.
 Answer questions politely, warmly, and helpfully in clear Bengali (or English if the user asks in English).
-Maintain an encouraging teacher-like tone.
+Keep answers concise, clear, and easy to understand.
 
 Current Platform Curriculum Context:
 Lectures available:
@@ -74,15 +73,49 @@ Study Sheets (PDF) available:
 If a student asks which lecture or sheet covers a topic, guide them to the exact lecture number or sheet listed above.
 """
 
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=system_instruction
-        )
+        # Google Gemini Native REST API Endpoint with header authentication
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+        headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": api_key,
+        }
 
-        response = await model.generate_content_async(payload.prompt)
-        text_reply = response.text if response and response.text else "দুঃখিত, কোনো উত্তর পাওয়া যায়নি। আবার প্রশ্ন করো।"
-        return ChatResponse(reply=text_reply)
+        body = {
+            "system_instruction": {
+                "parts": [{"text": system_instruction}]
+            },
+            "contents": [
+                {
+                    "parts": [{"text": user_text}]
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.7,
+                "maxOutputTokens": 800
+            }
+        }
 
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(url, headers=headers, json=body)
+
+        if resp.status_code != 200:
+            print(f"Gemini API Error {resp.status_code}: {resp.text}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Gemini API responded with status {resp.status_code}"
+            )
+
+        data = resp.json()
+        candidates = data.get("candidates", [])
+        if candidates and "content" in candidates[0]:
+            parts = candidates[0]["content"].get("parts", [])
+            reply_text = "".join([p.get("text", "") for p in parts])
+            return ChatResponse(reply=reply_text or "Abar ektu por cheshta koro.")
+
+        return ChatResponse(reply="Kono uttor pawa jayni, abar proshno koro.")
+
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Gemini API Error: {e}")
-        raise HTTPException(status_code=500, detail="AI Service is currently busy. Please try again in a few moments.")
+        print(f"Server Error: {e}")
+        raise HTTPException(status_code=500, detail="AI Service is temporarily unavailable.")

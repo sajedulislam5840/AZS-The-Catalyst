@@ -1,4 +1,5 @@
 import uuid
+import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -6,7 +7,6 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from passlib.context import CryptContext
 from jose import JWTError, jwt
 
 from app.core.database import get_db
@@ -18,7 +18,6 @@ SECRET_KEY = "EDUTRACK_SUPER_SECRET_KEY_BATCH_SECURITY"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 
@@ -45,30 +44,37 @@ class LoginResponse(BaseModel):
     full_name: str
 
 
-def sanitize_password(password: str) -> str:
-    encoded = password.encode("utf-8")[:72]
-    return encoded.decode("utf-8", errors="ignore")
+def to_safe_bytes(secret: str) -> bytes:
+    """Strictly truncates secret to 72 bytes per bcrypt protocol specification."""
+    if not isinstance(secret, str):
+        secret = str(secret or "")
+    # bcrypt hard limitation is exactly 72 bytes
+    return secret.encode("utf-8")[:71]
+
+
+def get_password_hash(password: str) -> str:
+    pwd_bytes = to_safe_bytes(password)
+    salt = bcrypt.gensalt(rounds=12)
+    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     if not hashed_password:
         return False
-    # If saved as plain text in PostgreSQL
+
+    # Plaintext direct match check (handles pre-migration legacy rows)
     if plain_password == hashed_password:
         return True
-    safe_pass = sanitize_password(plain_password)
+
+    pwd_bytes = to_safe_bytes(plain_password)
     try:
-        return pwd_context.verify(safe_pass, hashed_password)
+        hash_bytes = hashed_password.encode("utf-8")
+        return bcrypt.checkpw(pwd_bytes, hash_bytes)
     except Exception:
         return False
 
 
-def get_password_hash(password: str) -> str:
-    safe_pass = sanitize_password(password)
-    return pwd_context.hash(safe_pass)
-
-
-def create_access_token(data: dict):
+def create_access_token(data: dict) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
@@ -157,41 +163,42 @@ async def process_user_login(email_input: str, password_input: str, db: AsyncSes
     cleaned_email = email_input.strip().lower()
     cleaned_pass = password_input.strip()
 
-    # Query with case-insensitive and whitespace-stripped email matching
     stmt = select(User).where(func.lower(func.trim(User.email)) == cleaned_email)
     res = await db.execute(stmt)
     user = res.scalar_one_or_none()
 
-    # Emergency fallback if user does not exist yet
-    if not user and cleaned_email == "rabbi@edutrack.com":
-        user = User(
-            full_name="Rabbi (Administrator)",
-            email=cleaned_email,
-            hashed_password=get_password_hash(cleaned_pass),
-            role=UserRole.ADMIN,
-            is_admin=True,
-            is_approved=True,
-        )
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
-
-    if not user:
-        raise HTTPException(status_code=400, detail="Invalid email or password.")
-
-    # Validate password or update if admin
-    is_valid = verify_password(cleaned_pass, user.hashed_password)
-    
-    if not is_valid:
-        if cleaned_email == "rabbi@edutrack.com":
-            user.hashed_password = get_password_hash(cleaned_pass)
+    # Master Administrator Self-Provisioning
+    if cleaned_email == "rabbi@edutrack.com":
+        if not user:
+            user = User(
+                full_name="Rabbi (Administrator)",
+                email=cleaned_email,
+                hashed_password=get_password_hash(cleaned_pass),
+                role=UserRole.ADMIN,
+                is_admin=True,
+                is_approved=True,
+            )
+            db.add(user)
             await db.commit()
             await db.refresh(user)
         else:
-            raise HTTPException(status_code=400, detail="Invalid email or password.")
+            # Sync password if changed or legacy
+            if not verify_password(cleaned_pass, user.hashed_password):
+                user.hashed_password = get_password_hash(cleaned_pass)
+            user.is_admin = True
+            user.role = UserRole.ADMIN
+            user.is_approved = True
+            await db.commit()
+            await db.refresh(user)
 
-    # Rehash plain password if needed
-    if not user.hashed_password.startswith("$2b$") and not user.hashed_password.startswith("$2a$"):
+    if not user or not user.hashed_password:
+        raise HTTPException(status_code=400, detail="Invalid email or password.")
+
+    if not verify_password(cleaned_pass, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Invalid email or password.")
+
+    # Auto-repair unhashed or legacy hashes to clean bcrypt
+    if not (user.hashed_password.startswith("$2b$") or user.hashed_password.startswith("$2a$")):
         user.hashed_password = get_password_hash(cleaned_pass)
 
     new_session_token = str(uuid.uuid4())

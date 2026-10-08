@@ -12,7 +12,6 @@ from app.api.v1.chat import router as chat_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Database table auto-creation
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
@@ -25,22 +24,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Proper CORS Configuration
+# Open CORS configuration to fix 'Failed to fetch' permanently
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://edu-track-taupe.vercel.app",
-        "https://edutrack.vercel.app",
-    ],
-    allow_origin_regex=r"https://.*\.vercel\.app",
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include All API Routers
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(academic_router, prefix="/api/v1")
@@ -49,11 +41,7 @@ app.include_router(chat_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
-    return {
-        "status": "healthy",
-        "service": "EduTrack API Engine",
-        "version": "2.0.0"
-    }
+    return {"status": "healthy", "service": "EduTrack API Engine"}
 
 
 @app.get("/health")

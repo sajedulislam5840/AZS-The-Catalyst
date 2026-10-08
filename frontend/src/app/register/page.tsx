@@ -25,10 +25,15 @@ export default function RegisterPage() {
         setLoading(true);
 
         try {
-            const backendUrl = process.env.NEXT_PUBLIC_API_URL || "https://edutrack-backend.onrender.com";
+            const backendUrl =
+                process.env.NEXT_PUBLIC_API_URL ||
+                "https://edutrack-backend.onrender.com";
+
             const res = await fetch(`${backendUrl.replace(/\/$/, "")}/api/v1/auth/register`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                },
                 body: JSON.stringify({
                     full_name: formData.fullName,
                     email: formData.email,
@@ -41,12 +46,12 @@ export default function RegisterPage() {
 
             const data = await res.json();
             if (!res.ok) {
-                throw new Error(data.detail || "রেজিস্ট্রেশন ব্যর্থ হয়েছে।");
+                throw new Error(data.detail || "ਰਜਿਸਟ੍ਰੇਸ਼ਨ ਫੇਲ੍ਹ ਹੋ ਗਈ ਹੈ।");
             }
 
             setSuccess(true);
         } catch (err: any) {
-            setError(err.message || "সার্ভারের সাথে সংযোগ স্থাপন করা যায়নি।");
+            setError(err.message || "ਸਰਵਰ ਨਾਲ ਸੰਪਰਕ ਨਹੀਂ ਹੋ ਸਕਿਆ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।");
         } finally {
             setLoading(false);
         }
@@ -67,24 +72,24 @@ export default function RegisterPage() {
                 {success ? (
                     <div className="text-center py-6 space-y-4">
                         <CheckCircle className="w-14 h-14 text-emerald-400 mx-auto" />
-                        <h3 className="text-xl font-bold text-white">রেজিস্ট্রেশন সম্পন্ন হয়েছে!</h3>
+                        <h3 className="text-xl font-bold text-white">ਰਜਿਸਟ੍ਰੇਸ਼ਨ ਸਫਲ ਹੋ ਗਈ ਹੈ!</h3>
                         <p className="text-slate-300 text-sm leading-relaxed">
-                            তোমার অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে। ব্যাচ শিক্ষকের কাছে বেতন যাচাই ও <strong>Approval</strong> এর পর লগইন চালু হবে।
+                            ਤੁਹਾਡਾ ਖਾਤਾ ਬਣ ਗਿਆ ਹੈ। ਬੈਚ ਟੀਚਰ ਵੱਲੋਂ ਫੀਸ ਦੀ ਪੁਸ਼ਟੀ ਅਤੇ <strong>Approval</strong> ਮਿਲਣ ਤੋਂ ਬਾਅਦ ਲੌਗਇਨ ਚਾਲੂ ਹੋ ਜਾਵੇਗਾ।
                         </p>
                         <div className="pt-4">
                             <Link
                                 href="/login"
                                 className="inline-flex items-center justify-center px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-all shadow-md"
                             >
-                                লগইন পেইজে যাও
+                                ਲੌਗਇਨ ਪੇਜ ਉੱਤੇ ਜਾਓ
                             </Link>
                         </div>
                     </div>
                 ) : (
                     <>
                         <div className="text-center mb-6">
-                            <h2 className="text-xl font-bold text-white">স্টুডেন্ট অ্যাকাউন্ট তৈরি করো</h2>
-                            <p className="text-slate-400 text-xs mt-1">ব্যাচ এক্সেসের জন্য সঠিক তথ্য দিয়ে ফর্মটি পূরণ করো</p>
+                            <h2 className="text-xl font-bold text-white">ਵਿਦਿਆਰਥੀ ਖਾਤਾ ਬਣਾਓ</h2>
+                            <p className="text-slate-400 text-xs mt-1">ਬੈਚ ਐਕਸੈਸ ਲਈ ਸਹੀ ਜਾਣਕਾਰੀ ਨਾਲ ਫਾਰਮ ਭਰੋ</p>
                         </div>
 
                         {error && (
@@ -95,13 +100,13 @@ export default function RegisterPage() {
 
                         <form onSubmit={handleSubmit} className="space-y-3.5">
                             <div>
-                                <label className="text-xs text-slate-400 block mb-1">পূর্ণ নাম</label>
+                                <label className="text-xs text-slate-400 block mb-1">ਪੂਰਾ ਨਾਮ</label>
                                 <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm focus-within:border-indigo-500">
                                     <User className="w-4 h-4 text-slate-400 mr-2" />
                                     <input
                                         type="text"
                                         required
-                                        placeholder="e.g. Sajedul Islam"
+                                        placeholder="e.g. Shukriya"
                                         value={formData.fullName}
                                         onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                                         className="bg-transparent border-none outline-none w-full text-slate-100 placeholder-slate-500"
@@ -110,7 +115,7 @@ export default function RegisterPage() {
                             </div>
 
                             <div>
-                                <label className="text-xs text-slate-400 block mb-1">ইমেইল এড্রেস</label>
+                                <label className="text-xs text-slate-400 block mb-1">ਈਮੇਲ ਐਡਰੈੱਸ</label>
                                 <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm focus-within:border-indigo-500">
                                     <Mail className="w-4 h-4 text-slate-400 mr-2" />
                                     <input
@@ -125,13 +130,13 @@ export default function RegisterPage() {
                             </div>
 
                             <div>
-                                <label className="text-xs text-slate-400 block mb-1">পাসওয়ার্ড</label>
+                                <label className="text-xs text-slate-400 block mb-1">ਪਾਸਵਰਡ</label>
                                 <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm focus-within:border-indigo-500">
                                     <Lock className="w-4 h-4 text-slate-400 mr-2" />
                                     <input
                                         type="password"
                                         required
-                                        placeholder="কমপক্ষে ৬ অক্ষর"
+                                        placeholder="ਘੱਟੋ-ਘੱਟ 6 ਅੱਖਰ"
                                         value={formData.password}
                                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                         className="bg-transparent border-none outline-none w-full text-slate-100 placeholder-slate-500"
@@ -141,13 +146,13 @@ export default function RegisterPage() {
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="text-xs text-slate-400 block mb-1">স্কুল / কলেজ</label>
+                                    <label className="text-xs text-slate-400 block mb-1">ਸਕੂਲ / ਕਾਲਜ</label>
                                     <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm focus-within:border-indigo-500">
                                         <School className="w-4 h-4 text-slate-400 mr-2" />
                                         <input
                                             type="text"
                                             required
-                                            placeholder="School Name"
+                                            placeholder="ਸਕੂਲ ਦਾ ਨਾਮ"
                                             value={formData.school}
                                             onChange={(e) => setFormData({ ...formData, school: e.target.value })}
                                             className="bg-transparent border-none outline-none w-full text-slate-100 placeholder-slate-500 text-xs"
@@ -156,7 +161,7 @@ export default function RegisterPage() {
                                 </div>
 
                                 <div>
-                                    <label className="text-xs text-slate-400 block mb-1">ক্লাস</label>
+                                    <label className="text-xs text-slate-400 block mb-1">ਕਲਾਸ</label>
                                     <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm focus-within:border-indigo-500">
                                         <GraduationCap className="w-4 h-4 text-slate-400 mr-2" />
                                         <select
@@ -175,13 +180,13 @@ export default function RegisterPage() {
                             </div>
 
                             <div>
-                                <label className="text-xs text-slate-400 block mb-1">ব্যাচ</label>
+                                <label className="text-xs text-slate-400 block mb-1">ਬੈਚ</label>
                                 <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm focus-within:border-indigo-500">
                                     <Users className="w-4 h-4 text-slate-400 mr-2" />
                                     <input
                                         type="text"
                                         required
-                                        placeholder="e.g. Batch 01 (Morning)"
+                                        placeholder="e.g. Batch 05"
                                         value={formData.batchNo}
                                         onChange={(e) => setFormData({ ...formData, batchNo: e.target.value })}
                                         className="bg-transparent border-none outline-none w-full text-slate-100 placeholder-slate-500 text-xs"
@@ -194,14 +199,21 @@ export default function RegisterPage() {
                                 disabled={loading}
                                 className="w-full mt-4 flex items-center justify-center space-x-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
                             >
-                                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><span>রেজিস্ট্রেশন সাবমিট করো</span> <ArrowRight className="w-4 h-4" /></>}
+                                {loading ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <>
+                                        <span>ਰਜਿਸਟ੍ਰੇਸ਼ਨ ਸਬਮਿਟ ਕਰੋ</span>
+                                        <ArrowRight className="w-4 h-4" />
+                                    </>
+                                )}
                             </button>
                         </form>
 
                         <div className="mt-5 text-center text-xs text-slate-400">
-                            ইতিমধ্যে অ্যাকাউন্ট আছে?{" "}
+                            ਪਹਿਲਾਂ ਹੀ ਖਾਤਾ ਹੈ?{" "}
                             <Link href="/login" className="text-indigo-400 hover:underline font-medium">
-                                লগইন করো
+                                ਲੌਗਇਨ ਕਰੋ
                             </Link>
                         </div>
                     </>

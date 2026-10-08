@@ -19,6 +19,8 @@ import {
     Sparkles,
     BookOpen,
     CalendarCheck,
+    SearchX,
+    X,
 } from "lucide-react";
 import axios from "axios";
 
@@ -307,31 +309,37 @@ export default function StudentDashboardPage() {
         return Object.entries(map);
     }, [videos, watchedVideos]);
 
+    // Robust Search Matcher across Topic, Chapter, and Subject
+    const normalizedQuery = searchQuery.toLowerCase().trim();
+
     const filteredVideos = useMemo(() => {
         return videos.filter((v) => {
             const s = (v.subject || "").toUpperCase();
             const matchSubj = selectedSubject === "ALL" || s === selectedSubject;
-            const q = searchQuery.toLowerCase().trim();
             const matchSearch =
-                !q ||
-                (v.topic && v.topic.toLowerCase().includes(q)) ||
-                (v.chapter && v.chapter.toLowerCase().includes(q));
+                !normalizedQuery ||
+                (v.topic && v.topic.toLowerCase().includes(normalizedQuery)) ||
+                (v.chapter && v.chapter.toLowerCase().includes(normalizedQuery)) ||
+                s.toLowerCase().includes(normalizedQuery);
             return matchSubj && matchSearch;
         });
-    }, [videos, selectedSubject, searchQuery]);
+    }, [videos, selectedSubject, normalizedQuery]);
 
     const filteredMaterials = useMemo(() => {
         return materials.filter((m) => {
             const s = (m.subject || "").toUpperCase();
             const matchSubj = selectedSubject === "ALL" || s === selectedSubject;
-            const q = searchQuery.toLowerCase().trim();
             const matchSearch =
-                !q ||
-                (m.title && m.title.toLowerCase().includes(q)) ||
-                (m.chapter && m.chapter.toLowerCase().includes(q));
+                !normalizedQuery ||
+                (m.title && m.title.toLowerCase().includes(normalizedQuery)) ||
+                (m.chapter && m.chapter.toLowerCase().includes(normalizedQuery)) ||
+                s.toLowerCase().includes(normalizedQuery);
             return matchSubj && matchSearch;
         });
-    }, [materials, selectedSubject, searchQuery]);
+    }, [materials, selectedSubject, normalizedQuery]);
+
+    const isSearchActive = normalizedQuery.length > 0;
+    const hasSearchResults = filteredVideos.length > 0 || filteredMaterials.length > 0;
 
     if (!mounted) return null;
 
@@ -354,7 +362,10 @@ export default function StudentDashboardPage() {
 
                     <nav className="space-y-1.5">
                         <button
-                            onClick={() => setActiveNav("dashboard")}
+                            onClick={() => {
+                                setActiveNav("dashboard");
+                                setSearchQuery("");
+                            }}
                             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${activeNav === "dashboard"
                                     ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
                                     : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
@@ -438,15 +449,23 @@ export default function StudentDashboardPage() {
             <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
                 <header className="h-20 bg-white/70 backdrop-blur-md border-b border-slate-200/80 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-30">
                     <div className="flex-1 max-w-md">
-                        <div className="relative">
-                            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                        <div className="relative flex items-center">
+                            <Search className="w-4 h-4 text-slate-400 absolute left-3.5" />
                             <input
                                 type="text"
                                 placeholder="Search topic or chapter..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-[#F4F6FA] border border-transparent focus:border-slate-300 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none transition"
+                                className="w-full bg-[#F4F6FA] border border-transparent focus:border-slate-300 rounded-2xl pl-10 pr-9 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none transition"
                             />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery("")}
+                                    className="absolute right-3 text-slate-400 hover:text-slate-600"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -473,9 +492,180 @@ export default function StudentDashboardPage() {
                 )}
 
                 <main className="p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8">
-                    {activeNav === "dashboard" && (
+                    {/* SEARCH RESULTS VIEW (SHOWS AUTOMATICALLY WHEN SEARCHING FROM ANYWHERE) */}
+                    {isSearchActive && (
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                                        <Search className="w-5 h-5 text-indigo-600" />
+                                        <span>Search Results for &ldquo;{searchQuery}&rdquo;</span>
+                                    </h2>
+                                    <p className="text-xs text-slate-400 mt-0.5">
+                                        Found {filteredVideos.length} lectures and {filteredMaterials.length} study sheets.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setSearchQuery("")}
+                                    className="text-xs font-bold text-slate-500 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl transition"
+                                >
+                                    Clear Search
+                                </button>
+                            </div>
+
+                            {!hasSearchResults ? (
+                                /* EMPTY STATE WHEN NOTHING MATCHES SEARCH KEYWORDS */
+                                <div className="bg-white rounded-3xl p-16 text-center border border-slate-200 shadow-sm space-y-4">
+                                    <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+                                        <SearchX className="w-8 h-8" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h3 className="text-base font-extrabold text-slate-800">
+                                            No Results Found
+                                        </h3>
+                                        <p className="text-xs text-slate-500 max-w-md mx-auto">
+                                            We couldn&apos;t find any lectures or study sheets matching &ldquo;{searchQuery}&rdquo;. Please verify the spelling or try searching by chapter name.
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setSearchQuery("")}
+                                        className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition"
+                                    >
+                                        Reset & View All Content
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-8">
+                                    {/* Matching Lectures */}
+                                    {filteredVideos.length > 0 && (
+                                        <div className="space-y-4">
+                                            <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+                                                Video Lectures ({filteredVideos.length})
+                                            </h3>
+                                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                {filteredVideos.map((vid) => {
+                                                    const embedUrl = getYouTubeEmbedUrl(vid.youtube_url || vid.video_url || "");
+                                                    const isWatched = watchedVideos.includes(vid.id);
+
+                                                    return (
+                                                        <div
+                                                            key={vid.id}
+                                                            className={`bg-white rounded-3xl overflow-hidden border transition-all duration-200 shadow-sm flex flex-col justify-between ${isWatched ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-200"
+                                                                }`}
+                                                        >
+                                                            <div>
+                                                                <div className="aspect-video w-full bg-slate-900 relative">
+                                                                    {embedUrl ? (
+                                                                        <iframe
+                                                                            src={embedUrl}
+                                                                            title={vid.topic}
+                                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                            allowFullScreen
+                                                                            className="w-full h-full border-none"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="h-full flex items-center justify-center text-xs text-slate-400">
+                                                                            Invalid Video Link
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="p-5 space-y-2">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                                                                            Lecture #{vid.lecture_no}
+                                                                        </span>
+                                                                        <span
+                                                                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
+                                                                                    ? "bg-[#C9B6FD]/30 text-indigo-800"
+                                                                                    : "bg-[#FFE3B3]/50 text-amber-900"
+                                                                                }`}
+                                                                        >
+                                                                            {vid.subject}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <h4 className="font-extrabold text-sm text-slate-900 line-clamp-2">{vid.topic}</h4>
+                                                                    <p className="text-xs text-slate-400">{vid.chapter}</p>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="p-5 pt-0">
+                                                                <button
+                                                                    onClick={() => toggleWatchStatus(vid.id)}
+                                                                    className={`w-full py-2.5 rounded-2xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
+                                                                            ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                                                                            : "bg-slate-900 text-white hover:bg-slate-800"
+                                                                        }`}
+                                                                >
+                                                                    <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Matching Study Sheets */}
+                                    {filteredMaterials.length > 0 && (
+                                        <div className="space-y-4">
+                                            <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+                                                Study Materials ({filteredMaterials.length})
+                                            </h3>
+                                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                {filteredMaterials.map((mat) => (
+                                                    <div
+                                                        key={mat.id}
+                                                        className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between space-y-4"
+                                                    >
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <span
+                                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
+                                                                            ? "bg-[#C9B6FD]/30 text-indigo-800"
+                                                                            : "bg-[#FFE3B3]/50 text-amber-900"
+                                                                        }`}
+                                                                >
+                                                                    {mat.subject}
+                                                                </span>
+                                                                <span className="text-[11px] text-slate-400 font-medium">{mat.chapter}</span>
+                                                            </div>
+
+                                                            <div className="flex items-start space-x-3">
+                                                                <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
+                                                                    PDF
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="font-extrabold text-sm text-slate-900 leading-snug">{mat.title}</h4>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <a
+                                                            href={mat.pdf_url || mat.file_url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-2xl text-center transition flex items-center justify-center space-x-1.5"
+                                                        >
+                                                            <span>Open & Download</span>
+                                                            <ExternalLink className="w-3.5 h-3.5" />
+                                                        </a>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* VIEW: DASHBOARD OVERVIEW (ACTIVE WHEN NOT SEARCHING) */}
+                    {!isSearchActive && activeNav === "dashboard" && (
                         <>
-                            {/* HERO "MY PROGRESS" CARD - ENGLISH & REGISTERED USER */}
+                            {/* HERO "MY PROGRESS" CARD */}
                             <div className="space-y-4">
                                 <h2 className="text-lg font-bold text-slate-900 tracking-tight">My progress</h2>
 
@@ -754,7 +944,7 @@ export default function StudentDashboardPage() {
                     )}
 
                     {/* VIEW: VIDEO LECTURES GRID */}
-                    {activeNav === "lectures" && (
+                    {!isSearchActive && activeNav === "lectures" && (
                         <div className="space-y-6">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div>
@@ -851,7 +1041,7 @@ export default function StudentDashboardPage() {
                     )}
 
                     {/* VIEW: STUDY MATERIALS (PDF) */}
-                    {activeNav === "materials" && (
+                    {!isSearchActive && activeNav === "materials" && (
                         <div className="space-y-6">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div>
@@ -926,7 +1116,7 @@ export default function StudentDashboardPage() {
                     )}
 
                     {/* VIEW: INTEGRATED AI TUTOR */}
-                    {activeNav === "ai" && (
+                    {!isSearchActive && activeNav === "ai" && (
                         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[640px]">
                             <div className="p-5 bg-slate-50 border-b border-slate-200 flex items-center space-x-3">
                                 <div className="w-9 h-9 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow">

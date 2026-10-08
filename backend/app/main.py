@@ -6,11 +6,11 @@ from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
-from app.api.v1.admin_academic import router as admin_academic_router
+from app.api.v1.admin_academic import router as admin_router
 
 from app.core.database import engine, Base
 from app.api.v1.auth import router as auth_router
-from app.api.v1.admin import router as admin_router
+from backend.app.api.v1.admin_academic import router as admin_router
 from app.api.v1.academic import router as academic_router
 from app.api.v1.chat import router as chat_router
 

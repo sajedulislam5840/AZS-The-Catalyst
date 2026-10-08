@@ -45,10 +45,8 @@ class LoginResponse(BaseModel):
 
 
 def to_safe_bytes(secret: str) -> bytes:
-    """Strictly truncates secret to 72 bytes per bcrypt protocol specification."""
     if not isinstance(secret, str):
         secret = str(secret or "")
-    # bcrypt hard limitation is exactly 72 bytes
     return secret.encode("utf-8")[:71]
 
 
@@ -61,11 +59,8 @@ def get_password_hash(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     if not hashed_password:
         return False
-
-    # Plaintext direct match check (handles pre-migration legacy rows)
     if plain_password == hashed_password:
         return True
-
     pwd_bytes = to_safe_bytes(plain_password)
     try:
         hash_bytes = hashed_password.encode("utf-8")
@@ -92,14 +87,15 @@ async def get_current_active_user(
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
+        user_id_str: str = payload.get("sub")
         session_token: str = payload.get("session_token")
-        if user_id is None or session_token is None:
+        if not user_id_str or not session_token:
             raise credentials_exception
-    except JWTError:
+        user_uuid = uuid.UUID(str(user_id_str))
+    except (JWTError, ValueError):
         raise credentials_exception
 
-    stmt = select(User).where(User.id == int(user_id))
+    stmt = select(User).where(User.id == user_uuid)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
@@ -139,6 +135,7 @@ async def register_student(payload: StudentRegisterRequest, db: AsyncSession = D
         raise HTTPException(status_code=400, detail="An account with this email already exists.")
 
     new_user = User(
+        id=uuid.uuid4(),
         full_name=payload.full_name.strip(),
         email=clean_email,
         hashed_password=get_password_hash(payload.password),
@@ -167,10 +164,11 @@ async def process_user_login(email_input: str, password_input: str, db: AsyncSes
     res = await db.execute(stmt)
     user = res.scalar_one_or_none()
 
-    # Master Administrator Self-Provisioning
+    # Master Administrator Setup
     if cleaned_email == "rabbi@edutrack.com":
         if not user:
             user = User(
+                id=uuid.uuid4(),
                 full_name="Rabbi (Administrator)",
                 email=cleaned_email,
                 hashed_password=get_password_hash(cleaned_pass),
@@ -182,7 +180,6 @@ async def process_user_login(email_input: str, password_input: str, db: AsyncSes
             await db.commit()
             await db.refresh(user)
         else:
-            # Sync password if changed or legacy
             if not verify_password(cleaned_pass, user.hashed_password):
                 user.hashed_password = get_password_hash(cleaned_pass)
             user.is_admin = True
@@ -196,10 +193,6 @@ async def process_user_login(email_input: str, password_input: str, db: AsyncSes
 
     if not verify_password(cleaned_pass, user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid email or password.")
-
-    # Auto-repair unhashed or legacy hashes to clean bcrypt
-    if not (user.hashed_password.startswith("$2b$") or user.hashed_password.startswith("$2a$")):
-        user.hashed_password = get_password_hash(cleaned_pass)
 
     new_session_token = str(uuid.uuid4())
     user.current_session_token = new_session_token

@@ -19,21 +19,27 @@ class ChatResponse(BaseModel):
     reply: str
 
 
-# Dedicated Gemini 3.0 Flash Endpoints
-PRIMARY_MODEL = "gemini-3-flash-preview"
-BACKUP_MODEL = "gemini-3.0-flash"
+# Groq ultra-fast academic models
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = "llama-3.3-70b-versatile"
+BACKUP_GROQ_MODEL = "llama-3.1-8b-instant"
 
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not api_key:
-        raise HTTPException(status_code=500, detail="Gemini API Key is not configured on server")
+        print("[EduTrack AI] Error: GROQ_API_KEY is missing in environment variables!")
+        raise HTTPException(
+            status_code=500,
+            detail="GROQ_API_KEY is not configured on the server environment"
+        )
 
     user_text = payload.prompt.strip()
     if not user_text:
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
+    # Database platform curriculum context
     video_summary = ""
     sheet_summary = ""
     try:
@@ -67,65 +73,51 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
 
     system_instruction = (
         "You are the official AI Academic Tutor & Platform Guide of 'EduTrack'.\n"
-        "Your role is to help students with Physics, Chemistry, Higher Math (such as numerical methods like Runge-Kutta, calculus), derivations, and platform navigation.\n"
-        "Always provide complete, thorough, step-by-step, and fully finished explanations from start to finish without omitting steps.\n"
+        "Your role is to help students with Physics, Chemistry, Higher Mathematics (calculus, numerical methods like Runge-Kutta, mechanics), derivations, and platform navigation.\n"
+        "Always provide complete, step-by-step, thorough, and fully finished explanations from start to finish without omitting steps.\n"
         "Answer clearly in Bengali (or English if prompted in English).\n\n"
         f"Available Platform Lectures:\n{video_summary or 'None'}\n\n"
         f"Available Platform Sheets:\n{sheet_summary or 'None'}\n"
     )
 
-    full_prompt = f"{system_instruction}\n\nStudent Question: {user_text}"
-
-    # maxOutputTokens বাদ রাখা হয়েছে যাতে সম্পূর্ণ উত্তর আসে, তাপমাত্রা ব্যালেন্সড রাখা হয়েছে
-    request_payload = {
-        "contents": [
-            {
-                "parts": [{"text": full_prompt}]
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.6
-        }
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
     }
 
-    headers = {"Content-Type": "application/json"}
+    models_to_try = [GROQ_MODEL, BACKUP_GROQ_MODEL]
+    last_err = ""
 
-    async with httpx.AsyncClient(timeout=45.0) as client:
-        # Try Primary: gemini-3-flash-preview
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{PRIMARY_MODEL}:generateContent?key={api_key}"
-        try:
-            resp = await client.post(url, headers=headers, json=request_payload)
-            if resp.status_code == 200:
-                data = resp.json()
-                candidates = data.get("candidates", [])
-                if candidates and "content" in candidates[0]:
-                    parts = candidates[0]["content"].get("parts", [])
-                    reply_text = "".join([p.get("text", "") for p in parts if "text" in p])
-                    if reply_text.strip():
-                        return ChatResponse(reply=reply_text.strip())
+    async with httpx.AsyncClient(timeout=35.0) as client:
+        for model in models_to_try:
+            req_body = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": user_text}
+                ],
+                "temperature": 0.6,
+                "max_tokens": 4096
+            }
+            try:
+                resp = await client.post(GROQ_API_URL, headers=headers, json=req_body)
 
-            # Try Backup: gemini-3.0-flash
-            backup_url = f"https://generativelanguage.googleapis.com/v1beta/models/{BACKUP_MODEL}:generateContent?key={api_key}"
-            b_resp = await client.post(backup_url, headers=headers, json=request_payload)
-            if b_resp.status_code == 200:
-                b_data = b_resp.json()
-                candidates = b_data.get("candidates", [])
-                if candidates and "content" in candidates[0]:
-                    parts = candidates[0]["content"].get("parts", [])
-                    reply_text = "".join([p.get("text", "") for p in parts if "text" in p])
-                    if reply_text.strip():
-                        return ChatResponse(reply=reply_text.strip())
+                if resp.status_code == 200:
+                    data = resp.json()
+                    choices = data.get("choices", [])
+                    if choices and "message" in choices[0]:
+                        reply_text = choices[0]["message"].get("content", "")
+                        if reply_text.strip():
+                            return ChatResponse(reply=reply_text.strip())
 
-            print(f"[Gemini 3 Flash Failure]: {resp.status_code} - {resp.text}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Google API Error: {resp.text[:120]}"
-            )
+                last_err = f"Groq {model} HTTP {resp.status_code}: {resp.text}"
+                print(f"[Groq AI Attempt Failed]: {last_err}")
 
-        except httpx.TimeoutException:
-            raise HTTPException(status_code=504, detail="AI response timed out. Please try again.")
-        except HTTPException:
-            raise
-        except Exception as e:
-            print(f"[Server Exception]: {e}")
-            raise HTTPException(status_code=500, detail="Internal AI service error.")
+            except httpx.TimeoutException:
+                last_err = f"Groq {model} timed out"
+                print(f"[Groq AI Timeout]: {last_err}")
+            except Exception as e:
+                last_err = str(e)
+                print(f"[Groq AI Exception]: {e}")
+
+    raise HTTPException(status_code=500, detail=f"Groq API Error: {last_err[:120]}")

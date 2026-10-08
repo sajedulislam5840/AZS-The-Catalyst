@@ -20,18 +20,17 @@ export default function LoginPage() {
         try {
             const backendUrl =
                 process.env.NEXT_PUBLIC_API_URL ||
-                "https://edutrack-backend.onrender.com";
+                "https://YOUR_ACTUAL_RENDER_URL_HERE";
 
-            const formData = new URLSearchParams();
-            formData.append("username", email.trim().toLowerCase());
-            formData.append("password", password);
-
-            const res = await fetch(`${backendUrl.replace(/\/$/, "")}/api/v1/auth/token`, {
+            const res = await fetch(`${backendUrl.replace(/\/$/, "")}/api/v1/auth/login`, {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Content-Type": "application/json",
                 },
-                body: formData.toString(),
+                body: JSON.stringify({
+                    email: email.trim().toLowerCase(),
+                    password: password,
+                }),
             });
 
             const data = await res.json();
@@ -40,7 +39,6 @@ export default function LoginPage() {
                 throw new Error(data.detail || "Invalid email or password.");
             }
 
-            // Store Auth Context
             localStorage.setItem("token", data.access_token);
             localStorage.setItem("is_admin", String(data.is_admin));
             localStorage.setItem("user_name", data.full_name || "");

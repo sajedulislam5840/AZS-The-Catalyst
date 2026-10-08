@@ -27,7 +27,7 @@ export default function RegisterPage() {
         try {
             const backendUrl =
                 process.env.NEXT_PUBLIC_API_URL ||
-                "https://edutrack-backend.onrender.com";
+                "https://YOUR_ACTUAL_RENDER_URL_HERE";
 
             const res = await fetch(`${backendUrl.replace(/\/$/, "")}/api/v1/auth/register`, {
                 method: "POST",
@@ -51,11 +51,13 @@ export default function RegisterPage() {
 
             setSuccess(true);
         } catch (err: any) {
-            setError(
-                err.message === "Failed to fetch"
-                    ? "Unable to reach the server. The backend may still be waking up on Render or the API URL is not set in Vercel. Please retry in a few seconds."
-                    : err.message || "An unexpected error occurred."
-            );
+            if (err.message === "Failed to fetch") {
+                setError(
+                    "Unable to reach the server. The backend may still be waking up on Render or the API URL is not set in Vercel. Please retry in a few seconds."
+                );
+            } else {
+                setError(err.message || "An unexpected error occurred.");
+            }
         } finally {
             setLoading(false);
         }
@@ -97,7 +99,7 @@ export default function RegisterPage() {
                         </div>
 
                         {error && (
-                            <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs text-center">
+                            <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs text-center leading-relaxed">
                                 {error}
                             </div>
                         )}

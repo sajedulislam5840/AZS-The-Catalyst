@@ -102,7 +102,7 @@ export default function StudentDashboardPage() {
     const [selectedSubject, setSelectedSubject] = useState<string>("ALL");
     const [searchQuery, setSearchQuery] = useState("");
 
-    // AI Chat Drawer/Widget
+    // AI Chat
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
         {
             role: "assistant",
@@ -113,18 +113,30 @@ export default function StudentDashboardPage() {
     const [chatLoading, setChatLoading] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
-    // Calendar calculations
-    const currentDate = new Date();
-    const monthNames = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-    ];
-    const currentMonthStr = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
-    const daysInCurrentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-    const startDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
+    // Stable Calendar State
+    const [calendarData, setCalendarData] = useState({
+        currentMonthStr: "",
+        daysInMonth: 30,
+        startDay: 0,
+        todayDate: 1,
+    });
 
     useEffect(() => {
         setMounted(true);
+
+        // Safe client-side date computation to avoid prerender mismatch
+        const now = new Date();
+        const monthNames = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+        setCalendarData({
+            currentMonthStr: `${monthNames[now.getMonth()]} ${now.getFullYear()}`,
+            daysInMonth: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(),
+            startDay: new Date(now.getFullYear(), now.getMonth(), 1).getDay(),
+            todayDate: now.getDate(),
+        });
+
         const token = localStorage.getItem("token") || localStorage.getItem("access_token");
         if (!token) {
             router.push("/login");
@@ -134,7 +146,6 @@ export default function StudentDashboardPage() {
         const role = (localStorage.getItem("user_role") || "").toUpperCase();
         const email = (localStorage.getItem("user_email") || "").toLowerCase();
 
-        // Strict Guard: Admin login thakle /admin e pathiye dibe
         if (role === "ADMIN" || email === "rabbi@edutrack.com") {
             router.replace("/admin");
             return;
@@ -224,7 +235,6 @@ export default function StudentDashboardPage() {
         router.push("/login");
     };
 
-    // Calculations & Analytics
     const totalLectures = videos.length;
     const completedCount = useMemo(() => {
         return videos.filter((v) => watchedVideos.includes(v.id)).length;
@@ -598,7 +608,7 @@ export default function StudentDashboardPage() {
                                     {/* Calendar Card */}
                                     <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-4">
                                         <div className="flex items-center justify-between">
-                                            <h4 className="text-sm font-extrabold text-slate-900">{currentMonthStr}</h4>
+                                            <h4 className="text-sm font-extrabold text-slate-900">{calendarData.currentMonthStr}</h4>
                                             <div className="flex items-center space-x-1">
                                                 <button className="p-1 rounded-lg hover:bg-slate-100 text-slate-500">
                                                     <ChevronLeft className="w-4 h-4" />
@@ -620,14 +630,14 @@ export default function StudentDashboardPage() {
                                         </div>
 
                                         <div className="grid grid-cols-7 text-center text-xs gap-y-2 font-semibold">
-                                            {Array.from({ length: startDayOfMonth }).map((_, i) => (
+                                            {Array.from({ length: calendarData.startDay }).map((_, i) => (
                                                 <span key={`empty-${i}`} className="text-slate-300">
                                                     -
                                                 </span>
                                             ))}
-                                            {Array.from({ length: daysInCurrentMonth }).map((_, i) => {
+                                            {Array.from({ length: calendarData.daysInMonth }).map((_, i) => {
                                                 const dayNum = i + 1;
-                                                const isToday = dayNum === currentDate.getDate();
+                                                const isToday = dayNum === calendarData.todayDate;
                                                 return (
                                                     <div key={dayNum} className="flex justify-center">
                                                         <span

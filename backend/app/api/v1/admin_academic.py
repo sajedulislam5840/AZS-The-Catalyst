@@ -2,14 +2,14 @@ import uuid
 from datetime import datetime, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Header
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, or_, delete
 from jose import jwt
 
 from app.core.database import get_db
 from app.models.user import User
-from app.models.academic import Lecture, Material
+from app.models.academic import VideoLecture, Material, SubjectEnum
 from app.api.v1.auth import SECRET_KEY, ALGORITHM
 
 router = APIRouter(prefix="/admin", tags=["Admin Instructor Operations"])
@@ -33,10 +33,10 @@ class StudentOut(BaseModel):
 class LectureCreate(BaseModel):
     lecture_no: int
     title: str
+    topic: str
     chapter: str
     subject: str
-    topic: Optional[str] = ""
-    video_url: Optional[str] = ""
+    video_url: str
 
 
 class MaterialCreate(BaseModel):
@@ -72,6 +72,15 @@ async def verify_admin_token(
         return admin_user
 
     raise HTTPException(status_code=403, detail="Instructor/Admin privileges required.")
+
+
+def parse_subject_enum(subj: str) -> SubjectEnum:
+    s = subj.strip().upper().replace(" ", "_")
+    if "CHEM" in s:
+        return SubjectEnum.CHEMISTRY
+    if "MATH" in s:
+        return SubjectEnum.HIGHER_MATH
+    return SubjectEnum.PHYSICS
 
 
 # --- STUDENTS MANAGEMENT ---
@@ -211,19 +220,19 @@ async def get_admin_lectures(
     admin: User = Depends(verify_admin_token),
     db: AsyncSession = Depends(get_db)
 ):
-    stmt = select(Lecture).order_by(Lecture.lecture_no.desc())
+    stmt = select(VideoLecture).order_by(VideoLecture.lecture_no.desc())
     res = await db.execute(stmt)
     lectures = res.scalars().all()
     return [
         {
-            "id": l.id,
+            "id": str(l.id),
             "lecture_no": l.lecture_no,
-            "title": l.title,
-            "topic": getattr(l, "topic", ""),
+            "title": l.topic,
+            "topic": l.topic,
             "chapter": l.chapter,
-            "subject": l.subject,
-            "video_url": getattr(l, "video_url", ""),
-            "is_published": getattr(l, "is_published", True)
+            "subject": l.subject.value if hasattr(l.subject, "value") else str(l.subject),
+            "video_url": l.youtube_url,
+            "is_published": bool(l.is_published)
         }
         for l in lectures
     ]
@@ -235,52 +244,62 @@ async def add_lecture(
     admin: User = Depends(verify_admin_token),
     db: AsyncSession = Depends(get_db)
 ):
-    lecture = Lecture(
+    subj_enum = parse_subject_enum(payload.subject)
+    lecture = VideoLecture(
         lecture_no=payload.lecture_no,
-        title=payload.title,
-        topic=payload.topic or payload.title,
+        topic=payload.title or payload.topic,
         chapter=payload.chapter,
-        subject=payload.subject,
-        video_url=payload.video_url or "",
+        subject=subj_enum,
+        youtube_url=payload.video_url,
+        is_published=True
     )
     db.add(lecture)
     await db.commit()
     await db.refresh(lecture)
-    return {"message": "Lecture added successfully.", "id": lecture.id}
+    return {"message": "Lecture added successfully."}
 
 
 @router.patch("/lectures/{lecture_id}/toggle-publish")
 async def toggle_lecture_publish(
-    lecture_id: int,
+    lecture_id: str,
     admin: User = Depends(verify_admin_token),
     db: AsyncSession = Depends(get_db)
 ):
-    stmt = select(Lecture).where(Lecture.id == lecture_id)
+    try:
+        lec_uuid = uuid.UUID(lecture_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid lecture UUID.")
+
+    stmt = select(VideoLecture).where(VideoLecture.id == lec_uuid)
     res = await db.execute(stmt)
     lec = res.scalar_one_or_none()
     if not lec:
         raise HTTPException(status_code=404, detail="Lecture not found.")
     
-    current_status = getattr(lec, "is_published", True)
-    setattr(lec, "is_published", not current_status)
+    lec.is_published = not lec.is_published
     await db.commit()
-    return {"message": "Lecture publish status updated."}
+    return {"message": f"Lecture publish status changed to {lec.is_published}."}
 
 
 @router.delete("/lectures/{lecture_id}")
 async def delete_lecture(
-    lecture_id: int,
+    lecture_id: str,
     admin: User = Depends(verify_admin_token),
     db: AsyncSession = Depends(get_db)
 ):
-    stmt = select(Lecture).where(Lecture.id == lecture_id)
+    try:
+        lec_uuid = uuid.UUID(lecture_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid lecture UUID.")
+
+    stmt = select(VideoLecture).where(VideoLecture.id == lec_uuid)
     res = await db.execute(stmt)
     lec = res.scalar_one_or_none()
     if not lec:
         raise HTTPException(status_code=404, detail="Lecture not found.")
     await db.delete(lec)
     await db.commit()
-    return {"message": "Lecture deleted successfully."}
+    return {"message": "Lecture deleted permanently."}
 
 
 # --- PDF MATERIALS MANAGEMENT ---
@@ -289,17 +308,17 @@ async def get_admin_materials(
     admin: User = Depends(verify_admin_token),
     db: AsyncSession = Depends(get_db)
 ):
-    stmt = select(Material).order_by(Material.id.desc())
+    stmt = select(Material).order_by(Material.created_at.desc())
     res = await db.execute(stmt)
     materials = res.scalars().all()
     return [
         {
-            "id": m.id,
+            "id": str(m.id),
             "title": m.title,
             "chapter": m.chapter,
-            "subject": m.subject,
-            "file_url": m.file_url,
-            "is_published": getattr(m, "is_published", True)
+            "subject": m.subject.value if hasattr(m.subject, "value") else str(m.subject),
+            "file_url": m.pdf_url,
+            "is_published": bool(m.is_published)
         }
         for m in materials
     ]
@@ -311,47 +330,58 @@ async def add_material(
     admin: User = Depends(verify_admin_token),
     db: AsyncSession = Depends(get_db)
 ):
+    subj_enum = parse_subject_enum(payload.subject)
     material = Material(
         title=payload.title,
         chapter=payload.chapter,
-        subject=payload.subject,
-        file_url=payload.file_url,
+        subject=subj_enum,
+        pdf_url=payload.file_url,
+        is_published=True
     )
     db.add(material)
     await db.commit()
     await db.refresh(material)
-    return {"message": "Lecture material added successfully.", "id": material.id}
+    return {"message": "Lecture material added successfully."}
 
 
 @router.patch("/materials/{material_id}/toggle-publish")
 async def toggle_material_publish(
-    material_id: int,
+    material_id: str,
     admin: User = Depends(verify_admin_token),
     db: AsyncSession = Depends(get_db)
 ):
-    stmt = select(Material).where(Material.id == material_id)
+    try:
+        mat_uuid = uuid.UUID(material_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid material UUID.")
+
+    stmt = select(Material).where(Material.id == mat_uuid)
     res = await db.execute(stmt)
     mat = res.scalar_one_or_none()
     if not mat:
         raise HTTPException(status_code=404, detail="Material not found.")
     
-    current_status = getattr(mat, "is_published", True)
-    setattr(mat, "is_published", not current_status)
+    mat.is_published = not mat.is_published
     await db.commit()
-    return {"message": "Material publish status updated."}
+    return {"message": f"Material publish status changed to {mat.is_published}."}
 
 
 @router.delete("/materials/{material_id}")
 async def delete_material(
-    material_id: int,
+    material_id: str,
     admin: User = Depends(verify_admin_token),
     db: AsyncSession = Depends(get_db)
 ):
-    stmt = select(Material).where(Material.id == material_id)
+    try:
+        mat_uuid = uuid.UUID(material_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid material UUID.")
+
+    stmt = select(Material).where(Material.id == mat_uuid)
     res = await db.execute(stmt)
     mat = res.scalar_one_or_none()
     if not mat:
         raise HTTPException(status_code=404, detail="Material not found.")
     await db.delete(mat)
     await db.commit()
-    return {"message": "Material deleted successfully."}
+    return {"message": "Material deleted permanently."}

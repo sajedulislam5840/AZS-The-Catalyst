@@ -15,6 +15,7 @@ import {
     XCircle,
     Trash2,
     Upload,
+    Link as LinkIcon,
     Eye,
     EyeOff,
     ExternalLink,
@@ -62,7 +63,7 @@ export default function AdminPage() {
     const [loading, setLoading] = useState(true);
     const [actionLoadingId, setActionLoadingId] = useState<string | number | null>(null);
 
-    // Forms
+    // Video Form
     const [lectureForm, setLectureForm] = useState({
         lecture_no: 1,
         title: "",
@@ -72,17 +73,20 @@ export default function AdminPage() {
         video_url: "",
     });
 
+    // Sheet Form (Dual Mode: Link or Local File)
+    const [uploadMode, setUploadMode] = useState<"file" | "link">("file");
     const [sheetForm, setSheetForm] = useState({
         title: "",
         chapter: "",
         subject: "Physics",
+        file_url: "",
     });
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [uploadingPdf, setUploadingPdf] = useState(false);
+    const [submittingSheet, setSubmittingSheet] = useState(false);
 
     const backendUrl = (process.env.NEXT_PUBLIC_API_URL || BACKEND_URL).replace(/\/$/, "");
 
-    // Safe Token retrieval
+    // Safe Token retrieval & Auth Error handling (From Code 2)
     const getToken = () => {
         if (typeof window === "undefined") return null;
         return localStorage.getItem("token") || localStorage.getItem("access_token");
@@ -158,17 +162,17 @@ export default function AdminPage() {
         fetchMaterials();
     }, []);
 
+    // --- Student Actions ---
     const handleApproveOrRenew = async (studentId: string) => {
         setActionLoadingId(studentId);
         const token = getToken();
+        if (!token) return handleAuthError();
         try {
-            const res = await fetch(
-                `${backendUrl}/api/v1/admin/students/${studentId}/approve-and-pay`,
-                {
-                    method: "POST",
-                    headers: { Authorization: `Bearer ${token}` },
-                }
-            );
+            const res = await fetch(`${backendUrl}/api/v1/admin/students/${studentId}/approve-and-pay`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401 || res.status === 403) return handleAuthError();
             if (res.ok) fetchStudents();
         } catch (err) {
             console.error(err);
@@ -181,14 +185,13 @@ export default function AdminPage() {
         if (!confirm("Are you sure you want to revoke access and mark as unpaid?")) return;
         setActionLoadingId(studentId);
         const token = getToken();
+        if (!token) return handleAuthError();
         try {
-            const res = await fetch(
-                `${backendUrl}/api/v1/admin/students/${studentId}/revoke-access`,
-                {
-                    method: "POST",
-                    headers: { Authorization: `Bearer ${token}` },
-                }
-            );
+            const res = await fetch(`${backendUrl}/api/v1/admin/students/${studentId}/revoke-access`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.status === 401 || res.status === 403) return handleAuthError();
             if (res.ok) fetchStudents();
         } catch (err) {
             console.error(err);
@@ -201,11 +204,13 @@ export default function AdminPage() {
         if (!confirm(`Are you sure you want to permanently delete student "${email}"?`)) return;
         setActionLoadingId(studentId);
         const token = getToken();
+        if (!token) return handleAuthError();
         try {
             const res = await fetch(`${backendUrl}/api/v1/admin/students/${studentId}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
             });
+            if (res.status === 401 || res.status === 403) return handleAuthError();
             if (res.ok) fetchStudents();
         } catch (err) {
             console.error(err);
@@ -214,10 +219,11 @@ export default function AdminPage() {
         }
     };
 
-    // Video Actions
+    // --- Video Actions ---
     const handleCreateLecture = async (e: React.FormEvent) => {
         e.preventDefault();
         const token = getToken();
+        if (!token) return handleAuthError();
         try {
             const res = await fetch(`${backendUrl}/api/v1/admin/lectures`, {
                 method: "POST",
@@ -227,8 +233,9 @@ export default function AdminPage() {
                 },
                 body: JSON.stringify(lectureForm),
             });
+            if (res.status === 401 || res.status === 403) return handleAuthError();
             if (res.ok) {
-                alert("Video lecture published successfully.");
+                alert("Video lecture published successfully!");
                 setLectureForm({
                     lecture_no: lectureForm.lecture_no + 1,
                     title: "",
@@ -239,20 +246,23 @@ export default function AdminPage() {
                 });
                 fetchLectures();
             } else {
-                alert("Failed to save lecture. Please verify credentials.");
+                const d = await res.json();
+                alert(d.detail || "Failed to create lecture.");
             }
         } catch (err) {
-            alert("Failed to create lecture.");
+            alert("Error saving lecture.");
         }
     };
 
     const handleToggleLecturePublish = async (id: number) => {
         const token = getToken();
+        if (!token) return handleAuthError();
         try {
             const res = await fetch(`${backendUrl}/api/v1/admin/lectures/${id}/toggle-publish`, {
                 method: "PATCH",
                 headers: { Authorization: `Bearer ${token}` },
             });
+            if (res.status === 401 || res.status === 403) return handleAuthError();
             if (res.ok) fetchLectures();
         } catch (err) {
             console.error(err);
@@ -263,11 +273,13 @@ export default function AdminPage() {
         if (!confirm("Are you sure you want to permanently delete this lecture?")) return;
         setActionLoadingId(id);
         const token = getToken();
+        if (!token) return handleAuthError();
         try {
             const res = await fetch(`${backendUrl}/api/v1/admin/lectures/${id}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
             });
+            if (res.status === 401 || res.status === 403) return handleAuthError();
             if (res.ok) fetchLectures();
         } catch (err) {
             console.error(err);
@@ -276,57 +288,100 @@ export default function AdminPage() {
         }
     };
 
-    // Material Actions
-    const handleUploadLocalSheet = async (e: React.FormEvent) => {
+    // --- Sheet/Material Submission (Dual Mode combined with Auth Safety) ---
+    const handleSubmitSheet = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedFile) {
-            alert("Please select a PDF file from your computer first.");
-            return;
-        }
         const token = getToken();
         if (!token) return handleAuthError();
 
-        setUploadingPdf(true);
-        const formData = new FormData();
-        formData.append("title", sheetForm.title);
-        formData.append("chapter", sheetForm.chapter);
-        formData.append("subject", sheetForm.subject);
-        formData.append("file", selectedFile);
+        setSubmittingSheet(true);
 
         try {
-            const res = await fetch(`${backendUrl}/api/v1/academic/materials/upload`, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-                body: formData,
-            });
+            if (uploadMode === "file") {
+                if (!selectedFile) {
+                    alert("Please select a PDF file from your computer.");
+                    setSubmittingSheet(false);
+                    return;
+                }
 
-            if (res.ok) {
-                alert("PDF uploaded from computer successfully!");
-                setSheetForm({ title: "", chapter: "", subject: "Physics" });
-                setSelectedFile(null);
-                fetchMaterials();
-            } else if (res.status === 401 || res.status === 403) {
-                handleAuthError();
+                const formData = new FormData();
+                formData.append("title", sheetForm.title);
+                formData.append("chapter", sheetForm.chapter);
+                formData.append("subject", sheetForm.subject);
+                formData.append("file", selectedFile);
+
+                const res = await fetch(`${backendUrl}/api/v1/academic/materials/upload`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                    body: formData,
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    handleAuthError();
+                    return;
+                }
+
+                if (res.ok) {
+                    alert("PDF uploaded successfully from computer!");
+                    setSheetForm({ title: "", chapter: "", subject: "Physics", file_url: "" });
+                    setSelectedFile(null);
+                    fetchMaterials();
+                } else {
+                    const errData = await res.json();
+                    alert(errData.detail || "Failed to upload PDF.");
+                }
             } else {
-                const err = await res.json();
-                alert(err.detail || "Upload failed.");
+                // Link Mode (Google Drive / Online URL)
+                if (!sheetForm.file_url) {
+                    alert("Please enter a valid document/Drive URL.");
+                    setSubmittingSheet(false);
+                    return;
+                }
+
+                const res = await fetch(`${backendUrl}/api/v1/admin/materials`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        title: sheetForm.title,
+                        chapter: sheetForm.chapter,
+                        subject: sheetForm.subject,
+                        file_url: sheetForm.file_url,
+                    }),
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    handleAuthError();
+                    return;
+                }
+
+                if (res.ok) {
+                    alert("Material link saved successfully!");
+                    setSheetForm({ title: "", chapter: "", subject: "Physics", file_url: "" });
+                    fetchMaterials();
+                } else {
+                    const errData = await res.json();
+                    alert(errData.detail || "Failed to save link.");
+                }
             }
         } catch (err) {
-            alert("Network error uploading PDF.");
+            alert("Network error processing material.");
         } finally {
-            setUploadingPdf(false);
+            setSubmittingSheet(false);
         }
     };
 
     const handleToggleMaterialPublish = async (id: number) => {
         const token = getToken();
+        if (!token) return handleAuthError();
         try {
             const res = await fetch(`${backendUrl}/api/v1/admin/materials/${id}/toggle-publish`, {
                 method: "PATCH",
                 headers: { Authorization: `Bearer ${token}` },
             });
+            if (res.status === 401 || res.status === 403) return handleAuthError();
             if (res.ok) fetchMaterials();
         } catch (err) {
             console.error(err);
@@ -337,11 +392,13 @@ export default function AdminPage() {
         if (!confirm("Are you sure you want to permanently delete this PDF material?")) return;
         setActionLoadingId(id);
         const token = getToken();
+        if (!token) return handleAuthError();
         try {
             const res = await fetch(`${backendUrl}/api/v1/admin/materials/${id}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
             });
+            if (res.status === 401 || res.status === 403) return handleAuthError();
             if (res.ok) fetchMaterials();
         } catch (err) {
             console.error(err);
@@ -352,7 +409,6 @@ export default function AdminPage() {
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-            {/* Header */}
             <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-30">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -380,14 +436,14 @@ export default function AdminPage() {
                             className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${activeTab === "video" ? "bg-slate-800 text-white font-medium" : "text-slate-400 hover:text-white"
                                 }`}
                         >
-                            Upload Video
+                            Manage Videos
                         </button>
                         <button
                             onClick={() => setActiveTab("sheet")}
                             className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${activeTab === "sheet" ? "bg-slate-800 text-white font-medium" : "text-slate-400 hover:text-white"
                                 }`}
                         >
-                            Upload Sheet
+                            Manage Sheets
                         </button>
 
                         <button
@@ -404,17 +460,14 @@ export default function AdminPage() {
                 </div>
             </header>
 
-            {/* Main Content */}
             <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* STUDENTS TAB */}
+                {/* TAB 1: STUDENTS */}
                 {activeTab === "students" && (
                     <div>
                         <div className="flex items-center justify-between mb-6">
                             <div>
                                 <h1 className="text-2xl font-bold text-white">Batch Students & Billing</h1>
-                                <p className="text-slate-400 text-xs mt-1">
-                                    Manage student subscriptions, delete unwanted accounts, or toggle paid and unpaid statuses
-                                </p>
+                                <p className="text-slate-400 text-xs mt-1">Manage subscriptions, approve payments, or delete accounts</p>
                             </div>
                             <button
                                 onClick={fetchStudents}
@@ -431,7 +484,7 @@ export default function AdminPage() {
                             </div>
                         ) : students.length === 0 ? (
                             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-400">
-                                No student accounts found yet.
+                                No students registered yet.
                             </div>
                         ) : (
                             <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
@@ -440,7 +493,7 @@ export default function AdminPage() {
                                         <thead className="bg-slate-800/60 text-slate-400 text-xs uppercase border-b border-slate-800">
                                             <tr>
                                                 <th className="py-3.5 px-4">Student</th>
-                                                <th className="py-3.5 px-4">Institution & Class</th>
+                                                <th className="py-3.5 px-4">Class</th>
                                                 <th className="py-3.5 px-4">Batch</th>
                                                 <th className="py-3.5 px-4">Status</th>
                                                 <th className="py-3.5 px-4">Remaining</th>
@@ -470,7 +523,7 @@ export default function AdminPage() {
                                                             </span>
                                                         ) : student.days_left > 0 ? (
                                                             <span className="inline-flex items-center text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 font-medium">
-                                                                <CheckCircle className="w-3 h-3 mr-1.5" /> Active Access
+                                                                <CheckCircle className="w-3 h-3 mr-1.5" /> Active
                                                             </span>
                                                         ) : (
                                                             <span className="inline-flex items-center text-xs text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20 font-medium">
@@ -490,7 +543,7 @@ export default function AdminPage() {
                                                             <button
                                                                 onClick={() => handleApproveOrRenew(student.id)}
                                                                 disabled={actionLoadingId === student.id}
-                                                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md transition-all ${!student.is_approved
+                                                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold shadow transition-all ${!student.is_approved
                                                                         ? "bg-amber-600 hover:bg-amber-500 text-white"
                                                                         : "bg-emerald-600 hover:bg-emerald-500 text-white"
                                                                     }`}
@@ -509,6 +562,7 @@ export default function AdminPage() {
                                                                     onClick={() => handleRevoke(student.id)}
                                                                     disabled={actionLoadingId === student.id}
                                                                     className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/10 border border-amber-500/20 text-amber-300 hover:bg-amber-500/20 transition-all flex items-center space-x-1"
+                                                                    title="Revoke access"
                                                                 >
                                                                     <XCircle className="w-3.5 h-3.5 text-amber-400" />
                                                                     <span>Revoke</span>
@@ -535,7 +589,7 @@ export default function AdminPage() {
                     </div>
                 )}
 
-                {/* VIDEOS TAB: UPLOAD + PREVIOUS VIDEOS MANAGEMENT */}
+                {/* TAB 2: VIDEOS */}
                 {activeTab === "video" && (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                         <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
@@ -611,25 +665,25 @@ export default function AdminPage() {
                             </form>
                         </div>
 
-                        {/* List of Previous Videos with Unpublish and Delete */}
+                        {/* Published Videos List */}
                         <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-lg font-bold text-white">Uploaded Lectures ({lectures.length})</h2>
                                 <button onClick={fetchLectures} className="text-xs text-slate-400 hover:text-white flex items-center space-x-1">
-                                    <RefreshCw className="w-3 h-3" />
+                                    <RefreshCw className="w-3.5 h-3.5" />
                                     <span>Refresh</span>
                                 </button>
                             </div>
 
                             {lectures.length === 0 ? (
-                                <p className="text-xs text-slate-400">No lectures uploaded yet.</p>
+                                <p className="text-xs text-slate-400 py-6 text-center">No video lectures added yet.</p>
                             ) : (
-                                <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+                                <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
                                     {lectures.map((lec) => (
-                                        <div key={lec.id} className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 flex items-center justify-between">
+                                        <div key={lec.id} className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-3.5 flex items-center justify-between">
                                             <div>
-                                                <div className="flex items-center space-x-2">
-                                                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-700 text-indigo-300">
+                                                <div className="flex items-center space-x-2 mb-1">
+                                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-700 text-indigo-300">
                                                         {lec.subject}
                                                     </span>
                                                     <span className="text-xs text-slate-400 font-mono">Lec #{lec.lecture_no}</span>
@@ -639,35 +693,32 @@ export default function AdminPage() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <h4 className="text-sm font-semibold text-white mt-1">{lec.title}</h4>
+                                                <h4 className="text-sm font-semibold text-white">{lec.title}</h4>
                                                 <p className="text-xs text-slate-400">{lec.chapter}</p>
                                             </div>
 
                                             <div className="flex items-center space-x-2">
-                                                {/* Unpublish Toggle */}
                                                 <button
                                                     onClick={() => handleToggleLecturePublish(lec.id)}
                                                     className={`p-2 rounded-xl text-xs font-semibold border transition-all ${lec.is_published === false
                                                             ? "bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
                                                             : "bg-slate-700 border-slate-600 text-slate-300 hover:text-white"
                                                         }`}
-                                                    title={lec.is_published === false ? "Publish to students" : "Unpublish (Hide from students)"}
+                                                    title={lec.is_published === false ? "Publish to students" : "Unpublish (Hide)"}
                                                 >
                                                     {lec.is_published === false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                                 </button>
 
-                                                {/* Watch link */}
                                                 <a
                                                     href={lec.video_url}
                                                     target="_blank"
                                                     rel="noreferrer"
-                                                    className="p-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white"
+                                                    className="p-2 rounded-xl bg-slate-700 text-slate-300 hover:text-white"
                                                     title="Watch video"
                                                 >
                                                     <ExternalLink className="w-4 h-4" />
                                                 </a>
 
-                                                {/* Permanent Delete */}
                                                 <button
                                                     onClick={() => handleDeleteLecture(lec.id)}
                                                     disabled={actionLoadingId === lec.id}
@@ -685,12 +736,36 @@ export default function AdminPage() {
                     </div>
                 )}
 
-                {/* SHEET TAB: PC UPLOAD + PREVIOUS SHEETS MANAGEMENT */}
+                {/* TAB 3: SHEETS (DUAL MODE + AUTH SECURITY) */}
                 {activeTab === "sheet" && (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                         <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-                            <h2 className="text-lg font-bold text-white mb-4">Upload PDF from Computer</h2>
-                            <form onSubmit={handleUploadLocalSheet} className="space-y-4">
+                            <h2 className="text-lg font-bold text-white mb-2">Upload Lecture Sheet</h2>
+                            <p className="text-xs text-slate-400 mb-4">Choose whether to upload from your PC or paste a Drive link</p>
+
+                            {/* Mode Switcher */}
+                            <div className="flex bg-slate-800 p-1 rounded-xl mb-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setUploadMode("file")}
+                                    className={`flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center space-x-1.5 transition-all ${uploadMode === "file" ? "bg-indigo-600 text-white shadow" : "text-slate-400 hover:text-white"
+                                        }`}
+                                >
+                                    <Upload className="w-3.5 h-3.5" />
+                                    <span>Upload from PC</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setUploadMode("link")}
+                                    className={`flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center space-x-1.5 transition-all ${uploadMode === "link" ? "bg-indigo-600 text-white shadow" : "text-slate-400 hover:text-white"
+                                        }`}
+                                >
+                                    <LinkIcon className="w-3.5 h-3.5" />
+                                    <span>Google Drive Link</span>
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleSubmitSheet} className="space-y-4">
                                 <div>
                                     <label className="text-xs text-slate-400 block mb-1">Subject</label>
                                     <select
@@ -721,68 +796,78 @@ export default function AdminPage() {
                                     <input
                                         type="text"
                                         required
-                                        placeholder="e.g. Sheet 02 (CQ Solutions)"
+                                        placeholder="e.g. CQ Solution Sheet 01"
                                         value={sheetForm.title}
                                         onChange={(e) => setSheetForm({ ...sheetForm, title: e.target.value })}
                                         className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
                                     />
                                 </div>
 
-                                {/* Local PC File Chooser */}
-                                <div>
-                                    <label className="text-xs text-slate-400 block mb-1">Choose PDF File (Local PC)</label>
-                                    <input
-                                        type="file"
-                                        accept=".pdf,application/pdf"
-                                        required
-                                        onChange={(e) => {
-                                            if (e.target.files && e.target.files[0]) {
-                                                setSelectedFile(e.target.files[0]);
-                                            }
-                                        }}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
-                                    />
-                                </div>
+                                {uploadMode === "file" ? (
+                                    <div>
+                                        <label className="text-xs text-slate-400 block mb-1">Select PDF File from Computer</label>
+                                        <input
+                                            type="file"
+                                            accept=".pdf,application/pdf"
+                                            required={uploadMode === "file"}
+                                            onChange={(e) => {
+                                                if (e.target.files && e.target.files[0]) {
+                                                    setSelectedFile(e.target.files[0]);
+                                                }
+                                            }}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <label className="text-xs text-slate-400 block mb-1">Google Drive or External PDF Link</label>
+                                        <input
+                                            type="url"
+                                            required={uploadMode === "link"}
+                                            placeholder="https://drive.google.com/file/d/..."
+                                            value={sheetForm.file_url}
+                                            onChange={(e) => setSheetForm({ ...sheetForm, file_url: e.target.value })}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
+                                        />
+                                    </div>
+                                )}
 
                                 <button
                                     type="submit"
-                                    disabled={uploadingPdf}
+                                    disabled={submittingSheet}
                                     className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg flex items-center justify-center space-x-2"
                                 >
-                                    {uploadingPdf ? (
+                                    {submittingSheet ? (
                                         <>
                                             <Loader2 className="w-4 h-4 animate-spin" />
-                                            <span>Uploading PDF...</span>
+                                            <span>Uploading/Saving...</span>
                                         </>
                                     ) : (
-                                        <>
-                                            <Upload className="w-4 h-4" />
-                                            <span>Upload PDF to Server</span>
-                                        </>
+                                        <span>{uploadMode === "file" ? "Upload PDF to Server" : "Save Drive Link"}</span>
                                     )}
                                 </button>
                             </form>
                         </div>
 
-                        {/* List of Previous Sheets with Unpublish and Delete */}
+                        {/* Previous Sheets List */}
                         <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
                             <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-lg font-bold text-white">Uploaded PDF Sheets ({materials.length})</h2>
+                                <h2 className="text-lg font-bold text-white">Uploaded Sheets ({materials.length})</h2>
                                 <button onClick={fetchMaterials} className="text-xs text-slate-400 hover:text-white flex items-center space-x-1">
-                                    <RefreshCw className="w-3 h-3" />
+                                    <RefreshCw className="w-3.5 h-3.5" />
                                     <span>Refresh</span>
                                 </button>
                             </div>
 
                             {materials.length === 0 ? (
-                                <p className="text-xs text-slate-400">No lecture sheets uploaded yet.</p>
+                                <p className="text-xs text-slate-400 py-6 text-center">No PDF sheets uploaded yet.</p>
                             ) : (
-                                <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+                                <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
                                     {materials.map((mat) => (
-                                        <div key={mat.id} className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 flex items-center justify-between">
+                                        <div key={mat.id} className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-3.5 flex items-center justify-between">
                                             <div>
-                                                <div className="flex items-center space-x-2">
-                                                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-700 text-indigo-300">
+                                                <div className="flex items-center space-x-2 mb-1">
+                                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-700 text-indigo-300">
                                                         {mat.subject}
                                                     </span>
                                                     {mat.is_published === false && (
@@ -791,35 +876,32 @@ export default function AdminPage() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <h4 className="text-sm font-semibold text-white mt-1">{mat.title}</h4>
+                                                <h4 className="text-sm font-semibold text-white">{mat.title}</h4>
                                                 <p className="text-xs text-slate-400">{mat.chapter}</p>
                                             </div>
 
                                             <div className="flex items-center space-x-2">
-                                                {/* Unpublish Toggle */}
                                                 <button
                                                     onClick={() => handleToggleMaterialPublish(mat.id)}
                                                     className={`p-2 rounded-xl text-xs font-semibold border transition-all ${mat.is_published === false
                                                             ? "bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
                                                             : "bg-slate-700 border-slate-600 text-slate-300 hover:text-white"
                                                         }`}
-                                                    title={mat.is_published === false ? "Publish to students" : "Unpublish (Hide from students)"}
+                                                    title={mat.is_published === false ? "Publish to students" : "Unpublish (Hide)"}
                                                 >
                                                     {mat.is_published === false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                                 </button>
 
-                                                {/* View Link */}
                                                 <a
                                                     href={mat.file_url}
                                                     target="_blank"
                                                     rel="noreferrer"
-                                                    className="p-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white"
+                                                    className="p-2 rounded-xl bg-slate-700 text-slate-300 hover:text-white"
                                                     title="Open PDF"
                                                 >
                                                     <ExternalLink className="w-4 h-4" />
                                                 </a>
 
-                                                {/* Permanent Delete */}
                                                 <button
                                                     onClick={() => handleDeleteMaterial(mat.id)}
                                                     disabled={actionLoadingId === mat.id}

@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
@@ -12,11 +12,9 @@ from app.api.v1.chat import router as chat_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Ensure base tables exist and alter table to add newly added columns
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-        # Migration patch: add new columns if they do not exist
         migration_statements = [
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR;",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR DEFAULT 'STUDENT';",
@@ -43,16 +41,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Open CORS configuration
+# Robust CORS Configuration allowing every client to connect
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=86400,
 )
 
-# Include All API Routers
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(academic_router, prefix="/api/v1")

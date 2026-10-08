@@ -22,11 +22,27 @@ export default function LoginPage() {
         setError("");
         setLoading(true);
 
+        const cleanEmail = email.trim().toLowerCase();
+        const cleanPassword = password;
+
         try {
-            const res = await axios.post(`${BACKEND_URL}/api/v1/auth/login`, {
-                email: email.trim().toLowerCase(),
-                password: password,
-            });
+            let res;
+            // Resilient Dual-Route dispatch
+            try {
+                res = await axios.post(`${BACKEND_URL}/api/v1/auth/login`, {
+                    email: cleanEmail,
+                    password: cleanPassword,
+                });
+            } catch (err: any) {
+                if (err.response?.status === 404) {
+                    res = await axios.post(`${BACKEND_URL}/api/v1/login`, {
+                        email: cleanEmail,
+                        password: cleanPassword,
+                    });
+                } else {
+                    throw err;
+                }
+            }
 
             const data = res.data;
             const token = data.access_token || data.token;
@@ -38,14 +54,27 @@ export default function LoginPage() {
             localStorage.setItem("token", token);
             localStorage.setItem("access_token", token);
 
-            // Verify the user profile immediately from /me
-            const meRes = await axios.get(`${BACKEND_URL}/api/v1/auth/me`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            let user = data;
+            try {
+                let meRes;
+                try {
+                    meRes = await axios.get(`${BACKEND_URL}/api/v1/auth/me`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                } catch {
+                    meRes = await axios.get(`${BACKEND_URL}/api/v1/me`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                }
+                if (meRes?.data) {
+                    user = meRes.data;
+                }
+            } catch {
+                // Fallback to initial token response
+            }
 
-            const user = meRes.data;
             const userRole = (user.role || data.role || "").toUpperCase();
-            const userEmail = (user.email || email).toLowerCase();
+            const userEmail = (user.email || cleanEmail).toLowerCase();
 
             localStorage.setItem("user_role", userRole);
             localStorage.setItem("user_email", userEmail);
@@ -57,17 +86,17 @@ export default function LoginPage() {
                 userRole === "ADMIN" ||
                 userEmail === "rabbi@edutrack.com";
 
-            // Redirect strictly based on admin status
             if (isAdmin) {
-                router.replace("/admin");
+                window.location.href = "/admin";
             } else {
-                router.replace("/dashboard");
+                window.location.href = "/dashboard";
             }
         } catch (err: any) {
+            const detail = err.response?.data?.detail;
             setError(
-                err.response?.data?.detail ||
-                err.message ||
-                "Login failed. Please check your credentials."
+                typeof detail === "string"
+                    ? detail
+                    : "Login failed. Please verify email and password."
             );
         } finally {
             setLoading(false);
@@ -104,7 +133,7 @@ export default function LoginPage() {
                             <input
                                 type="email"
                                 required
-                                placeholder="name@edutrack.com"
+                                placeholder="rabbi@edutrack.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full bg-[#F4F6FA] border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600"

@@ -1,252 +1,234 @@
+import os
 import uuid
-import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from jose import JWTError, jwt
+from passlib.context import CryptContext
+from jose import jwt, JWTError
 
 from app.core.database import get_db
-from app.models.user import User, UserRole
+from app.models.user import User
 
-router = APIRouter(prefix="/auth", tags=["Authentication & Subscription"])
+# Router created without hardcoded internal prefix to allow dual-mounting
+router = APIRouter(tags=["Authentication"])
 
-SECRET_KEY = "EDUTRACK_SUPER_SECRET_KEY_BATCH_SECURITY"
+SECRET_KEY = os.getenv("SECRET_KEY", "edutrack-super-secret-jwt-key-2025")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30 days session
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-class StudentRegisterRequest(BaseModel):
+class UserRegister(BaseModel):
     full_name: str
     email: EmailStr
     password: str
-    school: str
-    grade_class: str
-    batch_no: str
+    school: Optional[str] = None
+    grade_class: Optional[str] = None
+    batch_no: Optional[str] = "General"
 
 
-class JsonLoginRequest(BaseModel):
+class UserLogin(BaseModel):
     email: str
     password: str
 
 
-class LoginResponse(BaseModel):
+class TokenOut(BaseModel):
     access_token: str
     token_type: str
-    is_admin: bool
-    is_approved: bool
-    subscription_end_date: Optional[datetime]
+    role: str
     full_name: str
+    email: str
 
 
-def to_safe_bytes(secret: str) -> bytes:
-    if not isinstance(secret, str):
-        secret = str(secret or "")
-    # bcrypt protocol strictly accepts max 72 bytes
-    return secret.encode("utf-8")[:71]
-
-
-def get_password_hash(password: str) -> str:
-    pwd_bytes = to_safe_bytes(password)
-    salt = bcrypt.gensalt(rounds=12)
-    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
+class UserMeOut(BaseModel):
+    id: str
+    full_name: str
+    email: str
+    school: Optional[str] = None
+    grade_class: Optional[str] = None
+    batch_no: Optional[str] = None
+    role: str
+    is_admin: bool = False
+    is_approved: bool = False
+    subscription_end_date: Optional[datetime] = None
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    if not hashed_password:
-        return False
-    # Direct comparison if plain text in DB
-    if plain_password == hashed_password:
-        return True
-    pwd_bytes = to_safe_bytes(plain_password)
     try:
-        hash_bytes = hashed_password.encode("utf-8")
-        return bcrypt.checkpw(pwd_bytes, hash_bytes)
+        return pwd_context.verify(plain_password, hashed_password)
     except Exception:
         return False
 
 
-def create_access_token(data: dict) -> str:
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-async def get_current_active_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
-) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Session invalid or expired. Please sign in again.",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id_str: str = payload.get("sub")
-        session_token: str = payload.get("session_token")
-        if not user_id_str or not session_token:
-            raise credentials_exception
-        user_uuid = uuid.UUID(str(user_id_str))
-    except (JWTError, ValueError):
-        raise credentials_exception
+# --- REGISTRATION (DUAL PATH TO PREVENT 404) ---
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post("/auth/register", status_code=status.HTTP_201_CREATED)
+async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
+    clean_email = str(payload.email).strip().lower()
 
-    stmt = select(User).where(User.id == user_uuid)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
-
-    if user is None:
-        raise credentials_exception
-
-    if user.current_session_token != session_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Signed in on another device. This session has been terminated."
-        )
-
-    if user.is_admin or user.role == UserRole.ADMIN:
-        return user
-
-    if not user.is_approved:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Your account is pending batch teacher approval."
-        )
-
-    if not user.subscription_end_date or user.subscription_end_date < datetime.utcnow():
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Your 30-day subscription has expired. Please renew batch access with your instructor."
-        )
-
-    return user
-
-
-@router.post("/register")
-async def register_student(payload: StudentRegisterRequest, db: AsyncSession = Depends(get_db)):
-    clean_email = payload.email.strip().lower()
-    stmt = select(User).where(func.lower(func.trim(User.email)) == clean_email)
+    stmt = select(User).where(func.lower(User.email) == clean_email)
     res = await db.execute(stmt)
-    if res.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="An account with this email already exists.")
+    existing_user = res.scalar_one_or_none()
 
-    hashed = get_password_hash(payload.password)
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An account with this email already exists."
+        )
 
+    is_admin_account = clean_email == "rabbi@edutrack.com"
+    user_role = "ADMIN" if is_admin_account else "STUDENT"
+
+    hashed_pw = get_password_hash(payload.password)
     new_user = User(
         id=uuid.uuid4(),
         full_name=payload.full_name.strip(),
         email=clean_email,
-        password_hash=hashed,
-        hashed_password=hashed,
-        role=UserRole.STUDENT,
-        is_admin=False,
+        password_hash=hashed_pw,
+        school=payload.school.strip() if payload.school else None,
+        grade_class=payload.grade_class.strip() if payload.grade_class else None,
+        batch_no=payload.batch_no.strip() if payload.batch_no else "General",
+        is_admin=is_admin_account,
+        is_approved=True if is_admin_account else False,
         is_active=True,
-        is_approved=False,
-        school=payload.school.strip(),
-        grade_class=payload.grade_class.strip(),
-        batch_no=payload.batch_no.strip(),
-        subscription_end_date=None,
+        role=user_role,
+        created_at=datetime.utcnow()
     )
+
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
 
-    return {
-        "message": "Registration successful. Pending instructor verification and approval."
-    }
+    return {"message": "Account created successfully."}
 
 
-async def process_user_login(email_input: str, password_input: str, db: AsyncSession) -> LoginResponse:
-    cleaned_email = email_input.strip().lower()
-    cleaned_pass = password_input.strip()
+# --- LOGIN (HANDLES BOTH /login AND /auth/login, JSON & FORM BODY) ---
+@router.post("/login", response_model=TokenOut)
+@router.post("/auth/login", response_model=TokenOut)
+async def login(request: Request, db: AsyncSession = Depends(get_db)):
+    # Support both JSON payload and standard Form data
+    email_val = ""
+    password_val = ""
 
-    stmt = select(User).where(func.lower(func.trim(User.email)) == cleaned_email)
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        try:
+            body = await request.json()
+            email_val = str(body.get("email") or body.get("username") or "").strip().lower()
+            password_val = str(body.get("password") or "")
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid JSON body.")
+    else:
+        try:
+            form = await request.form()
+            email_val = str(form.get("email") or form.get("username") or "").strip().lower()
+            password_val = str(form.get("password") or "")
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid form body.")
+
+    if not email_val or not password_val:
+        raise HTTPException(status_code=400, detail="Email and password are required.")
+
+    stmt = select(User).where(func.lower(User.email) == email_val)
     res = await db.execute(stmt)
     user = res.scalar_one_or_none()
 
-    # Master Administrator Self-Provisioning
-    if cleaned_email == "rabbi@edutrack.com":
-        hashed_pwd = get_password_hash(cleaned_pass)
-        if not user:
-            user = User(
-                id=uuid.uuid4(),
-                full_name="Rabbi (Administrator)",
-                email=cleaned_email,
-                password_hash=hashed_pwd,
-                hashed_password=hashed_pwd,
-                role=UserRole.ADMIN,
-                is_admin=True,
-                is_active=True,
-                is_approved=True,
-            )
-            db.add(user)
-            await db.commit()
-            await db.refresh(user)
-        else:
-            user.password_hash = hashed_pwd
-            user.hashed_password = hashed_pwd
-            user.is_admin = True
-            user.is_active = True
-            user.role = UserRole.ADMIN
-            user.is_approved = True
-            await db.commit()
-            await db.refresh(user)
-
     if not user:
-        raise HTTPException(status_code=400, detail="Invalid email or password.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found. Please verify your email."
+        )
 
-    stored_hash = user.password_hash or user.hashed_password
-    if not stored_hash or not verify_password(cleaned_pass, stored_hash):
-        raise HTTPException(status_code=400, detail="Invalid email or password.")
+    if not verify_password(password_val, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password. Please try again."
+        )
 
-    # Auto-repair unhashed or legacy values
-    if not (stored_hash.startswith("$2b$") or stored_hash.startswith("$2a$")):
-        fresh_hash = get_password_hash(cleaned_pass)
-        user.password_hash = fresh_hash
-        user.hashed_password = fresh_hash
+    is_admin = bool(
+        getattr(user, "is_admin", False) or 
+        str(getattr(user, "role", "")).upper() == "ADMIN" or 
+        user.email == "rabbi@edutrack.com"
+    )
+    role_str = "ADMIN" if is_admin else "STUDENT"
 
-    new_session_token = str(uuid.uuid4())
-    user.current_session_token = new_session_token
-    await db.commit()
-    await db.refresh(user)
+    access_token = create_access_token(data={"sub": user.email, "role": role_str})
 
-    is_user_admin = bool(user.is_admin or user.role == UserRole.ADMIN)
-
-    token_data = {
-        "sub": str(user.id),
-        "email": user.email,
-        "is_admin": is_user_admin,
-        "session_token": new_session_token,
-    }
-    jwt_token = create_access_token(token_data)
-
-    return LoginResponse(
-        access_token=jwt_token,
+    return TokenOut(
+        access_token=access_token,
         token_type="bearer",
-        is_admin=is_user_admin,
-        is_approved=user.is_approved,
-        subscription_end_date=user.subscription_end_date,
-        full_name=user.full_name or "Administrator"
+        role=role_str,
+        full_name=user.full_name or "User",
+        email=user.email
     )
 
 
-@router.post("/token", response_model=LoginResponse)
-async def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+# --- ME ENDPOINT (DUAL PATH) ---
+@router.get("/me", response_model=UserMeOut)
+@router.get("/auth/me", response_model=UserMeOut)
+async def get_me(
+    authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db)
 ):
-    return await process_user_login(form_data.username, form_data.password, db)
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication token required.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
+    token = authorization.split(" ")[1].strip()
 
-@router.post("/login", response_model=LoginResponse)
-async def login_via_json(
-    payload: JsonLoginRequest,
-    db: AsyncSession = Depends(get_db)
-):
-    return await process_user_login(payload.email, payload.password, db)
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token identity.")
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token invalid or expired.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    stmt = select(User).where(func.lower(User.email) == email.strip().lower())
+    res = await db.execute(stmt)
+    user = res.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User account not found.")
+
+    is_admin = bool(
+        getattr(user, "is_admin", False) or 
+        str(getattr(user, "role", "")).upper() == "ADMIN" or 
+        user.email == "rabbi@edutrack.com"
+    )
+    role_str = "ADMIN" if is_admin else "STUDENT"
+
+    return UserMeOut(
+        id=str(user.id),
+        full_name=user.full_name or "User",
+        email=user.email,
+        school=user.school,
+        grade_class=user.grade_class,
+        batch_no=user.batch_no,
+        role=role_str,
+        is_admin=is_admin,
+        is_approved=bool(user.is_approved),
+        subscription_end_date=user.subscription_end_date
+    )

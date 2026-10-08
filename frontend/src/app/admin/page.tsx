@@ -157,10 +157,25 @@ export default function AdminPage() {
     };
 
     useEffect(() => {
+        const token = getToken();
+        if (!token) {
+            router.push("/login");
+            return;
+        }
+
+        const role = (localStorage.getItem("user_role") || "").toUpperCase();
+        const email = (localStorage.getItem("user_email") || "").toLowerCase();
+
+        // Strict Guard: Student ashle access deny kore /dashboard e pathabe
+        if (role !== "ADMIN" && email !== "rabbi@edutrack.com") {
+            router.replace("/dashboard");
+            return;
+        }
+
         fetchStudents();
         fetchLectures();
         fetchMaterials();
-    }, []);
+    }, [router]);
 
     const batchList = useMemo(() => {
         const set = new Set<string>();
@@ -174,7 +189,6 @@ export default function AdminPage() {
         return Array.from(set).sort();
     }, [students]);
 
-    // Distinct Chapters for Sequence Manager
     const uniqueChapters = useMemo(() => {
         const set = new Set<string>();
         lectures.forEach((l) => {
@@ -185,7 +199,6 @@ export default function AdminPage() {
         return Array.from(set).sort();
     }, [lectures]);
 
-    // Filtered & Ordered Lectures View
     const sortedAndFilteredLectures = useMemo(() => {
         return lectures
             .filter((lec) => {
@@ -200,7 +213,6 @@ export default function AdminPage() {
             .sort((a, b) => a.lecture_no - b.lecture_no);
     }, [lectures, filterVideoSubject, filterVideoChapter]);
 
-    // Student Search Filtering
     const filteredStudents = useMemo(() => {
         return students.filter((s) => {
             const b = (s.batch_no && s.batch_no.trim()) || "General";
@@ -337,7 +349,6 @@ export default function AdminPage() {
         }
     };
 
-    // Feature 4: Move Lecture Up / Down in Sequence
     const handleSwapOrder = async (id1: string, id2: string) => {
         setReordering(true);
         const token = getToken();
@@ -363,7 +374,6 @@ export default function AdminPage() {
         }
     };
 
-    // Feature 4: Auto-Renumber Active Chapter from 1..N
     const handleNormalizeChapter = async () => {
         if (filterVideoChapter === "ALL") {
             alert("Please select a specific chapter to auto-renumber.");
@@ -819,7 +829,6 @@ export default function AdminPage() {
                 {/* TAB 2: VIDEOS MANAGEMENT & SEQUENCE MANAGER */}
                 {activeTab === "video" && (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                        {/* Create Form */}
                         <div className="lg:col-span-5 bg-[#0f172a] border border-slate-800 rounded-3xl p-6 shadow-xl">
                             <h2 className="text-lg font-bold text-white mb-4">Add Video Lecture</h2>
                             <form onSubmit={handleCreateLecture} className="space-y-4">
@@ -893,7 +902,6 @@ export default function AdminPage() {
                             </form>
                         </div>
 
-                        {/* SEQUENCE & CHAPTER ORGANIZER */}
                         <div className="lg:col-span-7 bg-[#0f172a] border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
                                 <div>
@@ -909,7 +917,6 @@ export default function AdminPage() {
                                 </button>
                             </div>
 
-                            {/* Filters for sequence manager */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-900/80 p-3 rounded-2xl border border-slate-800">
                                 <div>
                                     <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Subject</label>
@@ -954,7 +961,6 @@ export default function AdminPage() {
                                 </div>
                             </div>
 
-                            {/* Lectures List with Swap controls */}
                             {sortedAndFilteredLectures.length === 0 ? (
                                 <p className="text-xs text-slate-400 py-8 text-center">No video lectures found in this filter.</p>
                             ) : (
@@ -969,7 +975,6 @@ export default function AdminPage() {
                                                 className="bg-slate-800/60 hover:bg-slate-800/90 border border-slate-700/60 rounded-2xl p-3 flex items-center justify-between transition-all"
                                             >
                                                 <div className="flex items-center space-x-3">
-                                                    {/* Re-order arrows */}
                                                     <div className="flex flex-col space-y-1">
                                                         <button
                                                             onClick={() => handleSwapOrder(lec.id, sortedAndFilteredLectures[idx - 1].id)}
@@ -1008,7 +1013,6 @@ export default function AdminPage() {
                                                     </div>
                                                 </div>
 
-                                                {/* Edit & Actions */}
                                                 <div className="flex items-center space-x-1.5">
                                                     <button
                                                         onClick={() => setEditingLecture(lec)}
@@ -1026,7 +1030,7 @@ export default function AdminPage() {
                                                             }`}
                                                         title={lec.is_published === false ? "Publish" : "Unpublish"}
                                                     >
-                                                        {lec.is_published === false ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                                        {lec.is_published === false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                                     </button>
 
                                                     <a
@@ -1036,7 +1040,7 @@ export default function AdminPage() {
                                                         className="p-2 rounded-xl bg-slate-700 text-slate-300 hover:text-white"
                                                         title="Watch video"
                                                     >
-                                                        <ExternalLink className="w-3.5 h-3.5" />
+                                                        <ExternalLink className="w-4 h-4" />
                                                     </a>
 
                                                     <button
@@ -1045,7 +1049,7 @@ export default function AdminPage() {
                                                         className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-600 hover:text-white"
                                                         title="Delete permanently"
                                                     >
-                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                        <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </div>
                                             </div>
@@ -1169,7 +1173,6 @@ export default function AdminPage() {
                             </form>
                         </div>
 
-                        {/* Published Sheets List */}
                         <div className="lg:col-span-7 bg-[#0f172a] border border-slate-800 rounded-3xl p-6 shadow-xl">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-lg font-bold text-white">Uploaded Sheets ({materials.length})</h2>
@@ -1251,7 +1254,7 @@ export default function AdminPage() {
             {/* Edit Lecture Modal */}
             {editingLecture && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-[#0f172a] border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
+                    <div className="bg-[#0f172a] border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                             <h3 className="text-base font-bold text-white flex items-center gap-2">
                                 <Edit2 className="w-4 h-4 text-indigo-400" />
@@ -1348,7 +1351,7 @@ export default function AdminPage() {
             {/* Edit Material Modal */}
             {editingMaterial && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-[#0f172a] border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
+                    <div className="bg-[#0f172a] border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                             <h3 className="text-base font-bold text-white flex items-center gap-2">
                                 <BookOpen className="w-4 h-4 text-indigo-400" />

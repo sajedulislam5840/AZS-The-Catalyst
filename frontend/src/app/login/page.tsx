@@ -20,17 +20,12 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const targetBase = (
-                process.env.NEXT_PUBLIC_API_URL || BACKEND_URL
-            ).replace(/\/$/, "");
-
-            const endpoint = `${targetBase}/api/v1/auth/login`;
+            const endpoint = `${BACKEND_URL}/api/v1/auth/login`;
 
             const res = await fetch(endpoint, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Accept: "application/json",
                 },
                 body: JSON.stringify({
                     email: email.trim().toLowerCase(),
@@ -62,7 +57,7 @@ export default function LoginPage() {
         } catch (err: any) {
             if (err.message === "Failed to fetch") {
                 setError(
-                    "Unable to connect to the backend server. Please verify your internet connection or retry in a few moments."
+                    "Unable to connect to the backend server. Please verify your connection or retry in a few moments."
                 );
             } else {
                 setError(err.message || "An unexpected error occurred during sign in.");

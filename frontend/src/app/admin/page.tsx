@@ -569,8 +569,12 @@ export default function AdminPage() {
             <header className="border-b border-slate-800/80 bg-[#0c1227]/90 backdrop-blur-md sticky top-0 z-30 shadow-lg shadow-black/20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
                     <div className="flex items-center space-x-3.5">
-                        <div className="w-10 h-10 rounded-2xl overflow-hidden bg-slate-900 border border-slate-700/80 shadow-lg flex items-center justify-center shrink-0 p-1">
-                            <img src="/logo.png" alt="AZS Logo" className="w-full h-full object-contain" />
+                        <div className="w-10 h-10 rounded-2xl overflow-hidden bg-slate-900 border border-slate-700/80 shadow-lg flex items-center justify-center shrink-0">
+                            <img
+                                src="/logo.png"
+                                alt="AZS Logo"
+                                className="w-full h-full object-cover"
+                            />
                         </div>
                         <div>
                             <div className="flex items-center gap-2">

@@ -19,27 +19,25 @@ class ChatResponse(BaseModel):
     reply: str
 
 
-# Groq ultra-fast academic models
+# Groq latest verified production model
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama-3.3-70b-versatile"
-BACKUP_GROQ_MODEL = "llama-3.1-8b-instant"
+ACTIVE_MODEL = "llama-3.3-70b-versatile"
 
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
     api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not api_key:
-        print("[EduTrack AI] Error: GROQ_API_KEY is missing in environment variables!")
+        print("[EduTrack AI] Error: GROQ_API_KEY is not configured!")
         raise HTTPException(
             status_code=500,
-            detail="GROQ_API_KEY is not configured on the server environment"
+            detail="GROQ_API_KEY is missing on Render Environment Variables."
         )
 
     user_text = payload.prompt.strip()
     if not user_text:
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
-    # Database platform curriculum context
     video_summary = ""
     sheet_summary = ""
     try:
@@ -85,39 +83,40 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
         "Content-Type": "application/json",
     }
 
-    models_to_try = [GROQ_MODEL, BACKUP_GROQ_MODEL]
-    last_err = ""
+    req_body = {
+        "model": ACTIVE_MODEL,
+        "messages": [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": user_text}
+        ],
+        "temperature": 0.5,
+        "max_tokens": 4096
+    }
 
-    async with httpx.AsyncClient(timeout=35.0) as client:
-        for model in models_to_try:
-            req_body = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system_instruction},
-                    {"role": "user", "content": user_text}
-                ],
-                "temperature": 0.6,
-                "max_tokens": 4096
-            }
-            try:
-                resp = await client.post(GROQ_API_URL, headers=headers, json=req_body)
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(GROQ_API_URL, headers=headers, json=req_body)
 
-                if resp.status_code == 200:
-                    data = resp.json()
-                    choices = data.get("choices", [])
-                    if choices and "message" in choices[0]:
-                        reply_text = choices[0]["message"].get("content", "")
-                        if reply_text.strip():
-                            return ChatResponse(reply=reply_text.strip())
+            if resp.status_code == 200:
+                data = resp.json()
+                choices = data.get("choices", [])
+                if choices and "message" in choices[0]:
+                    reply_text = choices[0]["message"].get("content", "")
+                    if reply_text.strip():
+                        return ChatResponse(reply=reply_text.strip())
 
-                last_err = f"Groq {model} HTTP {resp.status_code}: {resp.text}"
-                print(f"[Groq AI Attempt Failed]: {last_err}")
+            # Error handling with direct detail
+            err_detail = resp.text
+            print(f"[Groq Error]: {resp.status_code} - {err_detail}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Groq API Error {resp.status_code}: {err_detail[:120]}"
+            )
 
-            except httpx.TimeoutException:
-                last_err = f"Groq {model} timed out"
-                print(f"[Groq AI Timeout]: {last_err}")
-            except Exception as e:
-                last_err = str(e)
-                print(f"[Groq AI Exception]: {e}")
-
-    raise HTTPException(status_code=500, detail=f"Groq API Error: {last_err[:120]}")
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="AI request timed out. Please try again.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[Internal Exception]: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error.")

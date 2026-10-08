@@ -13,6 +13,7 @@ import {
     LogOut,
     Loader2,
     XCircle,
+    Trash2,
 } from "lucide-react";
 
 interface Student {
@@ -145,6 +146,36 @@ export default function AdminPage() {
         }
     };
 
+    const handleDeleteStudent = async (studentId: string, email: string) => {
+        if (!confirm(`Are you sure you want to permanently delete student "${email}" from the database? This cannot be undone.`)) {
+            return;
+        }
+
+        setActionLoadingId(studentId);
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/students/${studentId}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: "application/json",
+                },
+            });
+
+            if (res.ok) {
+                await fetchStudents();
+            } else {
+                const errData = await res.json();
+                alert(errData.detail || "Failed to delete student.");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Network error deleting student.");
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
+
     const handleCreateLecture = async (e: React.FormEvent) => {
         e.preventDefault();
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -264,7 +295,7 @@ export default function AdminPage() {
                             <div>
                                 <h1 className="text-2xl font-bold text-white">Batch Students & Billing</h1>
                                 <p className="text-slate-400 text-xs mt-1">
-                                    Manage student subscriptions: verify payments, add 30-day access, or revoke paid status anytime
+                                    Manage student subscriptions, delete unwanted accounts, or toggle paid and unpaid statuses
                                 </p>
                             </div>
                             <button
@@ -338,7 +369,7 @@ export default function AdminPage() {
                                                     </td>
                                                     <td className="py-3.5 px-4 text-right">
                                                         <div className="flex items-center justify-end space-x-2">
-                                                            {/* Approve or Extend Button */}
+                                                            {/* Confirm or Extend Access */}
                                                             <button
                                                                 onClick={() => handleApproveOrRenew(student.id)}
                                                                 disabled={actionLoadingId === student.id}
@@ -356,18 +387,29 @@ export default function AdminPage() {
                                                                 )}
                                                             </button>
 
-                                                            {/* Revoke / Cancel Access Button (Unpaid) */}
+                                                            {/* Revoke Access (Set Unpaid) */}
                                                             {student.is_approved && (
                                                                 <button
                                                                     onClick={() => handleRevoke(student.id)}
                                                                     disabled={actionLoadingId === student.id}
-                                                                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-500/20 transition-all flex items-center space-x-1"
+                                                                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/10 border border-amber-500/20 text-amber-300 hover:bg-amber-500/20 transition-all flex items-center space-x-1"
                                                                     title="Revoke access and set as unpaid"
                                                                 >
-                                                                    <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                                                                    <XCircle className="w-3.5 h-3.5 text-amber-400" />
                                                                     <span>Revoke</span>
                                                                 </button>
                                                             )}
+
+                                                            {/* Delete Student Permanently */}
+                                                            <button
+                                                                onClick={() => handleDeleteStudent(student.id, student.email)}
+                                                                disabled={actionLoadingId === student.id}
+                                                                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-600 hover:text-white transition-all flex items-center space-x-1"
+                                                                title="Permanently delete student account"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                                <span>Delete</span>
+                                                            </button>
                                                         </div>
                                                     </td>
                                                 </tr>

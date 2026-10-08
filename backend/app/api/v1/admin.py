@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, or_
+from sqlalchemy import select, desc, or_, delete
 
 from app.core.database import get_db
 from app.models.user import User, UserRole
@@ -51,7 +51,6 @@ class MaterialCreate(BaseModel):
 
 
 async def verify_admin(current_user: User = Depends(get_current_active_user)):
-    # Resilient check: boolean flag, string role, enum role, or superadmin email
     user_role_str = str(current_user.role.value if hasattr(current_user.role, "value") else current_user.role).upper()
     is_authorized = bool(
         current_user.is_admin 
@@ -162,15 +161,41 @@ async def revoke_student_access(
     if not student:
         raise HTTPException(status_code=404, detail="Student not found.")
 
-    # Admin revokes access immediately
     student.is_approved = False
     student.subscription_end_date = None
-    student.current_session_token = None  # Instantly terminates active student logins
+    student.current_session_token = None
 
     await db.commit()
     await db.refresh(student)
 
     return {"message": f"Access revoked for {student.email}. Marked as unpaid."}
+
+
+@router.delete("/students/{student_id}")
+async def delete_student(
+    student_id: str,
+    admin: User = Depends(verify_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        student_uuid = uuid.UUID(student_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid student UUID.")
+
+    stmt = select(User).where(User.id == student_uuid)
+    res = await db.execute(stmt)
+    student = res.scalar_one_or_none()
+
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found.")
+
+    if student.id == admin.id or student.email == "rabbi@edutrack.com":
+        raise HTTPException(status_code=400, detail="Cannot delete administrator account.")
+
+    await db.delete(student)
+    await db.commit()
+
+    return {"message": f"Student {student.email} has been permanently deleted from the database."}
 
 
 @router.post("/lectures")

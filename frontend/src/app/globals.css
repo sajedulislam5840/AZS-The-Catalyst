@@ -2,8 +2,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #fbf9f5;
+  --foreground: #1c1917;
 }
 
 @theme inline {
@@ -12,46 +12,45 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Editorial Academic Theme Override 
-     Remaps dark utility classes directly to warm scholarly tones */
-  --color-slate-950: #f8fafc;
-  /* Main application canvas background */
+  /* Warm Editorial Paper Palette Remap */
+  --color-slate-950: #fbf9f5;
+  /* Mool paper background */
   --color-slate-900: #ffffff;
-  /* Card / container / surface background */
-  --color-slate-850: #f1f5f9;
-  /* Sub-surface / active items */
-  --color-slate-800: #e2e8f0;
-  /* Subtle card borders and separators */
-  --color-slate-700: #cbd5e1;
-  /* Secondary input/button borders */
-  --color-slate-600: #64748b;
-  /* Muted badges and secondary icons */
-  --color-slate-400: #64748b;
-  /* Secondary labels and subheadings */
-  --color-slate-300: #334155;
-  /* Secondary text */
-  --color-slate-200: #1e293b;
-  /* Readable text on cards */
-  --color-slate-100: #0f172a;
-  /* High-contrast primary headings & ink */
+  /* Crisp white card surface */
+  --color-slate-850: #f4efe6;
+  /* Active / subtle hover tone */
+  --color-slate-800: #e7e0d3;
+  /* Fine warm border lines */
+  --color-slate-700: #d6ccbe;
+  /* Input dividers and outlines */
+  --color-slate-600: #78716c;
+  /* Muted stone secondary labels */
+  --color-slate-400: #57534e;
+  /* Captions and timestamps */
+  --color-slate-300: #44403c;
+  /* Secondary paragraph text */
+  --color-slate-200: #292524;
+  /* Primary readable card ink */
+  --color-slate-100: #1c1917;
+  /* Deep stone charcoal headings */
 }
 
-/* Force light academic mode even if the student's OS is on dark mode */
+/* Force warm paper background system dark mode e thakleo */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #f8fafc;
-    --foreground: #0f172a;
+    --background: #fbf9f5;
+    --foreground: #1c1917;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Georgia, serif;
   letter-spacing: -0.01em;
 }
 
-/* Clean subtle scrollbars for dense study content */
+/* Custom warm scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -62,10 +61,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #d6ccbe;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #b8ac9a;
 }

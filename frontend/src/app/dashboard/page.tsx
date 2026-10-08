@@ -145,15 +145,35 @@ export default function StudentDashboardPage() {
     const [chatLoading, setChatLoading] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
-    // Dynamic Navigable Calendar State
-    const [calendarViewDate, setCalendarViewDate] = useState<Date>(new Date());
+    // Prerender-safe calendar state
+    const [calendarViewDate, setCalendarViewDate] = useState<Date | null>(null);
+    const [todayKey, setTodayKey] = useState<string>("");
+    const [tomorrowKey, setTomorrowKey] = useState<string>("");
     const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
     const [selectedDateForPlan, setSelectedDateForPlan] = useState<string | null>(null);
     const [newPlanTitle, setNewPlanTitle] = useState("");
     const [newPlanTime, setNewPlanTime] = useState("");
 
+    const formatDateKey = (year: number, month: number, day: number) => {
+        const m = String(month + 1).padStart(2, "0");
+        const d = String(day).padStart(2, "0");
+        return `${year}-${m}-${d}`;
+    };
+
     useEffect(() => {
         setMounted(true);
+
+        // Evaluate dates only on the client
+        const now = new Date();
+        setCalendarViewDate(new Date(now.getFullYear(), now.getMonth(), 1));
+
+        const todayStr = formatDateKey(now.getFullYear(), now.getMonth(), now.getDate());
+        setTodayKey(todayStr);
+
+        const tmrw = new Date(now);
+        tmrw.setDate(tmrw.getDate() + 1);
+        const tmrwStr = formatDateKey(tmrw.getFullYear(), tmrw.getMonth(), tmrw.getDate());
+        setTomorrowKey(tmrwStr);
 
         const token = localStorage.getItem("token") || localStorage.getItem("access_token");
         if (!token) {
@@ -298,14 +318,14 @@ export default function StudentDashboardPage() {
         router.push("/login");
     };
 
-    // Calendar Controls
+    // Safe Calendar Computations
     const monthNames = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     ];
 
-    const currentYear = calendarViewDate.getFullYear();
-    const currentMonth = calendarViewDate.getMonth();
+    const currentYear = calendarViewDate ? calendarViewDate.getFullYear() : 2026;
+    const currentMonth = calendarViewDate ? calendarViewDate.getMonth() : 9;
     const currentMonthTitle = `${monthNames[currentMonth]} ${currentYear}`;
 
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -317,13 +337,6 @@ export default function StudentDashboardPage() {
 
     const handleNextMonth = () => {
         setCalendarViewDate(new Date(currentYear, currentMonth + 1, 1));
-    };
-
-    // Helper to format date keys like YYYY-MM-DD
-    const formatDateKey = (year: number, month: number, day: number) => {
-        const m = String(month + 1).padStart(2, "0");
-        const d = String(day).padStart(2, "0");
-        return `${year}-${m}-${d}`;
     };
 
     // Study Plan Handler
@@ -351,23 +364,13 @@ export default function StudentDashboardPage() {
         localStorage.setItem("edutrack_study_plans", JSON.stringify(updated));
     };
 
-    // Upcoming Day-Before Reminder Calculation
-    const tomorrowKey = useMemo(() => {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return formatDateKey(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
-    }, []);
-
-    const todayKey = useMemo(() => {
-        const today = new Date();
-        return formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
-    }, []);
-
     const tomorrowReminders = useMemo(() => {
+        if (!tomorrowKey) return [];
         return studyPlans.filter((p) => p.dateKey === tomorrowKey);
     }, [studyPlans, tomorrowKey]);
 
     const todayReminders = useMemo(() => {
+        if (!todayKey) return [];
         return studyPlans.filter((p) => p.dateKey === todayKey);
     }, [studyPlans, todayKey]);
 
@@ -976,11 +979,7 @@ export default function StudentDashboardPage() {
                                             {Array.from({ length: daysInMonth }).map((_, i) => {
                                                 const dayNum = i + 1;
                                                 const dateKey = formatDateKey(currentYear, currentMonth, dayNum);
-                                                const isToday =
-                                                    dayNum === new Date().getDate() &&
-                                                    currentMonth === new Date().getMonth() &&
-                                                    currentYear === new Date().getFullYear();
-
+                                                const isToday = dateKey === todayKey;
                                                 const hasPlans = studyPlans.some((p) => p.dateKey === dateKey);
 
                                                 return (
@@ -1006,7 +1005,7 @@ export default function StudentDashboardPage() {
                                         </div>
                                     </div>
 
-                                    {/* DAY-BEFORE REMINDER CARD (AUTOMATICALLY ALERTS IF PLANS EXIST FOR TOMORROW) */}
+                                    {/* DAY-BEFORE REMINDER CARD */}
                                     {tomorrowReminders.length > 0 && (
                                         <div className="bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-300/60 rounded-3xl p-5 space-y-2 shadow-sm">
                                             <div className="flex items-center justify-between">
@@ -1317,7 +1316,7 @@ export default function StudentDashboardPage() {
                 </main>
             </div>
 
-            {/* 3. STUDY PLANNER MODAL (APPEARS ON CLICKING ANY DATE) */}
+            {/* 3. STUDY PLANNER MODAL */}
             {selectedDateForPlan && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
@@ -1337,7 +1336,6 @@ export default function StudentDashboardPage() {
                             </button>
                         </div>
 
-                        {/* List of existing plans for this date */}
                         <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                             {studyPlans.filter((p) => p.dateKey === selectedDateForPlan).length === 0 ? (
                                 <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-2xl">
@@ -1367,7 +1365,6 @@ export default function StudentDashboardPage() {
                             )}
                         </div>
 
-                        {/* Add New Plan Form */}
                         <form onSubmit={handleAddPlan} className="space-y-3 pt-2 border-t border-slate-100">
                             <label className="text-xs font-bold text-slate-700 block">Add Goal / Revision Plan</label>
                             <input

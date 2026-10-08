@@ -32,10 +32,12 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
-const BACKEND_URL = "https://edutrack-backend-qjxg.onrender.com";
+const BACKEND_URL = (
+    process.env.NEXT_PUBLIC_API_URL || "https://edutrack-backend-qjxg.onrender.com"
+).replace(/\/$/, "");
 
 const api = axios.create({
-    baseURL: (process.env.NEXT_PUBLIC_API_URL || BACKEND_URL).replace(/\/$/, ""),
+    baseURL: BACKEND_URL,
 });
 
 api.interceptors.request.use((config) => {
@@ -62,6 +64,7 @@ interface VideoLecture {
     id: string;
     lecture_no: number;
     topic: string;
+    title?: string;
     chapter: string;
     subject: string;
     youtube_url: string;
@@ -158,7 +161,7 @@ export default function StudentDashboardPage() {
     const [chatLoading, setChatLoading] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
-    // Calendar State
+    // Prerender-safe calendar state
     const [calendarViewDate, setCalendarViewDate] = useState<Date | null>(null);
     const [todayKey, setTodayKey] = useState<string>("");
     const [tomorrowKey, setTomorrowKey] = useState<string>("");
@@ -189,13 +192,14 @@ export default function StudentDashboardPage() {
 
         const token = localStorage.getItem("token") || localStorage.getItem("access_token");
         if (!token) {
-            router.push("/login");
+            router.replace("/login");
             return;
         }
 
         const role = (localStorage.getItem("user_role") || "").toUpperCase();
         const email = (localStorage.getItem("user_email") || "").toLowerCase();
 
+        // STRICT ADMIN GUARD: If admin lands on /dashboard, push directly to /admin
         if (role === "ADMIN" || email === "rabbi@edutrack.com") {
             router.replace("/admin");
             return;
@@ -261,6 +265,17 @@ export default function StudentDashboardPage() {
         try {
             const res = await api.get("/api/v1/auth/me");
             if (res.data) {
+                const isAdmin = Boolean(
+                    res.data.is_admin ||
+                    String(res.data.role).toUpperCase() === "ADMIN" ||
+                    res.data.email === "rabbi@edutrack.com"
+                );
+
+                if (isAdmin) {
+                    router.replace("/admin");
+                    return;
+                }
+
                 setUserProfile((prev) => ({
                     ...prev,
                     full_name: res.data.full_name || prev.full_name,
@@ -280,15 +295,33 @@ export default function StudentDashboardPage() {
     const fetchAcademicData = async () => {
         try {
             setLoading(true);
-            const [vRes, mRes, nRes] = await Promise.allSettled([
-                api.get("/api/v1/academic/videos"),
+
+            // Attempt dual endpoints in case of backend alias
+            let videoData: VideoLecture[] = [];
+            try {
+                const vRes = await api.get("/api/v1/academic/videos");
+                if (Array.isArray(vRes.data) && vRes.data.length > 0) {
+                    videoData = vRes.data;
+                }
+            } catch {
+                // Fallback to /lectures
+                try {
+                    const lRes = await api.get("/api/v1/academic/lectures");
+                    if (Array.isArray(lRes.data)) {
+                        videoData = lRes.data;
+                    }
+                } catch {
+                    videoData = [];
+                }
+            }
+
+            setVideos(videoData);
+
+            const [mRes, nRes] = await Promise.allSettled([
                 api.get("/api/v1/academic/materials"),
                 api.get("/api/v1/academic/notice"),
             ]);
 
-            if (vRes.status === "fulfilled" && Array.isArray(vRes.value.data)) {
-                setVideos(vRes.value.data);
-            }
             if (mRes.status === "fulfilled" && Array.isArray(mRes.value.data)) {
                 setMaterials(mRes.value.data);
             }
@@ -328,7 +361,6 @@ export default function StudentDashboardPage() {
         }, 150);
     };
 
-    // Lecture Note Scratchpad Handlers
     const handleNoteChange = (lectureId: string, content: string) => {
         const updated = { ...lectureNotes, [lectureId]: content };
         setLectureNotes(updated);
@@ -352,7 +384,7 @@ export default function StudentDashboardPage() {
                 `EduTrack Revision Notes\n`,
                 `Subject: ${lecture.subject}\n`,
                 `Chapter: ${lecture.chapter}\n`,
-                `Lecture #${lecture.lecture_no}: ${lecture.topic}\n`,
+                `Lecture #${lecture.lecture_no}: ${lecture.topic || lecture.title}\n`,
                 `----------------------------------------\n\n`,
                 noteText,
             ],
@@ -394,10 +426,9 @@ export default function StudentDashboardPage() {
 
     const handleLogout = () => {
         localStorage.clear();
-        router.push("/login");
+        router.replace("/login");
     };
 
-    // Calendar Controls
     const monthNames = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
@@ -470,7 +501,6 @@ export default function StudentDashboardPage() {
         return Object.entries(map);
     }, [videos, watchedVideos]);
 
-    // Determine active lecture to resume
     const activeResumeLecture = useMemo(() => {
         if (!videos || videos.length === 0) return null;
         if (lastPlayedId) {
@@ -487,9 +517,10 @@ export default function StudentDashboardPage() {
         return videos.filter((v) => {
             const s = (v.subject || "").toUpperCase();
             const matchSubj = selectedSubject === "ALL" || s === selectedSubject;
+            const topicStr = (v.topic || v.title || "").toLowerCase();
             const matchSearch =
                 !normalizedQuery ||
-                (v.topic && v.topic.toLowerCase().includes(normalizedQuery)) ||
+                topicStr.includes(normalizedQuery) ||
                 (v.chapter && v.chapter.toLowerCase().includes(normalizedQuery)) ||
                 s.toLowerCase().includes(normalizedQuery);
             return matchSubj && matchSearch;
@@ -728,7 +759,7 @@ export default function StudentDashboardPage() {
                                                                     {embedUrl ? (
                                                                         <iframe
                                                                             src={embedUrl}
-                                                                            title={vid.topic}
+                                                                            title={vid.topic || vid.title || "Lecture"}
                                                                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                                                             allowFullScreen
                                                                             className="w-full h-full border-none"
@@ -755,7 +786,9 @@ export default function StudentDashboardPage() {
                                                                         </span>
                                                                     </div>
 
-                                                                    <h4 className="font-extrabold text-sm text-slate-900 line-clamp-2">{vid.topic}</h4>
+                                                                    <h4 className="font-extrabold text-sm text-slate-900 line-clamp-2">
+                                                                        {vid.topic || vid.title}
+                                                                    </h4>
                                                                     <p className="text-xs text-slate-400">{vid.chapter}</p>
                                                                 </div>
                                                             </div>
@@ -955,7 +988,7 @@ export default function StudentDashboardPage() {
                                 </div>
                             </div>
 
-                            {/* FEATURE 1: CONTINUE WATCHING & SMART RESUME BANNER */}
+                            {/* CONTINUE WATCHING & RESUME BANNER */}
                             {activeResumeLecture && (
                                 <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-[32px] p-6 text-white border border-indigo-500/20 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
                                     <div className="flex items-center space-x-4">
@@ -972,7 +1005,7 @@ export default function StudentDashboardPage() {
                                                 </span>
                                             </div>
                                             <h4 className="text-sm sm:text-base font-extrabold text-white leading-snug">
-                                                Lecture #{activeResumeLecture.lecture_no}: {activeResumeLecture.topic}
+                                                Lecture #{activeResumeLecture.lecture_no}: {activeResumeLecture.topic || activeResumeLecture.title}
                                             </h4>
                                             <p className="text-xs text-slate-400">{activeResumeLecture.chapter}</p>
                                         </div>
@@ -1039,7 +1072,9 @@ export default function StudentDashboardPage() {
                                                                 #{v.lecture_no}
                                                             </div>
                                                             <div>
-                                                                <h4 className="text-xs font-extrabold text-slate-900 line-clamp-1">{v.topic}</h4>
+                                                                <h4 className="text-xs font-extrabold text-slate-900 line-clamp-1">
+                                                                    {v.topic || v.title}
+                                                                </h4>
                                                                 <p className="text-[11px] text-slate-400">{v.chapter}</p>
                                                             </div>
                                                         </div>
@@ -1175,7 +1210,7 @@ export default function StudentDashboardPage() {
                                         </div>
                                     )}
 
-                                    {/* Upcoming Schedule / Live Instructor Notice */}
+                                    {/* Upcoming Schedule / Live Notice */}
                                     <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-3">
                                         <div className="flex items-center justify-between">
                                             <h4 className="text-sm font-extrabold text-slate-900">Upcoming Schedule</h4>
@@ -1213,7 +1248,7 @@ export default function StudentDashboardPage() {
                         </>
                     )}
 
-                    {/* VIEW: VIDEO LECTURES GRID (WITH FEATURE 2: LECTURE NOTES SCRATCHPAD) */}
+                    {/* VIEW: VIDEO LECTURES GRID */}
                     {!isSearchActive && activeNav === "lectures" && (
                         <div className="space-y-6">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1262,7 +1297,7 @@ export default function StudentDashboardPage() {
                                                         {embedUrl ? (
                                                             <iframe
                                                                 src={embedUrl}
-                                                                title={vid.topic}
+                                                                title={vid.topic || vid.title || "Lecture"}
                                                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                                                 allowFullScreen
                                                                 className="w-full h-full border-none"
@@ -1289,13 +1324,15 @@ export default function StudentDashboardPage() {
                                                             </span>
                                                         </div>
 
-                                                        <h3 className="font-extrabold text-sm text-slate-900 line-clamp-2">{vid.topic}</h3>
+                                                        <h3 className="font-extrabold text-sm text-slate-900 line-clamp-2">
+                                                            {vid.topic || vid.title}
+                                                        </h3>
                                                         <p className="text-xs text-slate-400">{vid.chapter}</p>
                                                     </div>
                                                 </div>
 
                                                 <div className="p-5 pt-0 space-y-3">
-                                                    {/* FEATURE 2: COLLAPSIBLE LECTURE NOTES DRAWER */}
+                                                    {/* LECTURE NOTES DRAWER */}
                                                     <div className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
                                                         <button
                                                             onClick={() => setOpenNotesId(isNotesOpen ? null : vid.id)}
@@ -1350,7 +1387,6 @@ export default function StudentDashboardPage() {
                                                         )}
                                                     </div>
 
-                                                    {/* Completed / Watched Toggle Button */}
                                                     <button
                                                         onClick={() => {
                                                             toggleWatchStatus(vid.id);

@@ -16,13 +16,12 @@ router = APIRouter(prefix="/auth", tags=["Authentication & Subscription"])
 
 SECRET_KEY = "EDUTRACK_SUPER_SECRET_KEY_BATCH_SECURITY"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30 days token
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30 days
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 
-# Schemas
 class StudentRegisterRequest(BaseModel):
     full_name: str
     email: EmailStr
@@ -30,6 +29,11 @@ class StudentRegisterRequest(BaseModel):
     school: str
     grade_class: str
     batch_no: str
+
+
+class JsonLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
 
 class LoginResponse(BaseModel):
@@ -56,14 +60,13 @@ def create_access_token(data: dict):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-# Dependency: Active & Validated Student Session Checker
 async def get_current_active_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Login invalid ba session sesh hoyeche.",
+        detail="Session invalid or expired. Please sign in again.",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
@@ -82,29 +85,25 @@ async def get_current_active_user(
     if user is None:
         raise credentials_exception
 
-    # 1. Single-Device Session Check (Invalidate older device)
     if user.current_session_token != session_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Onno device-e login korar karone ei device theke logout kora holo."
+            detail="Signed in on another device. This session has been terminated."
         )
 
-    # Admin bypasses student paywall
     if user.is_admin or user.role == UserRole.ADMIN:
         return user
 
-    # 2. Admin Approval Check
     if not user.is_approved:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Apnar account ekhono shikkhor onumodon pay ni."
+            detail="Your account is pending batch teacher approval."
         )
 
-    # 3. 30-Day Paywall & Expiry Check
     if not user.subscription_end_date or user.subscription_end_date < datetime.utcnow():
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Apnar 30 diner access sesh hoyeche! Shikkhor shathe jogajog kore fee parishodh korun."
+            detail="Your 30-day subscription has expired. Please renew batch access with your instructor."
         )
 
     return user
@@ -115,7 +114,7 @@ async def register_student(payload: StudentRegisterRequest, db: AsyncSession = D
     stmt = select(User).where(User.email == payload.email.strip().lower())
     res = await db.execute(stmt)
     if res.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Ei email diye already account khola ache.")
+        raise HTTPException(status_code=400, detail="An account with this email already exists.")
 
     new_user = User(
         full_name=payload.full_name.strip(),
@@ -134,23 +133,36 @@ async def register_student(payload: StudentRegisterRequest, db: AsyncSession = D
     await db.refresh(new_user)
 
     return {
-        "message": "Registration shofol hoyeche! Shikkhor onumodon pawar por login kora jabe."
+        "message": "Registration successful. Pending instructor verification and approval."
     }
 
 
+# Standard OAuth2 form handler
 @router.post("/token", response_model=LoginResponse)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
-    stmt = select(User).where(User.email == form_data.username.strip().lower())
+    return await execute_login(form_data.username, form_data.password, db)
+
+
+# JSON endpoint fallback for /login
+@router.post("/login", response_model=LoginResponse)
+async def login_json(
+    payload: JsonLoginRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    return await execute_login(payload.email, payload.password, db)
+
+
+async def execute_login(email_input: str, password_input: str, db: AsyncSession):
+    stmt = select(User).where(User.email == email_input.strip().lower())
     res = await db.execute(stmt)
     user = res.scalar_one_or_none()
 
-    if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=400, detail="Email othoba password shothik noy.")
+    if not user or not verify_password(password_input, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Invalid email or password.")
 
-    # Generate Unique Device Session Token
     new_session_token = str(uuid.uuid4())
     user.current_session_token = new_session_token
     await db.commit()
@@ -162,7 +174,7 @@ async def login_for_access_token(
         "sub": str(user.id),
         "email": user.email,
         "is_admin": is_user_admin,
-        "session_token": new_session_token
+        "session_token": new_session_token,
     }
     jwt_token = create_access_token(token_data)
 
@@ -172,7 +184,7 @@ async def login_for_access_token(
         is_admin=is_user_admin,
         is_approved=user.is_approved,
         subscription_end_date=user.subscription_end_date,
-        full_name=user.full_name
+        full_name=user.full_name or ""
     )
 
 
@@ -182,10 +194,10 @@ async def make_admin(email: str, db: AsyncSession = Depends(get_db)):
     res = await db.execute(stmt)
     user = res.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="User khuje paoa jay ni.")
-    
+        raise HTTPException(status_code=404, detail="User not found.")
+
     user.is_admin = True
     user.role = UserRole.ADMIN
     user.is_approved = True
     await db.commit()
-    return {"message": f"{email} ekhon Admin & Teacher!"}
+    return {"message": f"{email} has been granted Admin privileges."}

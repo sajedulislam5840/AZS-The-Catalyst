@@ -13,26 +13,48 @@ from app.api.v1.chat import router as chat_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
+        # Base schema setup
         await conn.run_sync(Base.metadata.create_all)
 
-        # Migration patch: Handle existing table schema discrepancies
+        # Database Schema Reconciliation
         migration_statements = [
-            # Handle password / hashed_password column mismatch
+            # 1. Ensure password_hash column exists
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR;",
+            
+            # 2. Sync data across legacy column variants if they exist
             """
             DO $$
             BEGIN
                 IF EXISTS (
                     SELECT 1 FROM information_schema.columns 
-                    WHERE table_name='users' AND column_name='password'
-                ) AND NOT EXISTS (
-                    SELECT 1 FROM information_schema.columns 
                     WHERE table_name='users' AND column_name='hashed_password'
                 ) THEN
-                    ALTER TABLE users RENAME COLUMN password TO hashed_password;
+                    UPDATE users SET password_hash = hashed_password WHERE password_hash IS NULL;
+                END IF;
+
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='users' AND column_name='password'
+                ) THEN
+                    UPDATE users SET password_hash = password WHERE password_hash IS NULL;
                 END IF;
             END $$;
             """,
+
+            # 3. Drop NOT NULL on password_hash to prevent insertion crashes, then sync
+            "ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;",
+            
+            # 4. Sync hashed_password column if legacy queries still reference it
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS hashed_password VARCHAR;",
+            "ALTER TABLE users ALTER COLUMN hashed_password DROP NOT NULL;",
+            """
+            DO $$
+            BEGIN
+                UPDATE users SET hashed_password = password_hash WHERE hashed_password IS NULL;
+            END $$;
+            """,
+
+            # 5. Core metadata and relationship columns
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR;",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR DEFAULT 'STUDENT';",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;",

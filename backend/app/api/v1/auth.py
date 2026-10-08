@@ -134,11 +134,14 @@ async def register_student(payload: StudentRegisterRequest, db: AsyncSession = D
     if res.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="An account with this email already exists.")
 
+    hashed = get_password_hash(payload.password)
+
     new_user = User(
         id=uuid.uuid4(),
         full_name=payload.full_name.strip(),
         email=clean_email,
-        hashed_password=get_password_hash(payload.password),
+        password_hash=hashed,
+        hashed_password=hashed,
         role=UserRole.STUDENT,
         school=payload.school.strip(),
         grade_class=payload.grade_class.strip(),
@@ -164,14 +167,16 @@ async def process_user_login(email_input: str, password_input: str, db: AsyncSes
     res = await db.execute(stmt)
     user = res.scalar_one_or_none()
 
-    # Master Administrator Setup
+    # Master Administrator Self-Provisioning
     if cleaned_email == "rabbi@edutrack.com":
+        hashed_pwd = get_password_hash(cleaned_pass)
         if not user:
             user = User(
                 id=uuid.uuid4(),
                 full_name="Rabbi (Administrator)",
                 email=cleaned_email,
-                hashed_password=get_password_hash(cleaned_pass),
+                password_hash=hashed_pwd,
+                hashed_password=hashed_pwd,
                 role=UserRole.ADMIN,
                 is_admin=True,
                 is_approved=True,
@@ -180,18 +185,19 @@ async def process_user_login(email_input: str, password_input: str, db: AsyncSes
             await db.commit()
             await db.refresh(user)
         else:
-            if not verify_password(cleaned_pass, user.hashed_password):
-                user.hashed_password = get_password_hash(cleaned_pass)
+            user.password_hash = hashed_pwd
+            user.hashed_password = hashed_pwd
             user.is_admin = True
             user.role = UserRole.ADMIN
             user.is_approved = True
             await db.commit()
             await db.refresh(user)
 
-    if not user or not user.hashed_password:
+    if not user:
         raise HTTPException(status_code=400, detail="Invalid email or password.")
 
-    if not verify_password(cleaned_pass, user.hashed_password):
+    stored_hash = user.password_hash or user.hashed_password
+    if not stored_hash or not verify_password(cleaned_pass, stored_hash):
         raise HTTPException(status_code=400, detail="Invalid email or password.")
 
     new_session_token = str(uuid.uuid4())

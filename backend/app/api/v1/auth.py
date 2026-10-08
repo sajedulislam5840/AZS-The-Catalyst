@@ -1,67 +1,3 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-
-from app.core.database import get_db
-from app.core.security import get_password_hash, verify_password, create_access_token
-from app.models.user import User, UserRole
-from app.schemas.auth import UserRegister, UserLogin, TokenResponse
-
-router = APIRouter(prefix="/auth", tags=["Authentication"])
-
-@router.post("/register", response_model=TokenResponse)
-async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
-    stmt = select(User).where(User.email == payload.email)
-    existing_user = (await db.execute(stmt)).scalar_one_or_none()
-    
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    # Role conversion
-    user_role = UserRole.ADMIN if str(payload.role).upper() in ["ADMIN", "USERROLE.ADMIN"] else UserRole.STUDENT
-
-    new_user = User(
-        email=payload.email,
-        password_hash=get_password_hash(payload.password),
-        role=user_role
-    )
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-
-    role_str = new_user.role.value if hasattr(new_user.role, 'value') else str(new_user.role)
-    token = create_access_token(subject=str(new_user.id), role=role_str)
-    
-    return TokenResponse(
-        access_token=token,
-        user_id=new_user.id,
-        email=new_user.email,
-        role=role_str
-    )
-
-@router.post("/login", response_model=TokenResponse)
-async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
-    stmt = select(User).where(User.email == payload.email)
-    user = (await db.execute(stmt)).scalar_one_or_none()
-
-    if not user:
-        raise HTTPException(status_code=401, detail="Email not found")
-
-    if not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Incorrect password")
-
-    role_str = user.role.value if hasattr(user.role, 'value') else str(user.role)
-    token = create_access_token(subject=str(user.id), role=role_str)
-    
-    return TokenResponse(
-        access_token=token,
-        user_id=user.id,
-        email=user.email,
-        role=role_str
-    )
-    
-
-
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
@@ -74,7 +10,7 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 
 from app.core.database import get_db
-from app.models.user import User
+from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/auth", tags=["Authentication & Subscription"])
 
@@ -127,12 +63,12 @@ async def get_current_active_user(
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Login invalid ba onno device theke login korar karone session sesh hoyeche.",
+        detail="Login invalid ba session sesh hoyeche.",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub")
+        user_id: str = payload.get("sub")
         session_token: str = payload.get("session_token")
         if user_id is None or session_token is None:
             raise credentials_exception
@@ -146,29 +82,29 @@ async def get_current_active_user(
     if user is None:
         raise credentials_exception
 
-    # 1. Single-Device Session Check (Option A: Invalidate older device)
+    # 1. Single-Device Session Check (Invalidate older device)
     if user.current_session_token != session_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Apnar account onno ekta device-e login kora hoyeche. Ei device theke auto logout kora holo."
+            detail="Onno device-e login korar karone ei device theke logout kora holo."
         )
 
     # Admin bypasses student paywall
-    if user.is_admin:
+    if user.is_admin or user.role == UserRole.ADMIN:
         return user
 
     # 2. Admin Approval Check
     if not user.is_approved:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Apnar account ekhono admin dara approve kora hoy ni. Shikkhor shathe jogajog korun."
+            detail="Apnar account ekhono shikkhor onumodon pay ni."
         )
 
     # 3. 30-Day Paywall & Expiry Check
     if not user.subscription_end_date or user.subscription_end_date < datetime.utcnow():
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Apnar 30 diner batch access sesh hoyeche! Shikkhor kache beton joma diye access renew korun."
+            detail="Apnar 30 diner access sesh hoyeche! Shikkhor shathe jogajog kore fee parishodh korun."
         )
 
     return user
@@ -176,7 +112,7 @@ async def get_current_active_user(
 
 @router.post("/register")
 async def register_student(payload: StudentRegisterRequest, db: AsyncSession = Depends(get_db)):
-    stmt = select(User).where(User.email == payload.email)
+    stmt = select(User).where(User.email == payload.email.strip().lower())
     res = await db.execute(stmt)
     if res.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Ei email diye already account khola ache.")
@@ -185,9 +121,11 @@ async def register_student(payload: StudentRegisterRequest, db: AsyncSession = D
         full_name=payload.full_name.strip(),
         email=payload.email.strip().lower(),
         hashed_password=get_password_hash(payload.password),
+        role=UserRole.STUDENT,
         school=payload.school.strip(),
         grade_class=payload.grade_class.strip(),
         batch_no=payload.batch_no.strip(),
+        is_admin=False,
         is_approved=False,
         subscription_end_date=None,
     )
@@ -196,7 +134,7 @@ async def register_student(payload: StudentRegisterRequest, db: AsyncSession = D
     await db.refresh(new_user)
 
     return {
-        "message": "Registration shompurno hoyeche! Shikkhor beton verification o approval er por login kora jabe."
+        "message": "Registration shofol hoyeche! Shikkhor onumodon pawar por login kora jabe."
     }
 
 
@@ -210,7 +148,7 @@ async def login_for_access_token(
     user = res.scalar_one_or_none()
 
     if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=400, detail="Email othoba Password vul.")
+        raise HTTPException(status_code=400, detail="Email othoba password shothik noy.")
 
     # Generate Unique Device Session Token
     new_session_token = str(uuid.uuid4())
@@ -218,10 +156,12 @@ async def login_for_access_token(
     await db.commit()
     await db.refresh(user)
 
+    is_user_admin = bool(user.is_admin or user.role == UserRole.ADMIN)
+
     token_data = {
         "sub": str(user.id),
         "email": user.email,
-        "is_admin": user.is_admin,
+        "is_admin": is_user_admin,
         "session_token": new_session_token
     }
     jwt_token = create_access_token(token_data)
@@ -229,8 +169,23 @@ async def login_for_access_token(
     return LoginResponse(
         access_token=jwt_token,
         token_type="bearer",
-        is_admin=user.is_admin,
+        is_admin=is_user_admin,
         is_approved=user.is_approved,
         subscription_end_date=user.subscription_end_date,
         full_name=user.full_name
     )
+
+
+@router.post("/make-admin")
+async def make_admin(email: str, db: AsyncSession = Depends(get_db)):
+    stmt = select(User).where(User.email == email.strip().lower())
+    res = await db.execute(stmt)
+    user = res.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User khuje paoa jay ni.")
+    
+    user.is_admin = True
+    user.role = UserRole.ADMIN
+    user.is_approved = True
+    await db.commit()
+    return {"message": f"{email} ekhon Admin & Teacher!"}

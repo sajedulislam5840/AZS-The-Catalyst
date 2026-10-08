@@ -12,38 +12,35 @@ from app.api.v1.chat import router as chat_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Database table auto-create
+    # Startup: Database table auto-creation
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
-    # Shutdown logic if needed
 
 
 app = FastAPI(
     title="EduTrack API",
-    description="Batch Management, 30-Day Paywall & AI Academic Guide Platform",
+    description="Batch Management, 30-Day Paywall & AI Guide Platform",
     version="2.0.0",
     lifespan=lifespan,
 )
 
-# CORS Configuration
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://edu-track-taupe.vercel.app",  # Tomar vercel domain
-    "https://edutrack.vercel.app",
-    "*",  # Local testing ebong development-er jonno
-]
-
+# Proper CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://edu-track-taupe.vercel.app",
+        "https://edutrack.vercel.app",
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Router Registrations
+# Include All API Routers
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(academic_router, prefix="/api/v1")

@@ -3,7 +3,20 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, User, Mail, Lock, School, GraduationCap, Users, ArrowRight, Loader2, CheckCircle } from "lucide-react";
+import {
+    BookOpen,
+    User,
+    Mail,
+    Lock,
+    School,
+    GraduationCap,
+    Users,
+    ArrowRight,
+    Loader2,
+    CheckCircle,
+} from "lucide-react";
+
+const BACKEND_URL = "https://edutrack-backend-qjxg.onrender.com";
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -25,14 +38,15 @@ export default function RegisterPage() {
         setLoading(true);
 
         try {
-            const backendUrl =
-                process.env.NEXT_PUBLIC_API_URL ||
-                "https://YOUR_ACTUAL_RENDER_URL_HERE";
+            const targetBase = (
+                process.env.NEXT_PUBLIC_API_URL || BACKEND_URL
+            ).replace(/\/$/, "");
 
-            const res = await fetch(`${backendUrl.replace(/\/$/, "")}/api/v1/auth/register`, {
+            const res = await fetch(`${targetBase}/api/v1/auth/register`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
+                    Accept: "application/json",
                 },
                 body: JSON.stringify({
                     full_name: formData.fullName,
@@ -53,7 +67,7 @@ export default function RegisterPage() {
         } catch (err: any) {
             if (err.message === "Failed to fetch") {
                 setError(
-                    "Unable to reach the server. The backend may still be waking up on Render or the API URL is not set in Vercel. Please retry in a few seconds."
+                    "Unable to connect to the backend server. Please verify your connection or retry in a few moments."
                 );
             } else {
                 setError(err.message || "An unexpected error occurred.");

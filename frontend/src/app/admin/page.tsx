@@ -26,6 +26,8 @@ interface Student {
     days_left: number;
 }
 
+const BACKEND_URL = "https://edutrack-backend-qjxg.onrender.com";
+
 export default function AdminPage() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<"students" | "video" | "sheet">("students");
@@ -33,7 +35,6 @@ export default function AdminPage() {
     const [loading, setLoading] = useState(true);
     const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
 
-    // New Lecture Form State
     const [lectureForm, setLectureForm] = useState({
         lecture_no: 1,
         title: "",
@@ -43,7 +44,6 @@ export default function AdminPage() {
         video_url: "",
     });
 
-    // New Sheet Form State
     const [sheetForm, setSheetForm] = useState({
         title: "",
         chapter: "",
@@ -51,17 +51,17 @@ export default function AdminPage() {
         file_url: "",
     });
 
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "https://edutrack-backend.onrender.com";
+    const backendUrl = (process.env.NEXT_PUBLIC_API_URL || BACKEND_URL).replace(/\/$/, "");
 
     const fetchStudents = async () => {
         setLoading(true);
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
         try {
-            const res = await fetch(`${backendUrl.replace(/\/$/, "")}/api/v1/admin/students`, {
+            const res = await fetch(`${backendUrl}/api/v1/admin/students`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.status === 403 || res.status === 401) {
-                alert("শুধুমাত্র অ্যাডমিন/টিচার এই প্যানেলে ঢুকতে পারবে।");
+                alert("Access restricted to instructors and administrators.");
                 router.push("/login");
                 return;
             }
@@ -83,7 +83,7 @@ export default function AdminPage() {
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
         try {
             const res = await fetch(
-                `${backendUrl.replace(/\/$/, "")}/api/v1/admin/students/${studentId}/approve-and-pay`,
+                `${backendUrl}/api/v1/admin/students/${studentId}/approve-and-pay`,
                 {
                     method: "POST",
                     headers: { Authorization: `Bearer ${token}` },
@@ -92,7 +92,7 @@ export default function AdminPage() {
             if (res.ok) {
                 await fetchStudents();
             } else {
-                alert("আপডেট ব্যর্থ হয়েছে।");
+                alert("Failed to update student subscription.");
             }
         } catch (err) {
             console.error(err);
@@ -105,7 +105,7 @@ export default function AdminPage() {
         e.preventDefault();
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
         try {
-            const res = await fetch(`${backendUrl.replace(/\/$/, "")}/api/v1/admin/lectures`, {
+            const res = await fetch(`${backendUrl}/api/v1/admin/lectures`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -114,7 +114,7 @@ export default function AdminPage() {
                 body: JSON.stringify(lectureForm),
             });
             if (res.ok) {
-                alert("ভিডিও লেকচার সফলভাবে আপলোড হয়েছে!");
+                alert("Video lecture published successfully.");
                 setLectureForm({
                     lecture_no: lectureForm.lecture_no + 1,
                     title: "",
@@ -125,7 +125,7 @@ export default function AdminPage() {
                 });
             }
         } catch (err) {
-            alert("ভিডিও যোগ করা যায়নি।");
+            alert("Failed to create lecture.");
         }
     };
 
@@ -133,7 +133,7 @@ export default function AdminPage() {
         e.preventDefault();
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
         try {
-            const res = await fetch(`${backendUrl.replace(/\/$/, "")}/api/v1/admin/materials`, {
+            const res = await fetch(`${backendUrl}/api/v1/admin/materials`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -142,17 +142,16 @@ export default function AdminPage() {
                 body: JSON.stringify(sheetForm),
             });
             if (res.ok) {
-                alert("লেকচার শিট সফলভাবে আপলোড হয়েছে!");
+                alert("Lecture sheet uploaded successfully.");
                 setSheetForm({ title: "", chapter: "", subject: "Physics", file_url: "" });
             }
         } catch (err) {
-            alert("শিট যোগ করা যায়নি।");
+            alert("Failed to create material.");
         }
     };
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-            {/* Admin Top Header */}
             <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-30">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -162,7 +161,7 @@ export default function AdminPage() {
                         <div>
                             <span className="font-bold text-lg text-white">EduTrack Admin</span>
                             <span className="text-xs text-rose-400 ml-2 font-mono px-2 py-0.5 bg-rose-500/10 rounded-full border border-rose-500/20">
-                                Teacher Portal
+                                Instructor Portal
                             </span>
                         </div>
                     </div>
@@ -210,16 +209,14 @@ export default function AdminPage() {
                 </div>
             </header>
 
-            {/* Main Body */}
             <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* TAB 1: STUDENTS & FEE MANAGEMENT */}
                 {activeTab === "students" && (
                     <div>
                         <div className="flex items-center justify-between mb-6">
                             <div>
-                                <h1 className="text-2xl font-bold text-white">ব্যাচ শিক্ষার্থী ও ফি ব্যবস্থাপনা</h1>
+                                <h1 className="text-2xl font-bold text-white">Batch Students & Billing</h1>
                                 <p className="text-slate-400 text-xs mt-1">
-                                    ক্যাশ গ্রহণ করে ১-ক্লিকে ৩০ দিনের সাবস্ক্রিপশন অ্যাক্টিভ ও রিনিউ করো
+                                    Verify cash payments and grant 30-day recurring batch access
                                 </p>
                             </div>
                             <button
@@ -227,7 +224,7 @@ export default function AdminPage() {
                                 className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-xl"
                             >
                                 <RefreshCw className="w-3.5 h-3.5" />
-                                <span>রিফ্রেশ</span>
+                                <span>Refresh</span>
                             </button>
                         </div>
 
@@ -241,12 +238,12 @@ export default function AdminPage() {
                                     <table className="w-full text-left text-sm">
                                         <thead className="bg-slate-800/60 text-slate-400 text-xs uppercase border-b border-slate-800">
                                             <tr>
-                                                <th className="py-3.5 px-4">শিক্ষার্থী</th>
-                                                <th className="py-3.5 px-4">স্কুল ও ক্লাস</th>
-                                                <th className="py-3.5 px-4">ব্যাচ</th>
-                                                <th className="py-3.5 px-4">স্ট্যাটাস</th>
-                                                <th className="py-3.5 px-4">বাকি দিন</th>
-                                                <th className="py-3.5 px-4 text-right">ফি ও অ্যাকশন</th>
+                                                <th className="py-3.5 px-4">Student</th>
+                                                <th className="py-3.5 px-4">Institution & Class</th>
+                                                <th className="py-3.5 px-4">Batch</th>
+                                                <th className="py-3.5 px-4">Status</th>
+                                                <th className="py-3.5 px-4">Remaining</th>
+                                                <th className="py-3.5 px-4 text-right">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-800/60">
@@ -284,7 +281,7 @@ export default function AdminPage() {
                                                         {student.days_left > 0 ? (
                                                             <span className="text-emerald-400 font-semibold">{student.days_left} Days</span>
                                                         ) : (
-                                                            <span className="text-rose-400">০ দিন (মেয়াদ শেষ)</span>
+                                                            <span className="text-rose-400 font-semibold">0 Days</span>
                                                         )}
                                                     </td>
                                                     <td className="py-3.5 px-4 text-right">
@@ -315,14 +312,13 @@ export default function AdminPage() {
                     </div>
                 )}
 
-                {/* TAB 2: UPLOAD VIDEO LECTURE */}
                 {activeTab === "video" && (
                     <div className="max-w-xl mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-                        <h2 className="text-lg font-bold text-white mb-4">নতুন ভিডিও ক্লাস যুক্ত করো</h2>
+                        <h2 className="text-lg font-bold text-white mb-4">Add Video Lecture</h2>
                         <form onSubmit={handleCreateLecture} className="space-y-4">
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="text-xs text-slate-400 block mb-1">লেকচার নং</label>
+                                    <label className="text-xs text-slate-400 block mb-1">Lecture Number</label>
                                     <input
                                         type="number"
                                         required
@@ -334,7 +330,7 @@ export default function AdminPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs text-slate-400 block mb-1">বিষয়</label>
+                                    <label className="text-xs text-slate-400 block mb-1">Subject</label>
                                     <select
                                         value={lectureForm.subject}
                                         onChange={(e) =>
@@ -350,11 +346,11 @@ export default function AdminPage() {
                             </div>
 
                             <div>
-                                <label className="text-xs text-slate-400 block mb-1">অধ্যায় (Chapter)</label>
+                                <label className="text-xs text-slate-400 block mb-1">Chapter</label>
                                 <input
                                     type="text"
                                     required
-                                    placeholder="e.g. গতিবিদ্যা (Kinematics)"
+                                    placeholder="e.g. Kinematics"
                                     value={lectureForm.chapter}
                                     onChange={(e) =>
                                         setLectureForm({ ...lectureForm, chapter: e.target.value })
@@ -364,11 +360,11 @@ export default function AdminPage() {
                             </div>
 
                             <div>
-                                <label className="text-xs text-slate-400 block mb-1">লেকচার শিরোনাম (Title)</label>
+                                <label className="text-xs text-slate-400 block mb-1">Lecture Title</label>
                                 <input
                                     type="text"
                                     required
-                                    placeholder="e.g. প্রাসের গতি ও প্রাস সমীকরণ"
+                                    placeholder="e.g. Projectile Motion Principles"
                                     value={lectureForm.title}
                                     onChange={(e) =>
                                         setLectureForm({ ...lectureForm, title: e.target.value, topic: e.target.value })
@@ -378,7 +374,7 @@ export default function AdminPage() {
                             </div>
 
                             <div>
-                                <label className="text-xs text-slate-400 block mb-1">YouTube Unlisted URL</label>
+                                <label className="text-xs text-slate-400 block mb-1">YouTube URL</label>
                                 <input
                                     type="url"
                                     required
@@ -395,19 +391,18 @@ export default function AdminPage() {
                                 type="submit"
                                 className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg"
                             >
-                                লেকচার সেভ করো
+                                Save Lecture
                             </button>
                         </form>
                     </div>
                 )}
 
-                {/* TAB 3: UPLOAD LECTURE SHEET */}
                 {activeTab === "sheet" && (
                     <div className="max-w-xl mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-                        <h2 className="text-lg font-bold text-white mb-4">লেকচার শিট বা PDF লিঙ্ক যুক্ত করো</h2>
+                        <h2 className="text-lg font-bold text-white mb-4">Upload Lecture Sheet / Material</h2>
                         <form onSubmit={handleCreateSheet} className="space-y-4">
                             <div>
-                                <label className="text-xs text-slate-400 block mb-1">বিষয়</label>
+                                <label className="text-xs text-slate-400 block mb-1">Subject</label>
                                 <select
                                     value={sheetForm.subject}
                                     onChange={(e) =>
@@ -422,11 +417,11 @@ export default function AdminPage() {
                             </div>
 
                             <div>
-                                <label className="text-xs text-slate-400 block mb-1">অধ্যায় (Chapter)</label>
+                                <label className="text-xs text-slate-400 block mb-1">Chapter</label>
                                 <input
                                     type="text"
                                     required
-                                    placeholder="e.g. কাজ, ক্ষমতা ও শক্তি"
+                                    placeholder="e.g. Work, Energy and Power"
                                     value={sheetForm.chapter}
                                     onChange={(e) =>
                                         setSheetForm({ ...sheetForm, chapter: e.target.value })
@@ -436,11 +431,11 @@ export default function AdminPage() {
                             </div>
 
                             <div>
-                                <label className="text-xs text-slate-400 block mb-1">শিটের নাম (Title)</label>
+                                <label className="text-xs text-slate-400 block mb-1">Material Title</label>
                                 <input
                                     type="text"
                                     required
-                                    placeholder="e.g. প্র্যাকটিস প্রবলেম ও সমাধান শিট - ০১"
+                                    placeholder="e.g. Practice Problems Sheet 01"
                                     value={sheetForm.title}
                                     onChange={(e) =>
                                         setSheetForm({ ...sheetForm, title: e.target.value })
@@ -450,7 +445,7 @@ export default function AdminPage() {
                             </div>
 
                             <div>
-                                <label className="text-xs text-slate-400 block mb-1">Google Drive / PDF লিংক</label>
+                                <label className="text-xs text-slate-400 block mb-1">Document Link (Google Drive / PDF)</label>
                                 <input
                                     type="url"
                                     required
@@ -467,7 +462,7 @@ export default function AdminPage() {
                                 type="submit"
                                 className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg"
                             >
-                                শিট সেভ করো
+                                Save Material
                             </button>
                         </form>
                     </div>

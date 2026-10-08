@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BookOpen, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 
+const BACKEND_URL = "https://edutrack-backend-qjxg.onrender.com";
+
 export default function LoginPage() {
     const router = useRouter();
     const [email, setEmail] = useState("");
@@ -18,11 +20,13 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const rawUrl =
-                process.env.NEXT_PUBLIC_API_URL || "https://edutrack-backend.onrender.com";
-            const backendUrl = rawUrl.replace(/\/$/, "");
+            const targetBase = (
+                process.env.NEXT_PUBLIC_API_URL || BACKEND_URL
+            ).replace(/\/$/, "");
 
-            const res = await fetch(`${backendUrl}/api/v1/auth/login`, {
+            const endpoint = `${targetBase}/api/v1/auth/login`;
+
+            const res = await fetch(endpoint, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -40,14 +44,12 @@ export default function LoginPage() {
                 throw new Error(data.detail || "Invalid email or password.");
             }
 
-            // Check approval for students
             if (!data.is_admin && !data.is_approved) {
                 throw new Error(
-                    "Your account has not been approved yet. Please contact your batch teacher to activate access."
+                    "Your account is pending verification. Please contact your batch teacher for approval."
                 );
             }
 
-            // Save auth storage
             localStorage.setItem("token", data.access_token);
             localStorage.setItem("is_admin", String(data.is_admin));
             localStorage.setItem("user_name", data.full_name || "");
@@ -60,7 +62,7 @@ export default function LoginPage() {
         } catch (err: any) {
             if (err.message === "Failed to fetch") {
                 setError(
-                    "Unable to connect to the backend server. The backend instance may be waking up from cold sleep. Please wait 15 seconds and try again."
+                    "Unable to connect to the backend server. Please verify your internet connection or retry in a few moments."
                 );
             } else {
                 setError(err.message || "An unexpected error occurred during sign in.");

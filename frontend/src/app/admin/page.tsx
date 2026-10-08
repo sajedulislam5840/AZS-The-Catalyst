@@ -73,6 +73,7 @@ export default function AdminPage() {
     const [materials, setMaterials] = useState<MaterialItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoadingId, setActionLoadingId] = useState<string | number | null>(null);
+    const [currentYear, setCurrentYear] = useState<number>(2026);
 
     // Video Filtering & Ordering State
     const [filterVideoSubject, setFilterVideoSubject] = useState<string>("ALL");
@@ -160,6 +161,8 @@ export default function AdminPage() {
     };
 
     useEffect(() => {
+        setCurrentYear(new Date().getFullYear());
+
         const token = getToken();
         if (!token) {
             router.push("/login");
@@ -1338,7 +1341,7 @@ export default function AdminPage() {
             {/* DEVELOPER CREDIT FOOTER (ADMIN CONSOLE) */}
             <footer className="w-full py-4 px-6 text-center border-t border-slate-800/80 bg-[#0c1227]/90 backdrop-blur-sm mt-auto">
                 <p className="text-xs text-slate-400 font-medium tracking-wide">
-                    © {new Date().getFullYear()} EduTrack Platform • Designed & Built with precision by{" "}
+                    © {currentYear} EduTrack Platform • Designed & Built with precision by{" "}
                     <a
                         href="https://www.linkedin.com/in/sajedul-islam-data/"
                         target="_blank"

@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.core.database import engine, Base
 from app.api.v1.auth import router as auth_router
@@ -11,9 +12,27 @@ from app.api.v1.chat import router as chat_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Database table auto-creation
+    # Startup: Ensure base tables exist and alter table to add newly added columns
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+        # Migration patch: add new columns if they do not exist
+        migration_statements = [
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR;",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR DEFAULT 'STUDENT';",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS school VARCHAR;",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS grade_class VARCHAR;",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS batch_no VARCHAR;",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_end_date TIMESTAMP WITHOUT TIME ZONE;",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS current_session_token VARCHAR;",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP;",
+        ]
+
+        for query in migration_statements:
+            await conn.execute(text(query))
+
     yield
 
 
@@ -24,7 +43,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS fix to allow browser fetch requests
+# Open CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

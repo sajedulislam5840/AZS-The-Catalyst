@@ -195,7 +195,20 @@ async def delete_student(
     await db.delete(student)
     await db.commit()
 
-    return {"message": f"Student {student.email} has been permanently deleted from the database."}
+    return {"message": f"Student {student.email} deleted successfully."}
+
+
+# LECTURES CRUD
+@router.get("/lectures")
+async def get_admin_lectures(
+    admin: User = Depends(verify_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    if Lecture is None:
+        return []
+    stmt = select(Lecture).order_by(Lecture.lecture_no.desc())
+    res = await db.execute(stmt)
+    return res.scalars().all()
 
 
 @router.post("/lectures")
@@ -219,6 +232,37 @@ async def add_lecture(
     return {"message": "Lecture added successfully."}
 
 
+@router.delete("/lectures/{lecture_id}")
+async def delete_lecture(
+    lecture_id: int,
+    admin: User = Depends(verify_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    if Lecture is None:
+        raise HTTPException(status_code=500, detail="Lecture model is not defined.")
+    stmt = select(Lecture).where(Lecture.id == lecture_id)
+    res = await db.execute(stmt)
+    lec = res.scalar_one_or_none()
+    if not lec:
+        raise HTTPException(status_code=404, detail="Lecture not found.")
+    await db.delete(lec)
+    await db.commit()
+    return {"message": "Lecture deleted successfully."}
+
+
+# MATERIALS CRUD
+@router.get("/materials")
+async def get_admin_materials(
+    admin: User = Depends(verify_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    if Material is None:
+        return []
+    stmt = select(Material).order_by(Material.id.desc())
+    res = await db.execute(stmt)
+    return res.scalars().all()
+
+
 @router.post("/materials")
 async def add_material(
     payload: MaterialCreate,
@@ -236,3 +280,21 @@ async def add_material(
     db.add(material)
     await db.commit()
     return {"message": "Lecture material added successfully."}
+
+
+@router.delete("/materials/{material_id}")
+async def delete_material(
+    material_id: int,
+    admin: User = Depends(verify_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    if Material is None:
+        raise HTTPException(status_code=500, detail="Material model is not defined.")
+    stmt = select(Material).where(Material.id == material_id)
+    res = await db.execute(stmt)
+    mat = res.scalar_one_or_none()
+    if not mat:
+        raise HTTPException(status_code=404, detail="Material not found.")
+    await db.delete(mat)
+    await db.commit()
+    return {"message": "Material deleted successfully."}

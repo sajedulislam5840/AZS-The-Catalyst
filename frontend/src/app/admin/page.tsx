@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 interface Student {
-    id: number;
+    id: string;
     full_name: string;
     email: string;
     school?: string;
@@ -33,7 +33,7 @@ export default function AdminPage() {
     const [activeTab, setActiveTab] = useState<"students" | "video" | "sheet">("students");
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
-    const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+    const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
     const [lectureForm, setLectureForm] = useState({
         lecture_no: 1,
@@ -58,17 +58,22 @@ export default function AdminPage() {
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
         try {
             const res = await fetch(`${backendUrl}/api/v1/admin/students`, {
-                headers: { Authorization: `Bearer ${token}` },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: "application/json",
+                },
             });
+
             if (res.status === 403 || res.status === 401) {
-                alert("Access restricted to instructors and administrators.");
+                alert("Session expired or admin privileges required.");
                 router.push("/login");
                 return;
             }
+
             const data = await res.json();
             setStudents(Array.isArray(data) ? data : []);
         } catch (err) {
-            console.error(err);
+            console.error("Failed to fetch students:", err);
         } finally {
             setLoading(false);
         }
@@ -78,7 +83,7 @@ export default function AdminPage() {
         fetchStudents();
     }, []);
 
-    const handleApproveOrRenew = async (studentId: number) => {
+    const handleApproveOrRenew = async (studentId: string) => {
         setActionLoadingId(studentId);
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
         try {
@@ -86,16 +91,22 @@ export default function AdminPage() {
                 `${backendUrl}/api/v1/admin/students/${studentId}/approve-and-pay`,
                 {
                     method: "POST",
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: "application/json",
+                    },
                 }
             );
+
             if (res.ok) {
                 await fetchStudents();
             } else {
-                alert("Failed to update student subscription.");
+                const errData = await res.json();
+                alert(errData.detail || "Failed to update student subscription.");
             }
         } catch (err) {
             console.error(err);
+            alert("Network error updating student status.");
         } finally {
             setActionLoadingId(null);
         }
@@ -123,6 +134,8 @@ export default function AdminPage() {
                     subject: "Physics",
                     video_url: "",
                 });
+            } else {
+                alert("Failed to create lecture.");
             }
         } catch (err) {
             alert("Failed to create lecture.");
@@ -144,6 +157,8 @@ export default function AdminPage() {
             if (res.ok) {
                 alert("Lecture sheet uploaded successfully.");
                 setSheetForm({ title: "", chapter: "", subject: "Physics", file_url: "" });
+            } else {
+                alert("Failed to create material.");
             }
         } catch (err) {
             alert("Failed to create material.");
@@ -155,13 +170,13 @@ export default function AdminPage() {
             <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-30">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-rose-600 rounded-xl shadow-lg">
+                        <div className="p-2 bg-indigo-600 rounded-xl shadow-lg">
                             <ShieldCheck className="w-5 h-5 text-white" />
                         </div>
                         <div>
                             <span className="font-bold text-lg text-white">EduTrack Admin</span>
-                            <span className="text-xs text-rose-400 ml-2 font-mono px-2 py-0.5 bg-rose-500/10 rounded-full border border-rose-500/20">
-                                Instructor Portal
+                            <span className="text-xs text-indigo-400 ml-2 font-mono px-2 py-0.5 bg-indigo-500/10 rounded-full border border-indigo-500/20">
+                                Instructor Console
                             </span>
                         </div>
                     </div>
@@ -197,7 +212,7 @@ export default function AdminPage() {
 
                         <button
                             onClick={() => {
-                                localStorage.removeItem("token");
+                                localStorage.clear();
                                 router.push("/login");
                             }}
                             className="text-slate-400 hover:text-rose-400 p-2 rounded-lg ml-2"
@@ -216,7 +231,7 @@ export default function AdminPage() {
                             <div>
                                 <h1 className="text-2xl font-bold text-white">Batch Students & Billing</h1>
                                 <p className="text-slate-400 text-xs mt-1">
-                                    Verify cash payments and grant 30-day recurring batch access
+                                    Confirm student registrations, verify payments, and grant 30-day recurring batch access
                                 </p>
                             </div>
                             <button
@@ -231,6 +246,10 @@ export default function AdminPage() {
                         {loading ? (
                             <div className="py-20 flex justify-center text-slate-400">
                                 <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+                            </div>
+                        ) : students.length === 0 ? (
+                            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-400">
+                                No student accounts found yet.
                             </div>
                         ) : (
                             <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
@@ -264,16 +283,16 @@ export default function AdminPage() {
                                                     </td>
                                                     <td className="py-3.5 px-4">
                                                         {!student.is_approved ? (
-                                                            <span className="inline-flex items-center text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                                                                <Clock className="w-3 h-3 mr-1" /> Pending
+                                                            <span className="inline-flex items-center text-xs text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20 font-medium">
+                                                                <Clock className="w-3 h-3 mr-1.5" /> Pending Approval
                                                             </span>
                                                         ) : student.days_left > 0 ? (
-                                                            <span className="inline-flex items-center text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                                                <CheckCircle className="w-3 h-3 mr-1" /> Active
+                                                            <span className="inline-flex items-center text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 font-medium">
+                                                                <CheckCircle className="w-3 h-3 mr-1.5" /> Active Access
                                                             </span>
                                                         ) : (
-                                                            <span className="inline-flex items-center text-xs text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
-                                                                <AlertCircle className="w-3 h-3 mr-1" /> Expired
+                                                            <span className="inline-flex items-center text-xs text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20 font-medium">
+                                                                <AlertCircle className="w-3 h-3 mr-1.5" /> Expired
                                                             </span>
                                                         )}
                                                     </td>
@@ -288,7 +307,7 @@ export default function AdminPage() {
                                                         <button
                                                             onClick={() => handleApproveOrRenew(student.id)}
                                                             disabled={actionLoadingId === student.id}
-                                                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md transition-all ${!student.is_approved
+                                                            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold shadow-md transition-all ${!student.is_approved
                                                                     ? "bg-amber-600 hover:bg-amber-500 text-white"
                                                                     : "bg-emerald-600 hover:bg-emerald-500 text-white"
                                                                 }`}
@@ -296,7 +315,7 @@ export default function AdminPage() {
                                                             {actionLoadingId === student.id ? (
                                                                 <Loader2 className="w-3 h-3 animate-spin mx-auto" />
                                                             ) : !student.is_approved ? (
-                                                                "Approve & Start 30D"
+                                                                "Confirm & Grant 30 Days"
                                                             ) : (
                                                                 "Paid: +30 Days"
                                                             )}
@@ -460,7 +479,7 @@ export default function AdminPage() {
 
                             <button
                                 type="submit"
-                                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg"
+                                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg"
                             >
                                 Save Material
                             </button>

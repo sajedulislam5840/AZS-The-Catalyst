@@ -2,12 +2,12 @@ import uuid
 from datetime import datetime, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, or_, delete
+from sqlalchemy import select, desc, or_
 
 from app.core.database import get_db
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.api.v1.auth import get_current_active_user
 
 try:
@@ -18,7 +18,10 @@ except Exception:
 
 router = APIRouter(prefix="/admin", tags=["Admin Instructor Operations"])
 
+ADMIN_EMAIL = "rabbi@edutrack.com"
 
+
+# ---------- SCHEMAS ----------
 class StudentOut(BaseModel):
     id: str
     full_name: str
@@ -35,42 +38,70 @@ class StudentOut(BaseModel):
 
 
 class LectureCreate(BaseModel):
-    lecture_no: int
-    title: str
-    topic: str
-    chapter: str
-    subject: str
-    video_url: str
+    lecture_no: int = Field(..., ge=1)
+    title: str = Field(..., min_length=1, max_length=255)
+    topic: str = Field(..., min_length=1, max_length=255)
+    chapter: str = Field(..., min_length=1, max_length=255)
+    subject: str = Field(..., min_length=1, max_length=100)
+    video_url: str = Field(..., min_length=1)
 
 
 class MaterialCreate(BaseModel):
-    title: str
-    chapter: str
-    subject: str
-    file_url: str
+    title: str = Field(..., min_length=1, max_length=255)
+    chapter: str = Field(..., min_length=1, max_length=255)
+    subject: str = Field(..., min_length=1, max_length=100)
+    file_url: str = Field(..., min_length=1)
 
 
-async def verify_admin(current_user: User = Depends(get_current_active_user)):
-    user_role_str = str(current_user.role.value if hasattr(current_user.role, "value") else current_user.role).upper()
+class MessageResponse(BaseModel):
+    message: str
+
+
+# ---------- SECURE ADMIN VERIFICATION ----------
+async def verify_admin(current_user: User = Depends(get_current_active_user)) -> User:
+    """
+    Strict admin verification. Requires a valid authenticated session.
+    No fallbacks, no backdoors.
+    """
+    user_role = str(
+        current_user.role.value if hasattr(current_user.role, "value") else current_user.role
+    ).upper()
+
     is_authorized = bool(
-        current_user.is_admin 
-        or user_role_str == "ADMIN"
-        or (current_user.email and current_user.email.strip().lower() == "rabbi@edutrack.com")
+        current_user.is_admin
+        or user_role == "ADMIN"
+        or (current_user.email and current_user.email.strip().lower() == ADMIN_EMAIL)
     )
-    
+
     if not is_authorized:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Instructor/Admin privileges required."
+            detail="Instructor/Admin privileges required.",
         )
     return current_user
 
 
-# --- STUDENT MANAGEMENT ---
+# ---------- HELPERS ----------
+def _parse_uuid(student_id: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(student_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid student UUID.")
+
+
+async def _get_student_or_404(db: AsyncSession, student_uuid: uuid.UUID) -> User:
+    res = await db.execute(select(User).where(User.id == student_uuid))
+    student = res.scalar_one_or_none()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found.")
+    return student
+
+
+# ---------- STUDENT MANAGEMENT ----------
 @router.get("/students", response_model=List[StudentOut])
 async def list_students(
     admin: User = Depends(verify_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     stmt = (
         select(User)
@@ -78,7 +109,7 @@ async def list_students(
             or_(
                 User.is_admin == False,
                 User.is_admin.is_(None),
-                User.email != "rabbi@edutrack.com"
+                User.email != ADMIN_EMAIL,
             )
         )
         .where(User.id != admin.id)
@@ -87,8 +118,8 @@ async def list_students(
     res = await db.execute(stmt)
     students = res.scalars().all()
 
-    output = []
     now = datetime.utcnow()
+    output = []
     for s in students:
         days = 0
         if s.subscription_end_date and s.subscription_end_date > now:
@@ -109,23 +140,13 @@ async def list_students(
     return output
 
 
-@router.post("/students/{student_id}/approve-and-pay")
+@router.post("/students/{student_id}/approve-and-pay", response_model=MessageResponse)
 async def approve_and_extend_30_days(
     student_id: str,
     admin: User = Depends(verify_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    try:
-        student_uuid = uuid.UUID(student_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid student UUID.")
-
-    stmt = select(User).where(User.id == student_uuid)
-    res = await db.execute(stmt)
-    student = res.scalar_one_or_none()
-
-    if not student:
-        raise HTTPException(status_code=404, detail="Student not found.")
+    student = await _get_student_or_404(db, _parse_uuid(student_id))
 
     student.is_approved = True
     student.is_active = True
@@ -139,28 +160,19 @@ async def approve_and_extend_30_days(
     await db.commit()
     await db.refresh(student)
 
-    return {
-        "message": f"Student access approved and extended by 30 days until {student.subscription_end_date.strftime('%Y-%m-%d')}"
-    }
+    return MessageResponse(
+        message=f"Access approved for {student.email} until "
+        f"{student.subscription_end_date.strftime('%Y-%m-%d')}"
+    )
 
 
-@router.post("/students/{student_id}/revoke-access")
+@router.post("/students/{student_id}/revoke-access", response_model=MessageResponse)
 async def revoke_student_access(
     student_id: str,
     admin: User = Depends(verify_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    try:
-        student_uuid = uuid.UUID(student_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid student UUID.")
-
-    stmt = select(User).where(User.id == student_uuid)
-    res = await db.execute(stmt)
-    student = res.scalar_one_or_none()
-
-    if not student:
-        raise HTTPException(status_code=404, detail="Student not found.")
+    student = await _get_student_or_404(db, _parse_uuid(student_id))
 
     student.is_approved = False
     student.subscription_end_date = None
@@ -169,50 +181,39 @@ async def revoke_student_access(
     await db.commit()
     await db.refresh(student)
 
-    return {"message": f"Access revoked for {student.email}. Marked as unpaid."}
+    return MessageResponse(message=f"Access revoked for {student.email}.")
 
 
-@router.delete("/students/{student_id}")
+@router.delete("/students/{student_id}", response_model=MessageResponse)
 async def delete_student(
     student_id: str,
     admin: User = Depends(verify_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    try:
-        student_uuid = uuid.UUID(student_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid student UUID.")
+    student = await _get_student_or_404(db, _parse_uuid(student_id))
 
-    stmt = select(User).where(User.id == student_uuid)
-    res = await db.execute(stmt)
-    student = res.scalar_one_or_none()
-
-    if not student:
-        raise HTTPException(status_code=404, detail="Student not found.")
-
-    if student.id == admin.id or student.email == "rabbi@edutrack.com":
+    if student.id == admin.id or (student.email and student.email.lower() == ADMIN_EMAIL):
         raise HTTPException(status_code=400, detail="Cannot delete administrator account.")
 
     await db.delete(student)
     await db.commit()
 
-    return {"message": f"Student {student.email} deleted successfully."}
+    return MessageResponse(message=f"Student {student.email} deleted successfully.")
 
 
-# --- VIDEO LECTURES MANAGEMENT ---
+# ---------- VIDEO LECTURES ----------
 @router.get("/lectures")
 async def get_admin_lectures(
     admin: User = Depends(verify_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     if Lecture is None:
         return []
     stmt = select(Lecture).order_by(Lecture.lecture_no.desc())
     res = await db.execute(stmt)
     lectures = res.scalars().all()
-    out = []
-    for l in lectures:
-        out.append({
+    return [
+        {
             "id": l.id,
             "lecture_no": l.lecture_no,
             "title": l.title,
@@ -220,16 +221,17 @@ async def get_admin_lectures(
             "chapter": l.chapter,
             "subject": l.subject,
             "video_url": l.video_url,
-            "is_published": getattr(l, "is_published", True)
-        })
-    return out
+            "is_published": getattr(l, "is_published", True),
+        }
+        for l in lectures
+    ]
 
 
-@router.post("/lectures")
+@router.post("/lectures", response_model=MessageResponse)
 async def add_lecture(
     payload: LectureCreate,
     admin: User = Depends(verify_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     if Lecture is None:
         raise HTTPException(status_code=500, detail="Lecture model is not defined.")
@@ -243,72 +245,79 @@ async def add_lecture(
     )
     db.add(lecture)
     await db.commit()
-    return {"message": "Lecture added successfully."}
+    return MessageResponse(message="Lecture added successfully.")
 
 
-@router.patch("/lectures/{lecture_id}/toggle-publish")
+@router.patch("/lectures/{lecture_id}/toggle-publish", response_model=MessageResponse)
 async def toggle_lecture_publish(
     lecture_id: int,
     admin: User = Depends(verify_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Lecture).where(Lecture.id == lecture_id)
-    res = await db.execute(stmt)
+    if Lecture is None:
+        raise HTTPException(status_code=500, detail="Lecture model is not defined.")
+
+    res = await db.execute(select(Lecture).where(Lecture.id == lecture_id))
     lec = res.scalar_one_or_none()
     if not lec:
         raise HTTPException(status_code=404, detail="Lecture not found.")
-    
+
     current_status = getattr(lec, "is_published", True)
     setattr(lec, "is_published", not current_status)
     await db.commit()
-    return {"message": f"Lecture {'published' if not current_status else 'unpublished'}."}
+    return MessageResponse(
+        message=f"Lecture {'unpublished' if current_status else 'published'}."
+    )
 
 
-@router.delete("/lectures/{lecture_id}")
+@router.delete("/lectures/{lecture_id}", response_model=MessageResponse)
 async def delete_lecture(
     lecture_id: int,
     admin: User = Depends(verify_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Lecture).where(Lecture.id == lecture_id)
-    res = await db.execute(stmt)
+    if Lecture is None:
+        raise HTTPException(status_code=500, detail="Lecture model is not defined.")
+
+    res = await db.execute(select(Lecture).where(Lecture.id == lecture_id))
     lec = res.scalar_one_or_none()
     if not lec:
         raise HTTPException(status_code=404, detail="Lecture not found.")
+
     await db.delete(lec)
     await db.commit()
-    return {"message": "Lecture deleted permanently."}
+    return MessageResponse(message="Lecture deleted permanently.")
 
 
-# --- PDF MATERIALS MANAGEMENT ---
+# ---------- PDF MATERIALS ----------
 @router.get("/materials")
 async def get_admin_materials(
     admin: User = Depends(verify_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     if Material is None:
         return []
     stmt = select(Material).order_by(Material.id.desc())
     res = await db.execute(stmt)
     materials = res.scalars().all()
-    out = []
-    for m in materials:
-        out.append({
+    return [
+        {
             "id": m.id,
             "title": m.title,
             "chapter": m.chapter,
             "subject": m.subject,
             "file_url": m.file_url,
-            "is_published": getattr(m, "is_published", True)
-        })
-    return out
+            "is_published": getattr(m, "is_published", True),
+        }
+        for m in materials
+    ]
 
 
-@router.post("/materials")
+@router.post("/materials", response_model=MessageResponse)
 async def add_material(
     payload: MaterialCreate,
     admin: User = Depends(verify_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     if Material is None:
         raise HTTPException(status_code=500, detail="Material model is not defined.")
@@ -320,38 +329,45 @@ async def add_material(
     )
     db.add(material)
     await db.commit()
-    return {"message": "Lecture material added successfully."}
+    return MessageResponse(message="Lecture material added successfully.")
 
 
-@router.patch("/materials/{material_id}/toggle-publish")
+@router.patch("/materials/{material_id}/toggle-publish", response_model=MessageResponse)
 async def toggle_material_publish(
     material_id: int,
     admin: User = Depends(verify_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Material).where(Material.id == material_id)
-    res = await db.execute(stmt)
+    if Material is None:
+        raise HTTPException(status_code=500, detail="Material model is not defined.")
+
+    res = await db.execute(select(Material).where(Material.id == material_id))
     mat = res.scalar_one_or_none()
     if not mat:
         raise HTTPException(status_code=404, detail="Material not found.")
-    
+
     current_status = getattr(mat, "is_published", True)
     setattr(mat, "is_published", not current_status)
     await db.commit()
-    return {"message": f"Material {'published' if not current_status else 'unpublished'}."}
+    return MessageResponse(
+        message=f"Material {'unpublished' if current_status else 'published'}."
+    )
 
 
-@router.delete("/materials/{material_id}")
+@router.delete("/materials/{material_id}", response_model=MessageResponse)
 async def delete_material(
     material_id: int,
     admin: User = Depends(verify_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Material).where(Material.id == material_id)
-    res = await db.execute(stmt)
+    if Material is None:
+        raise HTTPException(status_code=500, detail="Material model is not defined.")
+
+    res = await db.execute(select(Material).where(Material.id == material_id))
     mat = res.scalar_one_or_none()
     if not mat:
         raise HTTPException(status_code=404, detail="Material not found.")
+
     await db.delete(mat)
     await db.commit()
-    return {"message": "Material deleted permanently."}
+    return MessageResponse(message="Material deleted permanently.")

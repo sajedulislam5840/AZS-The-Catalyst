@@ -568,7 +568,14 @@ function DashboardContent() {
                     <div className="space-y-8">
                         <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 rounded-2xl overflow-hidden bg-slate-900 border border-slate-200 shadow-md flex items-center justify-center shrink-0 p-1">
-                                <img src="/logo.png" alt="AZS Logo" className="w-full h-full object-contain" />
+                                <img
+                                    src="/logo.png"
+                                    alt="AZS Logo"
+                                    className="w-full h-full object-contain"
+                                    onError={(e) => {
+                                        (e.target as HTMLElement).style.display = 'none';
+                                    }}
+                                />
                             </div>
                             <div>
                                 <span className="font-extrabold text-sm tracking-tight text-slate-900 block leading-tight">AZS</span>

@@ -48,6 +48,16 @@ class LectureUpdate(BaseModel):
     video_url: Optional[str] = None
 
 
+class SwapOrderPayload(BaseModel):
+    lecture_id_1: str
+    lecture_id_2: str
+
+
+class NormalizeOrderPayload(BaseModel):
+    subject: str
+    chapter: str
+
+
 class MaterialCreate(BaseModel):
     title: str
     chapter: str
@@ -235,7 +245,7 @@ async def get_admin_lectures(
     admin: User = Depends(verify_admin_token),
     db: AsyncSession = Depends(get_db)
 ):
-    stmt = select(VideoLecture).order_by(VideoLecture.lecture_no.desc())
+    stmt = select(VideoLecture).order_by(VideoLecture.lecture_no.asc())
     res = await db.execute(stmt)
     lectures = res.scalars().all()
     return [
@@ -274,7 +284,6 @@ async def add_lecture(
     return {"message": "Lecture added successfully."}
 
 
-# Edit / Update Lecture
 @router.put("/lectures/{lecture_id}")
 async def update_lecture(
     lecture_id: str,
@@ -307,6 +316,61 @@ async def update_lecture(
     await db.commit()
     await db.refresh(lec)
     return {"message": "Lecture updated successfully."}
+
+
+# Feature 4: Swap Order between two lectures
+@router.post("/lectures/swap-order")
+async def swap_lecture_order(
+    payload: SwapOrderPayload,
+    admin: User = Depends(verify_admin_token),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        u1 = uuid.UUID(payload.lecture_id_1)
+        u2 = uuid.UUID(payload.lecture_id_2)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID format.")
+
+    res1 = await db.execute(select(VideoLecture).where(VideoLecture.id == u1))
+    lec1 = res1.scalar_one_or_none()
+
+    res2 = await db.execute(select(VideoLecture).where(VideoLecture.id == u2))
+    lec2 = res2.scalar_one_or_none()
+
+    if not lec1 or not lec2:
+        raise HTTPException(status_code=404, detail="One or both lectures not found.")
+
+    # Swap the lecture numbers
+    temp = lec1.lecture_no
+    lec1.lecture_no = lec2.lecture_no
+    lec2.lecture_no = temp
+
+    await db.commit()
+    return {"message": "Lecture sequence swapped successfully."}
+
+
+# Feature 4: Renumber whole chapter from 1 to N
+@router.post("/lectures/normalize-order")
+async def normalize_lecture_order(
+    payload: NormalizeOrderPayload,
+    admin: User = Depends(verify_admin_token),
+    db: AsyncSession = Depends(get_db)
+):
+    subj_enum = parse_subject_enum(payload.subject)
+    stmt = (
+        select(VideoLecture)
+        .where(VideoLecture.subject == subj_enum)
+        .where(VideoLecture.chapter == payload.chapter.strip())
+        .order_by(VideoLecture.lecture_no.asc(), VideoLecture.created_at.asc())
+    )
+    res = await db.execute(stmt)
+    chapter_lectures = res.scalars().all()
+
+    for idx, lec in enumerate(chapter_lectures, start=1):
+        lec.lecture_no = idx
+
+    await db.commit()
+    return {"message": f"Renumbered {len(chapter_lectures)} lectures sequentially (1..{len(chapter_lectures)})."}
 
 
 @router.patch("/lectures/{lecture_id}/toggle-publish")
@@ -394,7 +458,6 @@ async def add_material(
     return {"message": "Lecture material added successfully."}
 
 
-# Edit / Update Material
 @router.put("/materials/{material_id}")
 async def update_material(
     material_id: str,

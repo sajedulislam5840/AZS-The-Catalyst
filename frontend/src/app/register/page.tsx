@@ -46,12 +46,16 @@ export default function RegisterPage() {
 
             const data = await res.json();
             if (!res.ok) {
-                throw new Error(data.detail || "Registration failed hoyeche.");
+                throw new Error(data.detail || "Registration failed. Please try again.");
             }
 
             setSuccess(true);
         } catch (err: any) {
-            setError(err.message || "Server er shathe jogajog kora jay ni. Abar cheshta korun.");
+            setError(
+                err.message === "Failed to fetch"
+                    ? "Unable to reach the server. The backend may still be waking up on Render or the API URL is not set in Vercel. Please retry in a few seconds."
+                    : err.message || "An unexpected error occurred."
+            );
         } finally {
             setLoading(false);
         }
@@ -72,24 +76,24 @@ export default function RegisterPage() {
                 {success ? (
                     <div className="text-center py-6 space-y-4">
                         <CheckCircle className="w-14 h-14 text-emerald-400 mx-auto" />
-                        <h3 className="text-xl font-bold text-white">Registration Shompurno Hoyeche!</h3>
+                        <h3 className="text-xl font-bold text-white">Registration Submitted!</h3>
                         <p className="text-slate-300 text-sm leading-relaxed">
-                            Tomar account toiri hoyeche. Teacher fee verify kore <strong>Approval</strong> dile login korte parbe.
+                            Your account has been created successfully. Access will be unlocked once your batch instructor confirms your payment and grants approval.
                         </p>
                         <div className="pt-4">
                             <Link
                                 href="/login"
                                 className="inline-flex items-center justify-center px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-all shadow-md"
                             >
-                                Login Page-e Jao
+                                Go to Sign In
                             </Link>
                         </div>
                     </div>
                 ) : (
                     <>
                         <div className="text-center mb-6">
-                            <h2 className="text-xl font-bold text-white">Student Account Toiri Koro</h2>
-                            <p className="text-slate-400 text-xs mt-1">Batch access er jonno shothik tothyo diye form puron koro</p>
+                            <h2 className="text-xl font-bold text-white">Create Student Account</h2>
+                            <p className="text-slate-400 text-xs mt-1">Provide your academic batch details to get started</p>
                         </div>
 
                         {error && (
@@ -136,7 +140,7 @@ export default function RegisterPage() {
                                     <input
                                         type="password"
                                         required
-                                        placeholder="Min 6 characters"
+                                        placeholder="At least 6 characters"
                                         value={formData.password}
                                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                         className="bg-transparent border-none outline-none w-full text-slate-100 placeholder-slate-500"
@@ -161,7 +165,7 @@ export default function RegisterPage() {
                                 </div>
 
                                 <div>
-                                    <label className="text-xs text-slate-400 block mb-1">Class</label>
+                                    <label className="text-xs text-slate-400 block mb-1">Class / Grade</label>
                                     <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm focus-within:border-indigo-500">
                                         <GraduationCap className="w-4 h-4 text-slate-400 mr-2" />
                                         <select
@@ -180,13 +184,13 @@ export default function RegisterPage() {
                             </div>
 
                             <div>
-                                <label className="text-xs text-slate-400 block mb-1">Batch</label>
+                                <label className="text-xs text-slate-400 block mb-1">Batch Assignment</label>
                                 <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm focus-within:border-indigo-500">
                                     <Users className="w-4 h-4 text-slate-400 mr-2" />
                                     <input
                                         type="text"
                                         required
-                                        placeholder="e.g. Batch 05"
+                                        placeholder="e.g. Batch 01"
                                         value={formData.batchNo}
                                         onChange={(e) => setFormData({ ...formData, batchNo: e.target.value })}
                                         className="bg-transparent border-none outline-none w-full text-slate-100 placeholder-slate-500 text-xs"
@@ -203,7 +207,7 @@ export default function RegisterPage() {
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
                                     <>
-                                        <span>Registration Submit Koro</span>
+                                        <span>Submit Registration</span>
                                         <ArrowRight className="w-4 h-4" />
                                     </>
                                 )}
@@ -211,9 +215,9 @@ export default function RegisterPage() {
                         </form>
 
                         <div className="mt-5 text-center text-xs text-slate-400">
-                            Already account ache?{" "}
+                            Already have an account?{" "}
                             <Link href="/login" className="text-indigo-400 hover:underline font-medium">
-                                Login koro
+                                Sign In
                             </Link>
                         </div>
                     </>

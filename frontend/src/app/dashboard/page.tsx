@@ -566,1029 +566,1047 @@ export default function StudentDashboardPage() {
     if (!mounted) return null;
 
     return (
-        <div className="min-h-screen bg-[#F4F6FA] text-slate-800 flex font-sans antialiased">
-            {/* 1. LEFT SIDEBAR */}
-            <aside className="w-64 bg-white border-r border-slate-200/80 p-6 flex flex-col justify-between shrink-0 hidden md:flex">
-                <div className="space-y-8">
-                    <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-indigo-600/20">
-                            E
+        <div className="min-h-screen bg-[#F4F6FA] text-slate-800 flex flex-col font-sans antialiased">
+            <div className="flex-1 flex min-w-0">
+                {/* 1. LEFT SIDEBAR */}
+                <aside className="w-64 bg-white border-r border-slate-200/80 p-6 flex flex-col justify-between shrink-0 hidden md:flex">
+                    <div className="space-y-8">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-indigo-600/20">
+                                E
+                            </div>
+                            <div>
+                                <span className="font-extrabold text-xl tracking-tight text-slate-900">EduTrack</span>
+                                <span className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                                    Student Suite
+                                </span>
+                            </div>
                         </div>
-                        <div>
-                            <span className="font-extrabold text-xl tracking-tight text-slate-900">EduTrack</span>
-                            <span className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                                Student Suite
-                            </span>
-                        </div>
+
+                        <nav className="space-y-1.5">
+                            <button
+                                onClick={() => {
+                                    setActiveNav("dashboard");
+                                    setSearchQuery("");
+                                }}
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${activeNav === "dashboard"
+                                        ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
+                                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                    }`}
+                            >
+                                <LayoutDashboard className="w-4 h-4" />
+                                <span>Dashboard</span>
+                            </button>
+
+                            <button
+                                onClick={() => setActiveNav("lectures")}
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${activeNav === "lectures"
+                                        ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
+                                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                    }`}
+                            >
+                                <PlayCircle className="w-4 h-4" />
+                                <span>Video Lectures</span>
+                                <span className="ml-auto text-[10px] bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-full font-mono">
+                                    {videos.length}
+                                </span>
+                            </button>
+
+                            <button
+                                onClick={() => setActiveNav("materials")}
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${activeNav === "materials"
+                                        ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
+                                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                    }`}
+                            >
+                                <FileText className="w-4 h-4" />
+                                <span>Study Sheets (PDF)</span>
+                                <span className="ml-auto text-[10px] bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-full font-mono">
+                                    {materials.length}
+                                </span>
+                            </button>
+
+                            <button
+                                onClick={() => setActiveNav("ai")}
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${activeNav === "ai"
+                                        ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
+                                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                    }`}
+                            >
+                                <Bot className="w-4 h-4 text-indigo-500" />
+                                <span>AI Tutor</span>
+                                <span className="ml-auto text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold">
+                                    Online
+                                </span>
+                            </button>
+                        </nav>
                     </div>
 
-                    <nav className="space-y-1.5">
+                    <div className="pt-6 border-t border-slate-100 space-y-3">
+                        <div className="flex items-center space-x-3 px-2">
+                            <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center font-extrabold text-indigo-600 text-sm shadow-sm shrink-0">
+                                {userProfile.full_name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="overflow-hidden">
+                                <p className="text-xs font-bold text-slate-900 truncate">
+                                    {userProfile.full_name}
+                                </p>
+                                <p className="text-[10px] text-slate-400 font-medium truncate">
+                                    {userProfile.batch_no || userProfile.email || "Registered Student"}
+                                </p>
+                            </div>
+                        </div>
+
                         <button
-                            onClick={() => {
-                                setActiveNav("dashboard");
-                                setSearchQuery("");
-                            }}
-                            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${activeNav === "dashboard"
-                                    ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
-                                }`}
+                            onClick={handleLogout}
+                            className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-50 transition"
                         >
-                            <LayoutDashboard className="w-4 h-4" />
-                            <span>Dashboard</span>
+                            <LogOut className="w-4 h-4" />
+                            <span>Sign Out</span>
                         </button>
-
-                        <button
-                            onClick={() => setActiveNav("lectures")}
-                            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${activeNav === "lectures"
-                                    ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
-                                }`}
-                        >
-                            <PlayCircle className="w-4 h-4" />
-                            <span>Video Lectures</span>
-                            <span className="ml-auto text-[10px] bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-full font-mono">
-                                {videos.length}
-                            </span>
-                        </button>
-
-                        <button
-                            onClick={() => setActiveNav("materials")}
-                            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${activeNav === "materials"
-                                    ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
-                                }`}
-                        >
-                            <FileText className="w-4 h-4" />
-                            <span>Study Sheets (PDF)</span>
-                            <span className="ml-auto text-[10px] bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-full font-mono">
-                                {materials.length}
-                            </span>
-                        </button>
-
-                        <button
-                            onClick={() => setActiveNav("ai")}
-                            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${activeNav === "ai"
-                                    ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
-                                }`}
-                        >
-                            <Bot className="w-4 h-4 text-indigo-500" />
-                            <span>AI Tutor</span>
-                            <span className="ml-auto text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold">
-                                Online
-                            </span>
-                        </button>
-                    </nav>
-                </div>
-
-                <div className="pt-6 border-t border-slate-100 space-y-3">
-                    <div className="flex items-center space-x-3 px-2">
-                        <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center font-extrabold text-indigo-600 text-sm shadow-sm shrink-0">
-                            {userProfile.full_name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="overflow-hidden">
-                            <p className="text-xs font-bold text-slate-900 truncate">
-                                {userProfile.full_name}
-                            </p>
-                            <p className="text-[10px] text-slate-400 font-medium truncate">
-                                {userProfile.batch_no || userProfile.email || "Registered Student"}
-                            </p>
-                        </div>
                     </div>
+                </aside>
 
-                    <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-50 transition"
-                    >
-                        <LogOut className="w-4 h-4" />
-                        <span>Sign Out</span>
-                    </button>
-                </div>
-            </aside>
-
-            {/* 2. MAIN WORKSPACE */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-                <header className="h-20 bg-white/70 backdrop-blur-md border-b border-slate-200/80 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-30">
-                    <div className="flex-1 max-w-md">
-                        <div className="relative flex items-center">
-                            <Search className="w-4 h-4 text-slate-400 absolute left-3.5" />
-                            <input
-                                type="text"
-                                placeholder="Search topic or chapter..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-[#F4F6FA] border border-transparent focus:border-slate-300 rounded-2xl pl-10 pr-9 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none transition"
-                            />
-                            {searchQuery && (
-                                <button
-                                    onClick={() => setSearchQuery("")}
-                                    className="absolute right-3 text-slate-400 hover:text-slate-600"
-                                >
-                                    <X className="w-3.5 h-3.5" />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200/60 rounded-full text-amber-700 text-xs font-bold">
-                            <Flame className="w-4 h-4 text-amber-500" />
-                            <span>Streak Active</span>
+                {/* 2. MAIN WORKSPACE */}
+                <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+                    <header className="h-20 bg-white/70 backdrop-blur-md border-b border-slate-200/80 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-30">
+                        <div className="flex-1 max-w-md">
+                            <div className="relative flex items-center">
+                                <Search className="w-4 h-4 text-slate-400 absolute left-3.5" />
+                                <input
+                                    type="text"
+                                    placeholder="Search topic or chapter..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full bg-[#F4F6FA] border border-transparent focus:border-slate-300 rounded-2xl pl-10 pr-9 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none transition"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery("")}
+                                        className="absolute right-3 text-slate-400 hover:text-slate-600"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
-                        <div className="p-2.5 rounded-2xl bg-slate-100 text-slate-600 relative">
-                            <Bell className="w-4 h-4" />
-                            {notice && <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 animate-ping" />}
-                        </div>
-                    </div>
-                </header>
-
-                {notice && (
-                    <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 px-6 py-2.5 flex items-center space-x-3 shadow-sm">
-                        <span className="px-2 py-0.5 rounded bg-black text-amber-400 font-black text-[10px] tracking-wider uppercase">
-                            Notice
-                        </span>
-                        <p className="text-xs font-bold text-white flex-1 truncate">{notice.content}</p>
-                    </div>
-                )}
-
-                <main className="p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8">
-                    {/* SEARCH RESULTS VIEW */}
-                    {isSearchActive && (
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-                                        <Search className="w-5 h-5 text-indigo-600" />
-                                        <span>Search Results for &ldquo;{searchQuery}&rdquo;</span>
-                                    </h2>
-                                    <p className="text-xs text-slate-400 mt-0.5">
-                                        Found {filteredVideos.length} lectures and {filteredMaterials.length} study sheets.
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => setSearchQuery("")}
-                                    className="text-xs font-bold text-slate-500 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl transition"
-                                >
-                                    Clear Search
-                                </button>
+                        <div className="flex items-center space-x-4">
+                            <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200/60 rounded-full text-amber-700 text-xs font-bold">
+                                <Flame className="w-4 h-4 text-amber-500" />
+                                <span>Streak Active</span>
                             </div>
 
-                            {!hasSearchResults ? (
-                                <div className="bg-white rounded-3xl p-16 text-center border border-slate-200 shadow-sm space-y-4">
-                                    <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
-                                        <SearchX className="w-8 h-8" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <h3 className="text-base font-extrabold text-slate-800">
-                                            No Results Found
-                                        </h3>
-                                        <p className="text-xs text-slate-500 max-w-md mx-auto">
-                                            We couldn&apos;t find any lectures or study sheets matching &ldquo;{searchQuery}&rdquo;.
+                            <div className="p-2.5 rounded-2xl bg-slate-100 text-slate-600 relative">
+                                <Bell className="w-4 h-4" />
+                                {notice && <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 animate-ping" />}
+                            </div>
+                        </div>
+                    </header>
+
+                    {notice && (
+                        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 px-6 py-2.5 flex items-center space-x-3 shadow-sm">
+                            <span className="px-2 py-0.5 rounded bg-black text-amber-400 font-black text-[10px] tracking-wider uppercase">
+                                Notice
+                            </span>
+                            <p className="text-xs font-bold text-white flex-1 truncate">{notice.content}</p>
+                        </div>
+                    )}
+
+                    <main className="p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8 flex-1">
+                        {/* SEARCH RESULTS VIEW */}
+                        {isSearchActive && (
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                                            <Search className="w-5 h-5 text-indigo-600" />
+                                            <span>Search Results for &ldquo;{searchQuery}&rdquo;</span>
+                                        </h2>
+                                        <p className="text-xs text-slate-400 mt-0.5">
+                                            Found {filteredVideos.length} lectures and {filteredMaterials.length} study sheets.
                                         </p>
                                     </div>
                                     <button
                                         onClick={() => setSearchQuery("")}
-                                        className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition"
+                                        className="text-xs font-bold text-slate-500 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl transition"
                                     >
-                                        Reset & View All Content
+                                        Clear Search
                                     </button>
                                 </div>
-                            ) : (
-                                <div className="space-y-8">
-                                    {filteredVideos.length > 0 && (
-                                        <div className="space-y-4">
-                                            <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
-                                                Video Lectures ({filteredVideos.length})
-                                            </h3>
-                                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                {filteredVideos.map((vid) => {
-                                                    const embedUrl = getYouTubeEmbedUrl(vid.youtube_url || vid.video_url || "");
-                                                    const isWatched = watchedVideos.includes(vid.id);
 
-                                                    return (
-                                                        <div
-                                                            key={vid.id}
-                                                            id={`lecture-card-${vid.id}`}
-                                                            className={`bg-white rounded-3xl overflow-hidden border transition-all duration-200 shadow-sm flex flex-col justify-between ${isWatched ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-200"
-                                                                }`}
-                                                        >
-                                                            <div>
-                                                                <div className="aspect-video w-full bg-slate-900 relative">
-                                                                    {embedUrl ? (
-                                                                        <iframe
-                                                                            src={embedUrl}
-                                                                            title={vid.topic || vid.title || "Lecture"}
-                                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                                            allowFullScreen
-                                                                            className="w-full h-full border-none"
-                                                                        />
-                                                                    ) : (
-                                                                        <div className="h-full flex items-center justify-center text-xs text-slate-400">
-                                                                            Invalid Video Link
+                                {!hasSearchResults ? (
+                                    <div className="bg-white rounded-3xl p-16 text-center border border-slate-200 shadow-sm space-y-4">
+                                        <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+                                            <SearchX className="w-8 h-8" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <h3 className="text-base font-extrabold text-slate-800">
+                                                No Results Found
+                                            </h3>
+                                            <p className="text-xs text-slate-500 max-w-md mx-auto">
+                                                We couldn&apos;t find any lectures or study sheets matching &ldquo;{searchQuery}&rdquo;.
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => setSearchQuery("")}
+                                            className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition"
+                                        >
+                                            Reset & View All Content
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-8">
+                                        {filteredVideos.length > 0 && (
+                                            <div className="space-y-4">
+                                                <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+                                                    Video Lectures ({filteredVideos.length})
+                                                </h3>
+                                                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                    {filteredVideos.map((vid) => {
+                                                        const embedUrl = getYouTubeEmbedUrl(vid.youtube_url || vid.video_url || "");
+                                                        const isWatched = watchedVideos.includes(vid.id);
+
+                                                        return (
+                                                            <div
+                                                                key={vid.id}
+                                                                id={`lecture-card-${vid.id}`}
+                                                                className={`bg-white rounded-3xl overflow-hidden border transition-all duration-200 shadow-sm flex flex-col justify-between ${isWatched ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-200"
+                                                                    }`}
+                                                            >
+                                                                <div>
+                                                                    <div className="aspect-video w-full bg-slate-900 relative">
+                                                                        {embedUrl ? (
+                                                                            <iframe
+                                                                                src={embedUrl}
+                                                                                title={vid.topic || vid.title || "Lecture"}
+                                                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                                allowFullScreen
+                                                                                className="w-full h-full border-none"
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="h-full flex items-center justify-center text-xs text-slate-400">
+                                                                                Invalid Video Link
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+
+                                                                    <div className="p-5 space-y-2">
+                                                                        <div className="flex items-center justify-between">
+                                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                                                                                Lecture #{vid.lecture_no}
+                                                                            </span>
+                                                                            <span
+                                                                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
+                                                                                        ? "bg-[#C9B6FD]/30 text-indigo-800"
+                                                                                        : "bg-[#FFE3B3]/50 text-amber-900"
+                                                                                    }`}
+                                                                            >
+                                                                                {vid.subject}
+                                                                            </span>
                                                                         </div>
-                                                                    )}
+
+                                                                        <h4 className="font-extrabold text-sm text-slate-900 line-clamp-2">
+                                                                            {vid.topic || vid.title}
+                                                                        </h4>
+                                                                        <p className="text-xs text-slate-400">{vid.chapter}</p>
+                                                                    </div>
                                                                 </div>
 
-                                                                <div className="p-5 space-y-2">
+                                                                <div className="p-5 pt-0 space-y-2">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            toggleWatchStatus(vid.id);
+                                                                            recordLecturePlayback(vid.id);
+                                                                        }}
+                                                                        className={`w-full py-2.5 rounded-2xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
+                                                                                ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                                                                                : "bg-slate-900 text-white hover:bg-slate-800"
+                                                                            }`}
+                                                                    >
+                                                                        <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {filteredMaterials.length > 0 && (
+                                            <div className="space-y-4">
+                                                <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+                                                    Study Materials ({filteredMaterials.length})
+                                                </h3>
+                                                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                    {filteredMaterials.map((mat) => {
+                                                        const rawFileUrl = mat.pdf_url || mat.file_url || "";
+                                                        const drivePreviewLink = getDrivePreviewUrl(rawFileUrl);
+
+                                                        return (
+                                                            <div
+                                                                key={mat.id}
+                                                                className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between space-y-4"
+                                                            >
+                                                                <div className="space-y-3">
                                                                     <div className="flex items-center justify-between">
-                                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
-                                                                            Lecture #{vid.lecture_no}
-                                                                        </span>
                                                                         <span
-                                                                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
+                                                                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
                                                                                     ? "bg-[#C9B6FD]/30 text-indigo-800"
                                                                                     : "bg-[#FFE3B3]/50 text-amber-900"
                                                                                 }`}
                                                                         >
-                                                                            {vid.subject}
+                                                                            {mat.subject}
                                                                         </span>
+                                                                        <span className="text-[11px] text-slate-400 font-medium">{mat.chapter}</span>
                                                                     </div>
 
-                                                                    <h4 className="font-extrabold text-sm text-slate-900 line-clamp-2">
-                                                                        {vid.topic || vid.title}
-                                                                    </h4>
-                                                                    <p className="text-xs text-slate-400">{vid.chapter}</p>
+                                                                    <div className="flex items-start space-x-3">
+                                                                        <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
+                                                                            PDF
+                                                                        </div>
+                                                                        <div>
+                                                                            <h4 className="font-extrabold text-sm text-slate-900 leading-snug">{mat.title}</h4>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
 
-                                                            <div className="p-5 pt-0 space-y-2">
-                                                                <button
-                                                                    onClick={() => {
-                                                                        toggleWatchStatus(vid.id);
-                                                                        recordLecturePlayback(vid.id);
-                                                                    }}
-                                                                    className={`w-full py-2.5 rounded-2xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
-                                                                            ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                                                                            : "bg-slate-900 text-white hover:bg-slate-800"
-                                                                        }`}
-                                                                >
-                                                                    <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {filteredMaterials.length > 0 && (
-                                        <div className="space-y-4">
-                                            <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
-                                                Study Materials ({filteredMaterials.length})
-                                            </h3>
-                                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                {filteredMaterials.map((mat) => {
-                                                    const rawFileUrl = mat.pdf_url || mat.file_url || "";
-                                                    const drivePreviewLink = getDrivePreviewUrl(rawFileUrl);
-
-                                                    return (
-                                                        <div
-                                                            key={mat.id}
-                                                            className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between space-y-4"
-                                                        >
-                                                            <div className="space-y-3">
-                                                                <div className="flex items-center justify-between">
-                                                                    <span
-                                                                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
-                                                                                ? "bg-[#C9B6FD]/30 text-indigo-800"
-                                                                                : "bg-[#FFE3B3]/50 text-amber-900"
-                                                                            }`}
+                                                                <div className="flex items-center gap-2">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setPreviewPdfUrl(drivePreviewLink);
+                                                                            setPreviewPdfTitle(mat.title);
+                                                                        }}
+                                                                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-2xl text-center transition flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-600/20"
                                                                     >
-                                                                        {mat.subject}
-                                                                    </span>
-                                                                    <span className="text-[11px] text-slate-400 font-medium">{mat.chapter}</span>
-                                                                </div>
+                                                                        <Eye className="w-3.5 h-3.5" />
+                                                                        <span>Preview</span>
+                                                                    </button>
 
-                                                                <div className="flex items-start space-x-3">
-                                                                    <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
-                                                                        PDF
-                                                                    </div>
-                                                                    <div>
-                                                                        <h4 className="font-extrabold text-sm text-slate-900 leading-snug">{mat.title}</h4>
-                                                                    </div>
+                                                                    <a
+                                                                        href={rawFileUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl transition border border-slate-200"
+                                                                        title="Open in new tab / Download"
+                                                                    >
+                                                                        <ExternalLink className="w-3.5 h-3.5" />
+                                                                    </a>
                                                                 </div>
                                                             </div>
-
-                                                            <div className="flex items-center gap-2">
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setPreviewPdfUrl(drivePreviewLink);
-                                                                        setPreviewPdfTitle(mat.title);
-                                                                    }}
-                                                                    className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-2xl text-center transition flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-600/20"
-                                                                >
-                                                                    <Eye className="w-3.5 h-3.5" />
-                                                                    <span>Preview</span>
-                                                                </button>
-
-                                                                <a
-                                                                    href={rawFileUrl}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl transition border border-slate-200"
-                                                                    title="Open in new tab / Download"
-                                                                >
-                                                                    <ExternalLink className="w-3.5 h-3.5" />
-                                                                </a>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* VIEW: DASHBOARD OVERVIEW */}
-                    {!isSearchActive && activeNav === "dashboard" && (
-                        <>
-                            {/* HERO "MY PROGRESS" CARD */}
-                            <div className="space-y-4">
-                                <h2 className="text-lg font-bold text-slate-900 tracking-tight">My progress</h2>
-
-                                <div className="bg-[#1E1E2D] rounded-[32px] p-6 sm:p-8 text-white shadow-xl shadow-slate-900/10 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6">
-                                    <div className="space-y-4 max-w-sm">
-                                        <p className="text-xs text-slate-400 font-medium">
-                                            Hi, {userProfile.full_name}!
-                                        </p>
-                                        <h3 className="text-2xl sm:text-3xl font-extrabold leading-tight">
-                                            You have completed {completedCount} of {totalLectures} lessons so far!
-                                        </h3>
-                                        <button
-                                            onClick={() => setActiveNav("lectures")}
-                                            className="px-5 py-2.5 bg-white text-slate-950 rounded-2xl text-xs font-extrabold flex items-center space-x-2 hover:bg-slate-100 transition shadow-lg"
-                                        >
-                                            <span>SEE ALL LECTURES</span>
-                                            <ExternalLink className="w-3.5 h-3.5" />
-                                        </button>
+                                        )}
                                     </div>
-
-                                    <div className="flex items-center gap-4 overflow-x-auto pb-2 lg:pb-0">
-                                        <div className="w-48 sm:w-52 bg-[#C9B6FD] text-slate-950 rounded-[28px] p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
-                                            <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                                                <span>01</span>
-                                                <span>PHYSICS</span>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <BookOpen className="w-6 h-6 text-slate-900 mb-2" />
-                                                <h4 className="font-extrabold text-sm leading-snug truncate">
-                                                    {chapterStats[0]?.[0] || "আলোর প্রতিফলন"}
-                                                </h4>
-                                                <p className="text-[11px] font-medium text-slate-700">
-                                                    {chapterStats[0]?.[1]?.completed || 0}/{chapterStats[0]?.[1]?.total || 6} lessons |{" "}
-                                                    {chapterStats[0]?.[1]?.total
-                                                        ? Math.round(
-                                                            ((chapterStats[0][1].completed || 0) / chapterStats[0][1].total) * 100
-                                                        )
-                                                        : 0}
-                                                    %
-                                                </p>
-                                            </div>
-                                            <div className="w-full bg-slate-900/20 h-1.5 rounded-full overflow-hidden">
-                                                <div
-                                                    className="bg-slate-950 h-full rounded-full"
-                                                    style={{
-                                                        width: `${chapterStats[0]?.[1]?.total
-                                                                ? Math.round(
-                                                                    ((chapterStats[0][1].completed || 0) / chapterStats[0][1].total) * 100
-                                                                )
-                                                                : 0
-                                                            }%`,
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="w-48 sm:w-52 bg-[#FFE3B3] text-slate-950 rounded-[28px] p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
-                                            <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                                                <span>02</span>
-                                                <span>CHEMISTRY</span>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Sparkles className="w-6 h-6 text-slate-900 mb-2" />
-                                                <h4 className="font-extrabold text-sm leading-snug truncate">
-                                                    {chapterStats[1]?.[0] || "রাসায়নিক বিক্রিয়া"}
-                                                </h4>
-                                                <p className="text-[11px] font-medium text-slate-700">
-                                                    {chapterStats[1]?.[1]?.completed || 0}/{chapterStats[1]?.[1]?.total || 13} lessons |{" "}
-                                                    {chapterStats[1]?.[1]?.total
-                                                        ? Math.round(
-                                                            ((chapterStats[1][1].completed || 0) / chapterStats[1][1].total) * 100
-                                                        )
-                                                        : 0}
-                                                    %
-                                                </p>
-                                            </div>
-                                            <div className="w-full bg-slate-900/20 h-1.5 rounded-full overflow-hidden">
-                                                <div
-                                                    className="bg-slate-950 h-full rounded-full"
-                                                    style={{
-                                                        width: `${chapterStats[1]?.[1]?.total
-                                                                ? Math.round(
-                                                                    ((chapterStats[1][1].completed || 0) / chapterStats[1][1].total) * 100
-                                                                )
-                                                                : 0
-                                                            }%`,
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="w-48 sm:w-52 bg-[#E1FC5B] text-slate-950 rounded-[28px] p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
-                                            <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                                                <span>03</span>
-                                                <span>OVERALL</span>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <CheckCircle2 className="w-6 h-6 text-slate-900 mb-2" />
-                                                <h4 className="font-extrabold text-sm leading-snug">Full Syllabus</h4>
-                                                <p className="text-[11px] font-medium text-slate-700">
-                                                    {completedCount}/{totalLectures} lessons | {completionPercentage}%
-                                                </p>
-                                            </div>
-                                            <div className="w-full bg-slate-900/20 h-1.5 rounded-full overflow-hidden">
-                                                <div
-                                                    className="bg-slate-950 h-full rounded-full"
-                                                    style={{ width: `${completionPercentage}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                )}
                             </div>
+                        )}
 
-                            {/* CONTINUE WATCHING & RESUME BANNER */}
-                            {activeResumeLecture && (
-                                <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-[32px] p-6 text-white border border-indigo-500/20 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-                                    <div className="flex items-center space-x-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center shrink-0 shadow-inner">
-                                            <Play className="w-5 h-5 text-indigo-400 fill-indigo-400" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                                                    Continue Watching
-                                                </span>
-                                                <span className="text-[10px] text-slate-400 font-bold uppercase">
-                                                    {activeResumeLecture.subject}
-                                                </span>
-                                            </div>
-                                            <h4 className="text-sm sm:text-base font-extrabold text-white leading-snug">
-                                                Lecture #{activeResumeLecture.lecture_no}: {activeResumeLecture.topic || activeResumeLecture.title}
-                                            </h4>
-                                            <p className="text-xs text-slate-400">{activeResumeLecture.chapter}</p>
-                                        </div>
-                                    </div>
+                        {/* VIEW: DASHBOARD OVERVIEW */}
+                        {!isSearchActive && activeNav === "dashboard" && (
+                            <>
+                                {/* HERO "MY PROGRESS" CARD */}
+                                <div className="space-y-4">
+                                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">My progress</h2>
 
-                                    <button
-                                        onClick={() => handleResumeLecture(activeResumeLecture.id)}
-                                        className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition shadow-lg shadow-indigo-600/30 flex items-center gap-2 shrink-0 w-full sm:w-auto justify-center"
-                                    >
-                                        <Play className="w-3.5 h-3.5 fill-white" />
-                                        <span>Resume Class</span>
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* STATISTICS & INTERACTIVE STUDY PLANNER CALENDAR */}
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                                <div className="lg:col-span-7 space-y-6">
-                                    <h3 className="text-base font-bold text-slate-900">Statistics</h3>
-
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
-                                            <p className="text-2xl sm:text-3xl font-black text-slate-900">{completedCount}</p>
-                                            <p className="text-xs font-medium text-slate-400 mt-2">Lectures completed</p>
-                                        </div>
-
-                                        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
-                                            <p className="text-2xl sm:text-3xl font-black text-slate-900">{chapterStats.length}</p>
-                                            <p className="text-xs font-medium text-slate-400 mt-2">Chapters in progress</p>
-                                        </div>
-
-                                        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
-                                            <p className="text-2xl sm:text-3xl font-black text-slate-900">{completionPercentage}%</p>
-                                            <p className="text-xs font-medium text-slate-400 mt-2">Syllabus coverage</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="text-base font-bold text-slate-900">Recommended Lectures</h3>
+                                    <div className="bg-[#1E1E2D] rounded-[32px] p-6 sm:p-8 text-white shadow-xl shadow-slate-900/10 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6">
+                                        <div className="space-y-4 max-w-sm">
+                                            <p className="text-xs text-slate-400 font-medium">
+                                                Hi, {userProfile.full_name}!
+                                            </p>
+                                            <h3 className="text-2xl sm:text-3xl font-extrabold leading-tight">
+                                                You have completed {completedCount} of {totalLectures} lessons so far!
+                                            </h3>
                                             <button
                                                 onClick={() => setActiveNav("lectures")}
-                                                className="text-xs font-bold text-indigo-600 hover:underline"
+                                                className="px-5 py-2.5 bg-white text-slate-950 rounded-2xl text-xs font-extrabold flex items-center space-x-2 hover:bg-slate-100 transition shadow-lg"
                                             >
-                                                View all
+                                                <span>SEE ALL LECTURES</span>
+                                                <ExternalLink className="w-3.5 h-3.5" />
                                             </button>
                                         </div>
 
-                                        <div className="space-y-3">
-                                            {videos.slice(0, 4).map((v) => {
-                                                const isDone = watchedVideos.includes(v.id);
-                                                return (
+                                        <div className="flex items-center gap-4 overflow-x-auto pb-2 lg:pb-0">
+                                            <div className="w-48 sm:w-52 bg-[#C9B6FD] text-slate-950 rounded-[28px] p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
+                                                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                                                    <span>01</span>
+                                                    <span>PHYSICS</span>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <BookOpen className="w-6 h-6 text-slate-900 mb-2" />
+                                                    <h4 className="font-extrabold text-sm leading-snug truncate">
+                                                        {chapterStats[0]?.[0] || "আলোর প্রতিফলন"}
+                                                    </h4>
+                                                    <p className="text-[11px] font-medium text-slate-700">
+                                                        {chapterStats[0]?.[1]?.completed || 0}/{chapterStats[0]?.[1]?.total || 6} lessons |{" "}
+                                                        {chapterStats[0]?.[1]?.total
+                                                            ? Math.round(
+                                                                ((chapterStats[0][1].completed || 0) / chapterStats[0][1].total) * 100
+                                                            )
+                                                            : 0}
+                                                        %
+                                                    </p>
+                                                </div>
+                                                <div className="w-full bg-slate-900/20 h-1.5 rounded-full overflow-hidden">
                                                     <div
-                                                        key={v.id}
-                                                        className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex items-center justify-between"
-                                                    >
-                                                        <div className="flex items-center space-x-3.5">
-                                                            <div
-                                                                className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-xs ${v.subject === "PHYSICS"
-                                                                        ? "bg-[#C9B6FD]/30 text-indigo-700"
-                                                                        : "bg-[#FFE3B3]/40 text-amber-800"
+                                                        className="bg-slate-950 h-full rounded-full"
+                                                        style={{
+                                                            width: `${chapterStats[0]?.[1]?.total
+                                                                    ? Math.round(
+                                                                        ((chapterStats[0][1].completed || 0) / chapterStats[0][1].total) * 100
+                                                                    )
+                                                                    : 0
+                                                                }%`,
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="w-48 sm:w-52 bg-[#FFE3B3] text-slate-950 rounded-[28px] p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
+                                                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                                                    <span>02</span>
+                                                    <span>CHEMISTRY</span>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Sparkles className="w-6 h-6 text-slate-900 mb-2" />
+                                                    <h4 className="font-extrabold text-sm leading-snug truncate">
+                                                        {chapterStats[1]?.[0] || "রাসায়নিক বিক্রিয়া"}
+                                                    </h4>
+                                                    <p className="text-[11px] font-medium text-slate-700">
+                                                        {chapterStats[1]?.[1]?.completed || 0}/{chapterStats[1]?.[1]?.total || 13} lessons |{" "}
+                                                        {chapterStats[1]?.[1]?.total
+                                                            ? Math.round(
+                                                                ((chapterStats[1][1].completed || 0) / chapterStats[1][1].total) * 100
+                                                            )
+                                                            : 0}
+                                                        %
+                                                    </p>
+                                                </div>
+                                                <div className="w-full bg-slate-900/20 h-1.5 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="bg-slate-950 h-full rounded-full"
+                                                        style={{
+                                                            width: `${chapterStats[1]?.[1]?.total
+                                                                    ? Math.round(
+                                                                        ((chapterStats[1][1].completed || 0) / chapterStats[1][1].total) * 100
+                                                                    )
+                                                                    : 0
+                                                                }%`,
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="w-48 sm:w-52 bg-[#E1FC5B] text-slate-950 rounded-[28px] p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
+                                                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                                                    <span>03</span>
+                                                    <span>OVERALL</span>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <CheckCircle2 className="w-6 h-6 text-slate-900 mb-2" />
+                                                    <h4 className="font-extrabold text-sm leading-snug">Full Syllabus</h4>
+                                                    <p className="text-[11px] font-medium text-slate-700">
+                                                        {completedCount}/{totalLectures} lessons | {completionPercentage}%
+                                                    </p>
+                                                </div>
+                                                <div className="w-full bg-slate-900/20 h-1.5 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="bg-slate-950 h-full rounded-full"
+                                                        style={{ width: `${completionPercentage}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* CONTINUE WATCHING & RESUME BANNER */}
+                                {activeResumeLecture && (
+                                    <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-[32px] p-6 text-white border border-indigo-500/20 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                                        <div className="flex items-center space-x-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center shrink-0 shadow-inner">
+                                                <Play className="w-5 h-5 text-indigo-400 fill-indigo-400" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                                        Continue Watching
+                                                    </span>
+                                                    <span className="text-[10px] text-slate-400 font-bold uppercase">
+                                                        {activeResumeLecture.subject}
+                                                    </span>
+                                                </div>
+                                                <h4 className="text-sm sm:text-base font-extrabold text-white leading-snug">
+                                                    Lecture #{activeResumeLecture.lecture_no}: {activeResumeLecture.topic || activeResumeLecture.title}
+                                                </h4>
+                                                <p className="text-xs text-slate-400">{activeResumeLecture.chapter}</p>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => handleResumeLecture(activeResumeLecture.id)}
+                                            className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition shadow-lg shadow-indigo-600/30 flex items-center gap-2 shrink-0 w-full sm:w-auto justify-center"
+                                        >
+                                            <Play className="w-3.5 h-3.5 fill-white" />
+                                            <span>Resume Class</span>
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* STATISTICS & INTERACTIVE STUDY PLANNER CALENDAR */}
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                                    <div className="lg:col-span-7 space-y-6">
+                                        <h3 className="text-base font-bold text-slate-900">Statistics</h3>
+
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
+                                                <p className="text-2xl sm:text-3xl font-black text-slate-900">{completedCount}</p>
+                                                <p className="text-xs font-medium text-slate-400 mt-2">Lectures completed</p>
+                                            </div>
+
+                                            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
+                                                <p className="text-2xl sm:text-3xl font-black text-slate-900">{chapterStats.length}</p>
+                                                <p className="text-xs font-medium text-slate-400 mt-2">Chapters in progress</p>
+                                            </div>
+
+                                            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
+                                                <p className="text-2xl sm:text-3xl font-black text-slate-900">{completionPercentage}%</p>
+                                                <p className="text-xs font-medium text-slate-400 mt-2">Syllabus coverage</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-base font-bold text-slate-900">Recommended Lectures</h3>
+                                                <button
+                                                    onClick={() => setActiveNav("lectures")}
+                                                    className="text-xs font-bold text-indigo-600 hover:underline"
+                                                >
+                                                    View all
+                                                </button>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                {videos.slice(0, 4).map((v) => {
+                                                    const isDone = watchedVideos.includes(v.id);
+                                                    return (
+                                                        <div
+                                                            key={v.id}
+                                                            className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex items-center justify-between"
+                                                        >
+                                                            <div className="flex items-center space-x-3.5">
+                                                                <div
+                                                                    className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-xs ${v.subject === "PHYSICS"
+                                                                            ? "bg-[#C9B6FD]/30 text-indigo-700"
+                                                                            : "bg-[#FFE3B3]/40 text-amber-800"
+                                                                        }`}
+                                                                >
+                                                                    #{v.lecture_no}
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="text-xs font-extrabold text-slate-900 line-clamp-1">
+                                                                        {v.topic || v.title}
+                                                                    </h4>
+                                                                    <p className="text-[11px] text-slate-400">{v.chapter}</p>
+                                                                </div>
+                                                            </div>
+
+                                                            <button
+                                                                onClick={() => {
+                                                                    toggleWatchStatus(v.id);
+                                                                    recordLecturePlayback(v.id);
+                                                                }}
+                                                                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition ${isDone
+                                                                        ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                                                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
                                                                     }`}
                                                             >
-                                                                #{v.lecture_no}
+                                                                {isDone ? "✓ Done" : "Mark Watched"}
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="lg:col-span-5 space-y-6">
+                                        <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h4 className="text-sm font-extrabold text-slate-900">{currentMonthTitle}</h4>
+                                                    <p className="text-[10px] text-slate-400">Click any date to schedule a study plan</p>
+                                                </div>
+                                                <div className="flex items-center space-x-1">
+                                                    <button
+                                                        onClick={handlePrevMonth}
+                                                        className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 transition"
+                                                        title="Previous Month"
+                                                    >
+                                                        <ChevronLeft className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={handleNextMonth}
+                                                        className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 transition"
+                                                        title="Next Month"
+                                                    >
+                                                        <ChevronRight className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-7 text-center text-[11px] font-bold text-slate-400">
+                                                <span>Sun</span>
+                                                <span>Mon</span>
+                                                <span>Tue</span>
+                                                <span>Wed</span>
+                                                <span>Thu</span>
+                                                <span>Fri</span>
+                                                <span>Sat</span>
+                                            </div>
+
+                                            <div className="grid grid-cols-7 text-center text-xs gap-y-2 font-semibold">
+                                                {Array.from({ length: startDayOfMonth }).map((_, i) => (
+                                                    <span key={`empty-${i}`} className="text-slate-200">
+                                                        -
+                                                    </span>
+                                                ))}
+                                                {Array.from({ length: daysInMonth }).map((_, i) => {
+                                                    const dayNum = i + 1;
+                                                    const dateKey = formatDateKey(currentYear, currentMonth, dayNum);
+                                                    const isToday = dateKey === todayKey;
+                                                    const hasPlans = studyPlans.some((p) => p.dateKey === dateKey);
+
+                                                    return (
+                                                        <div key={dayNum} className="flex flex-col items-center">
+                                                            <button
+                                                                onClick={() => setSelectedDateForPlan(dateKey)}
+                                                                className={`w-7 h-7 flex items-center justify-center rounded-xl transition relative ${isToday
+                                                                        ? "bg-slate-950 text-white font-bold shadow-md"
+                                                                        : "text-slate-700 hover:bg-slate-100"
+                                                                    }`}
+                                                            >
+                                                                <span>{dayNum}</span>
+                                                                {hasPlans && (
+                                                                    <span
+                                                                        className={`w-1.5 h-1.5 rounded-full absolute -bottom-1 ${isToday ? "bg-amber-400" : "bg-indigo-600"
+                                                                            }`}
+                                                                    />
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {tomorrowReminders.length > 0 && (
+                                            <div className="bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-300/60 rounded-3xl p-5 space-y-2 shadow-sm">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[10px] font-extrabold uppercase text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                                        <Bell className="w-3 h-3 text-amber-600" />
+                                                        <span>Reminder: Plan Due Tomorrow!</span>
+                                                    </span>
+                                                    <span className="text-[10px] text-slate-500 font-mono">{tomorrowKey}</span>
+                                                </div>
+                                                <div className="space-y-1.5 pt-1">
+                                                    {tomorrowReminders.map((p) => (
+                                                        <div key={p.id} className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                                                            <span>• {p.title}</span>
+                                                            {p.time && <span className="text-[10px] text-slate-500 font-normal">{p.time}</span>}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {todayReminders.length > 0 && (
+                                            <div className="bg-gradient-to-r from-indigo-500/15 to-violet-500/15 border border-indigo-300/60 rounded-3xl p-5 space-y-2 shadow-sm">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[10px] font-extrabold uppercase text-indigo-800 bg-indigo-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                                        <Clock className="w-3 h-3 text-indigo-600" />
+                                                        <span>Today&apos;s Scheduled Goals</span>
+                                                    </span>
+                                                    <span className="text-[10px] text-slate-500 font-mono">{todayKey}</span>
+                                                </div>
+                                                <div className="space-y-1.5 pt-1">
+                                                    {todayReminders.map((p) => (
+                                                        <div key={p.id} className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                                                            <span>• {p.title}</span>
+                                                            {p.time && <span className="text-[10px] text-slate-500 font-normal">{p.time}</span>}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-sm font-extrabold text-slate-900">Upcoming Schedule</h4>
+                                                {notice && (
+                                                    <span className="text-[10px] font-bold uppercase text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                                                        Live Alert
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {notice ? (
+                                                <div className="bg-[#1E1E2D] text-white p-4 rounded-2xl flex items-center space-x-3.5">
+                                                    <div className="w-10 h-10 rounded-xl bg-[#E1FC5B] text-slate-950 flex items-center justify-center font-black text-sm shrink-0">
+                                                        🗓️
+                                                    </div>
+                                                    <div className="overflow-hidden">
+                                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Instructor Notice</p>
+                                                        <p className="text-xs font-bold leading-tight truncate">
+                                                            {notice.content}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="py-6 px-4 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center space-y-1">
+                                                    <CalendarCheck className="w-6 h-6 text-slate-300 mx-auto" />
+                                                    <p className="text-xs font-bold text-slate-600">No Upcoming Events</p>
+                                                    <p className="text-[11px] text-slate-400">
+                                                        There are currently no live sessions or notices scheduled.
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {/* VIEW: VIDEO LECTURES GRID */}
+                        {!isSearchActive && activeNav === "lectures" && (
+                            <div className="space-y-6">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
+                                        <h2 className="text-xl font-extrabold text-slate-900">Video Lectures</h2>
+                                        <p className="text-xs text-slate-400">Stream recorded classes, take personal notes, and mark completed lectures.</p>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-slate-200">
+                                        {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
+                                            <button
+                                                key={subj}
+                                                onClick={() => setSelectedSubject(subj)}
+                                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${selectedSubject === subj
+                                                        ? "bg-slate-900 text-white shadow-sm"
+                                                        : "text-slate-500 hover:text-slate-900"
+                                                    }`}
+                                            >
+                                                {subj === "ALL" ? "All Subjects" : subj === "PHYSICS" ? "Physics" : "Chemistry"}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {filteredVideos.length === 0 ? (
+                                    <div className="bg-white rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-200">
+                                        No video lectures match your filter.
+                                    </div>
+                                ) : (
+                                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {filteredVideos.map((vid) => {
+                                            const embedUrl = getYouTubeEmbedUrl(vid.youtube_url || vid.video_url || "");
+                                            const isWatched = watchedVideos.includes(vid.id);
+                                            const isNotesOpen = openNotesId === vid.id;
+                                            const hasNotes = Boolean(lectureNotes[vid.id]?.trim());
+
+                                            return (
+                                                <div
+                                                    key={vid.id}
+                                                    id={`lecture-card-${vid.id}`}
+                                                    className={`bg-white rounded-3xl overflow-hidden border transition-all duration-200 shadow-sm flex flex-col justify-between ${isWatched ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-200"
+                                                        }`}
+                                                >
+                                                    <div>
+                                                        <div className="aspect-video w-full bg-slate-900 relative">
+                                                            {embedUrl ? (
+                                                                <iframe
+                                                                    src={embedUrl}
+                                                                    title={vid.topic || vid.title || "Lecture"}
+                                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                    allowFullScreen
+                                                                    className="w-full h-full border-none"
+                                                                />
+                                                            ) : (
+                                                                <div className="h-full flex items-center justify-center text-xs text-slate-400">
+                                                                    Invalid Video Link
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="p-5 space-y-2">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                                                                    Lecture #{vid.lecture_no}
+                                                                </span>
+                                                                <span
+                                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
+                                                                            ? "bg-[#C9B6FD]/30 text-indigo-800"
+                                                                            : "bg-[#FFE3B3]/50 text-amber-900"
+                                                                        }`}
+                                                                >
+                                                                    {vid.subject}
+                                                                </span>
                                                             </div>
-                                                            <div>
-                                                                <h4 className="text-xs font-extrabold text-slate-900 line-clamp-1">
-                                                                    {v.topic || v.title}
-                                                                </h4>
-                                                                <p className="text-[11px] text-slate-400">{v.chapter}</p>
-                                                            </div>
+
+                                                            <h3 className="font-extrabold text-sm text-slate-900 line-clamp-2">
+                                                                {vid.topic || vid.title}
+                                                            </h3>
+                                                            <p className="text-xs text-slate-400">{vid.chapter}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="p-5 pt-0 space-y-3">
+                                                        <div className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
+                                                            <button
+                                                                onClick={() => setOpenNotesId(isNotesOpen ? null : vid.id)}
+                                                                className="w-full px-3.5 py-2 flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-slate-100/60 transition"
+                                                            >
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <FileEdit className="w-3.5 h-3.5 text-indigo-600" />
+                                                                    <span>My Lecture Notes</span>
+                                                                    {hasNotes && (
+                                                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                                                                    {saveStatus[vid.id] && (
+                                                                        <span className="text-emerald-600 font-semibold text-[10px]">Saved!</span>
+                                                                    )}
+                                                                    {isNotesOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                                                </div>
+                                                            </button>
+
+                                                            {isNotesOpen && (
+                                                                <div className="p-3 bg-white border-t border-slate-100 space-y-2.5 animate-in fade-in duration-100">
+                                                                    <textarea
+                                                                        rows={4}
+                                                                        placeholder="Jot down key formulas, tips, or timestamps here..."
+                                                                        value={lectureNotes[vid.id] || ""}
+                                                                        onChange={(e) => handleNoteChange(vid.id, e.target.value)}
+                                                                        className="w-full bg-[#F4F6FA] border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 resize-none font-sans"
+                                                                    />
+
+                                                                    <div className="flex items-center justify-between">
+                                                                        <button
+                                                                            onClick={() => handleAddTimestampTag(vid.id)}
+                                                                            className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                                                                        >
+                                                                            <Clock className="w-3.5 h-3.5" />
+                                                                            <span>+ Add Timestamp</span>
+                                                                        </button>
+
+                                                                        {hasNotes && (
+                                                                            <button
+                                                                                onClick={() => handleExportNotes(vid)}
+                                                                                className="text-[11px] font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1"
+                                                                                title="Download as TXT file"
+                                                                            >
+                                                                                <Download className="w-3.5 h-3.5" />
+                                                                                <span>Export</span>
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
 
                                                         <button
                                                             onClick={() => {
-                                                                toggleWatchStatus(v.id);
-                                                                recordLecturePlayback(v.id);
+                                                                toggleWatchStatus(vid.id);
+                                                                recordLecturePlayback(vid.id);
                                                             }}
-                                                            className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition ${isDone
-                                                                    ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                                                                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                                                            className={`w-full py-2.5 rounded-2xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
+                                                                    ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                                                                    : "bg-slate-900 text-white hover:bg-slate-800"
                                                                 }`}
                                                         >
-                                                            {isDone ? "✓ Done" : "Mark Watched"}
+                                                            <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
                                                         </button>
                                                     </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="lg:col-span-5 space-y-6">
-                                    <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <h4 className="text-sm font-extrabold text-slate-900">{currentMonthTitle}</h4>
-                                                <p className="text-[10px] text-slate-400">Click any date to schedule a study plan</p>
-                                            </div>
-                                            <div className="flex items-center space-x-1">
-                                                <button
-                                                    onClick={handlePrevMonth}
-                                                    className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 transition"
-                                                    title="Previous Month"
-                                                >
-                                                    <ChevronLeft className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={handleNextMonth}
-                                                    className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 transition"
-                                                    title="Next Month"
-                                                >
-                                                    <ChevronRight className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-7 text-center text-[11px] font-bold text-slate-400">
-                                            <span>Sun</span>
-                                            <span>Mon</span>
-                                            <span>Tue</span>
-                                            <span>Wed</span>
-                                            <span>Thu</span>
-                                            <span>Fri</span>
-                                            <span>Sat</span>
-                                        </div>
-
-                                        <div className="grid grid-cols-7 text-center text-xs gap-y-2 font-semibold">
-                                            {Array.from({ length: startDayOfMonth }).map((_, i) => (
-                                                <span key={`empty-${i}`} className="text-slate-200">
-                                                    -
-                                                </span>
-                                            ))}
-                                            {Array.from({ length: daysInMonth }).map((_, i) => {
-                                                const dayNum = i + 1;
-                                                const dateKey = formatDateKey(currentYear, currentMonth, dayNum);
-                                                const isToday = dateKey === todayKey;
-                                                const hasPlans = studyPlans.some((p) => p.dateKey === dateKey);
-
-                                                return (
-                                                    <div key={dayNum} className="flex flex-col items-center">
-                                                        <button
-                                                            onClick={() => setSelectedDateForPlan(dateKey)}
-                                                            className={`w-7 h-7 flex items-center justify-center rounded-xl transition relative ${isToday
-                                                                    ? "bg-slate-950 text-white font-bold shadow-md"
-                                                                    : "text-slate-700 hover:bg-slate-100"
-                                                                }`}
-                                                        >
-                                                            <span>{dayNum}</span>
-                                                            {hasPlans && (
-                                                                <span
-                                                                    className={`w-1.5 h-1.5 rounded-full absolute -bottom-1 ${isToday ? "bg-amber-400" : "bg-indigo-600"
-                                                                        }`}
-                                                                />
-                                                            )}
-                                                        </button>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {tomorrowReminders.length > 0 && (
-                                        <div className="bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-300/60 rounded-3xl p-5 space-y-2 shadow-sm">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[10px] font-extrabold uppercase text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                                                    <Bell className="w-3 h-3 text-amber-600" />
-                                                    <span>Reminder: Plan Due Tomorrow!</span>
-                                                </span>
-                                                <span className="text-[10px] text-slate-500 font-mono">{tomorrowKey}</span>
-                                            </div>
-                                            <div className="space-y-1.5 pt-1">
-                                                {tomorrowReminders.map((p) => (
-                                                    <div key={p.id} className="text-xs font-bold text-slate-800 flex items-center justify-between">
-                                                        <span>• {p.title}</span>
-                                                        {p.time && <span className="text-[10px] text-slate-500 font-normal">{p.time}</span>}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {todayReminders.length > 0 && (
-                                        <div className="bg-gradient-to-r from-indigo-500/15 to-violet-500/15 border border-indigo-300/60 rounded-3xl p-5 space-y-2 shadow-sm">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[10px] font-extrabold uppercase text-indigo-800 bg-indigo-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                                                    <Clock className="w-3 h-3 text-indigo-600" />
-                                                    <span>Today&apos;s Scheduled Goals</span>
-                                                </span>
-                                                <span className="text-[10px] text-slate-500 font-mono">{todayKey}</span>
-                                            </div>
-                                            <div className="space-y-1.5 pt-1">
-                                                {todayReminders.map((p) => (
-                                                    <div key={p.id} className="text-xs font-bold text-slate-800 flex items-center justify-between">
-                                                        <span>• {p.title}</span>
-                                                        {p.time && <span className="text-[10px] text-slate-500 font-normal">{p.time}</span>}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <h4 className="text-sm font-extrabold text-slate-900">Upcoming Schedule</h4>
-                                            {notice && (
-                                                <span className="text-[10px] font-bold uppercase text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                                                    Live Alert
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {notice ? (
-                                            <div className="bg-[#1E1E2D] text-white p-4 rounded-2xl flex items-center space-x-3.5">
-                                                <div className="w-10 h-10 rounded-xl bg-[#E1FC5B] text-slate-950 flex items-center justify-center font-black text-sm shrink-0">
-                                                    🗓️
                                                 </div>
-                                                <div className="overflow-hidden">
-                                                    <p className="text-[10px] text-slate-400 font-bold uppercase">Instructor Notice</p>
-                                                    <p className="text-xs font-bold leading-tight truncate">
-                                                        {notice.content}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="py-6 px-4 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center space-y-1">
-                                                <CalendarCheck className="w-6 h-6 text-slate-300 mx-auto" />
-                                                <p className="text-xs font-bold text-slate-600">No Upcoming Events</p>
-                                                <p className="text-[11px] text-slate-400">
-                                                    There are currently no live sessions or notices scheduled.
-                                                </p>
-                                            </div>
-                                        )}
+                                            );
+                                        })}
                                     </div>
-                                </div>
+                                )}
                             </div>
-                        </>
-                    )}
+                        )}
 
-                    {/* VIEW: VIDEO LECTURES GRID */}
-                    {!isSearchActive && activeNav === "lectures" && (
-                        <div className="space-y-6">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div>
-                                    <h2 className="text-xl font-extrabold text-slate-900">Video Lectures</h2>
-                                    <p className="text-xs text-slate-400">Stream recorded classes, take personal notes, and mark completed lectures.</p>
-                                </div>
+                        {/* VIEW: STUDY MATERIALS (PDF) */}
+                        {!isSearchActive && activeNav === "materials" && (
+                            <div className="space-y-6">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
+                                        <h2 className="text-xl font-extrabold text-slate-900">Study Materials & Handouts</h2>
+                                        <p className="text-xs text-slate-400">Download lecture notes and practice problem sets.</p>
+                                    </div>
 
-                                <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-slate-200">
-                                    {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
-                                        <button
-                                            key={subj}
-                                            onClick={() => setSelectedSubject(subj)}
-                                            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${selectedSubject === subj
-                                                    ? "bg-slate-900 text-white shadow-sm"
-                                                    : "text-slate-500 hover:text-slate-900"
-                                                }`}
-                                        >
-                                            {subj === "ALL" ? "All Subjects" : subj === "PHYSICS" ? "Physics" : "Chemistry"}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {filteredVideos.length === 0 ? (
-                                <div className="bg-white rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-200">
-                                    No video lectures match your filter.
-                                </div>
-                            ) : (
-                                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {filteredVideos.map((vid) => {
-                                        const embedUrl = getYouTubeEmbedUrl(vid.youtube_url || vid.video_url || "");
-                                        const isWatched = watchedVideos.includes(vid.id);
-                                        const isNotesOpen = openNotesId === vid.id;
-                                        const hasNotes = Boolean(lectureNotes[vid.id]?.trim());
-
-                                        return (
-                                            <div
-                                                key={vid.id}
-                                                id={`lecture-card-${vid.id}`}
-                                                className={`bg-white rounded-3xl overflow-hidden border transition-all duration-200 shadow-sm flex flex-col justify-between ${isWatched ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-200"
+                                    <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-slate-200">
+                                        {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
+                                            <button
+                                                key={subj}
+                                                onClick={() => setSelectedSubject(subj)}
+                                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${selectedSubject === subj
+                                                        ? "bg-slate-900 text-white shadow-sm"
+                                                        : "text-slate-500 hover:text-slate-900"
                                                     }`}
                                             >
-                                                <div>
-                                                    <div className="aspect-video w-full bg-slate-900 relative">
-                                                        {embedUrl ? (
-                                                            <iframe
-                                                                src={embedUrl}
-                                                                title={vid.topic || vid.title || "Lecture"}
-                                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                                allowFullScreen
-                                                                className="w-full h-full border-none"
-                                                            />
-                                                        ) : (
-                                                            <div className="h-full flex items-center justify-center text-xs text-slate-400">
-                                                                Invalid Video Link
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                {subj === "ALL" ? "All" : subj === "PHYSICS" ? "Physics" : "Chemistry"}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
 
-                                                    <div className="p-5 space-y-2">
+                                {filteredMaterials.length === 0 ? (
+                                    <div className="bg-white rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-200">
+                                        No study sheets found.
+                                    </div>
+                                ) : (
+                                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {filteredMaterials.map((mat) => {
+                                            const rawFileUrl = mat.pdf_url || mat.file_url || "";
+                                            const drivePreviewLink = getDrivePreviewUrl(rawFileUrl);
+
+                                            return (
+                                                <div
+                                                    key={mat.id}
+                                                    className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between space-y-4"
+                                                >
+                                                    <div className="space-y-3">
                                                         <div className="flex items-center justify-between">
-                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
-                                                                Lecture #{vid.lecture_no}
-                                                            </span>
                                                             <span
-                                                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
+                                                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
                                                                         ? "bg-[#C9B6FD]/30 text-indigo-800"
                                                                         : "bg-[#FFE3B3]/50 text-amber-900"
                                                                     }`}
                                                             >
-                                                                {vid.subject}
+                                                                {mat.subject}
                                                             </span>
+                                                            <span className="text-[11px] text-slate-400 font-medium">{mat.chapter}</span>
                                                         </div>
 
-                                                        <h3 className="font-extrabold text-sm text-slate-900 line-clamp-2">
-                                                            {vid.topic || vid.title}
-                                                        </h3>
-                                                        <p className="text-xs text-slate-400">{vid.chapter}</p>
+                                                        <div className="flex items-start space-x-3">
+                                                            <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
+                                                                PDF
+                                                            </div>
+                                                            <div>
+                                                                <h3 className="font-extrabold text-sm text-slate-900 leading-snug">{mat.title}</h3>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </div>
 
-                                                <div className="p-5 pt-0 space-y-3">
-                                                    <div className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
+                                                    <div className="flex items-center gap-2">
                                                         <button
-                                                            onClick={() => setOpenNotesId(isNotesOpen ? null : vid.id)}
-                                                            className="w-full px-3.5 py-2 flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-slate-100/60 transition"
+                                                            onClick={() => {
+                                                                setPreviewPdfUrl(drivePreviewLink);
+                                                                setPreviewPdfTitle(mat.title);
+                                                            }}
+                                                            className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-2xl text-center transition flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-600/20"
                                                         >
-                                                            <div className="flex items-center gap-1.5">
-                                                                <FileEdit className="w-3.5 h-3.5 text-indigo-600" />
-                                                                <span>My Lecture Notes</span>
-                                                                {hasNotes && (
-                                                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
-                                                                )}
-                                                            </div>
-                                                            <div className="flex items-center gap-1 text-[11px] text-slate-400">
-                                                                {saveStatus[vid.id] && (
-                                                                    <span className="text-emerald-600 font-semibold text-[10px]">Saved!</span>
-                                                                )}
-                                                                {isNotesOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                                                            </div>
+                                                            <Eye className="w-3.5 h-3.5" />
+                                                            <span>Preview</span>
                                                         </button>
 
-                                                        {isNotesOpen && (
-                                                            <div className="p-3 bg-white border-t border-slate-100 space-y-2.5 animate-in fade-in duration-100">
-                                                                <textarea
-                                                                    rows={4}
-                                                                    placeholder="Jot down key formulas, tips, or timestamps here..."
-                                                                    value={lectureNotes[vid.id] || ""}
-                                                                    onChange={(e) => handleNoteChange(vid.id, e.target.value)}
-                                                                    className="w-full bg-[#F4F6FA] border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 resize-none font-sans"
-                                                                />
-
-                                                                <div className="flex items-center justify-between">
-                                                                    <button
-                                                                        onClick={() => handleAddTimestampTag(vid.id)}
-                                                                        className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
-                                                                    >
-                                                                        <Clock className="w-3 h-3" />
-                                                                        <span>+ Add Timestamp</span>
-                                                                    </button>
-
-                                                                    {hasNotes && (
-                                                                        <button
-                                                                            onClick={() => handleExportNotes(vid)}
-                                                                            className="text-[11px] font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1"
-                                                                            title="Download as TXT file"
-                                                                        >
-                                                                            <Download className="w-3.5 h-3.5" />
-                                                                            <span>Export</span>
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    <button
-                                                        onClick={() => {
-                                                            toggleWatchStatus(vid.id);
-                                                            recordLecturePlayback(vid.id);
-                                                        }}
-                                                        className={`w-full py-2.5 rounded-2xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
-                                                                ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                                                                : "bg-slate-900 text-white hover:bg-slate-800"
-                                                            }`}
-                                                    >
-                                                        <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* VIEW: STUDY MATERIALS (PDF) */}
-                    {!isSearchActive && activeNav === "materials" && (
-                        <div className="space-y-6">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div>
-                                    <h2 className="text-xl font-extrabold text-slate-900">Study Materials & Handouts</h2>
-                                    <p className="text-xs text-slate-400">Download lecture notes and practice problem sets.</p>
-                                </div>
-
-                                <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-slate-200">
-                                    {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
-                                        <button
-                                            key={subj}
-                                            onClick={() => setSelectedSubject(subj)}
-                                            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${selectedSubject === subj
-                                                    ? "bg-slate-900 text-white shadow-sm"
-                                                    : "text-slate-500 hover:text-slate-900"
-                                                }`}
-                                        >
-                                            {subj === "ALL" ? "All" : subj === "PHYSICS" ? "Physics" : "Chemistry"}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {filteredMaterials.length === 0 ? (
-                                <div className="bg-white rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-200">
-                                    No study sheets found.
-                                </div>
-                            ) : (
-                                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {filteredMaterials.map((mat) => {
-                                        const rawFileUrl = mat.pdf_url || mat.file_url || "";
-                                        const drivePreviewLink = getDrivePreviewUrl(rawFileUrl);
-
-                                        return (
-                                            <div
-                                                key={mat.id}
-                                                className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between space-y-4"
-                                            >
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <span
-                                                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
-                                                                    ? "bg-[#C9B6FD]/30 text-indigo-800"
-                                                                    : "bg-[#FFE3B3]/50 text-amber-900"
-                                                                }`}
+                                                        <a
+                                                            href={rawFileUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl transition border border-slate-200"
+                                                            title="Open in new tab / Download"
                                                         >
-                                                            {mat.subject}
-                                                        </span>
-                                                        <span className="text-[11px] text-slate-400 font-medium">{mat.chapter}</span>
-                                                    </div>
-
-                                                    <div className="flex items-start space-x-3">
-                                                        <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
-                                                            PDF
-                                                        </div>
-                                                        <div>
-                                                            <h3 className="font-extrabold text-sm text-slate-900 leading-snug">{mat.title}</h3>
-                                                        </div>
+                                                            <ExternalLink className="w-3.5 h-3.5" />
+                                                        </a>
                                                     </div>
                                                 </div>
-
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => {
-                                                            setPreviewPdfUrl(drivePreviewLink);
-                                                            setPreviewPdfTitle(mat.title);
-                                                        }}
-                                                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-2xl text-center transition flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-600/20"
-                                                    >
-                                                        <Eye className="w-3.5 h-3.5" />
-                                                        <span>Preview</span>
-                                                    </button>
-
-                                                    <a
-                                                        href={rawFileUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl transition border border-slate-200"
-                                                        title="Open in new tab / Download"
-                                                    >
-                                                        <ExternalLink className="w-3.5 h-3.5" />
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* VIEW: INTEGRATED AI TUTOR */}
-                    {!isSearchActive && activeNav === "ai" && (
-                        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[640px]">
-                            <div className="p-5 bg-slate-50 border-b border-slate-200 flex items-center space-x-3">
-                                <div className="w-9 h-9 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow">
-                                    ✨
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-extrabold text-slate-900">EduTrack AI Academic Tutor</h3>
-                                    <p className="text-[11px] text-emerald-600 font-medium">Ready to explain Theory, Formulas, and Math</p>
-                                </div>
-                            </div>
-
-                            <div className="flex-1 p-6 overflow-y-auto space-y-4 text-xs">
-                                {chatMessages.map((m, idx) => (
-                                    <div
-                                        key={idx}
-                                        className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-                                    >
-                                        <div
-                                            className={`max-w-[80%] px-4 py-3 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
-                                                    ? "bg-slate-900 text-white rounded-br-none font-medium"
-                                                    : "bg-slate-100 text-slate-800 rounded-bl-none font-medium border border-slate-200/60"
-                                                }`}
-                                        >
-                                            {m.content}
-                                        </div>
-                                    </div>
-                                ))}
-                                {chatLoading && (
-                                    <div className="flex justify-start">
-                                        <div className="bg-slate-100 text-slate-500 px-4 py-2.5 rounded-2xl text-xs animate-pulse">
-                                            AI is thinking...
-                                        </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
-                                <div ref={chatEndRef} />
                             </div>
+                        )}
 
-                            <form onSubmit={handleSendChat} className="p-4 bg-slate-50 border-t border-slate-200 flex items-center gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="Ask any question (e.g., Explain Ohm's law or Archimedes principle)..."
-                                    value={chatInput}
-                                    onChange={(e) => setChatInput(e.target.value)}
-                                    className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-slate-400"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={chatLoading || !chatInput.trim()}
-                                    className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold px-5 py-3 rounded-2xl text-xs transition shadow-md"
-                                >
-                                    Send
-                                </button>
-                            </form>
-                        </div>
-                    )}
-                </main>
+                        {/* VIEW: INTEGRATED AI TUTOR */}
+                        {!isSearchActive && activeNav === "ai" && (
+                            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[640px]">
+                                <div className="p-5 bg-slate-50 border-b border-slate-200 flex items-center space-x-3">
+                                    <div className="w-9 h-9 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow">
+                                        ✨
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-extrabold text-slate-900">EduTrack AI Academic Tutor</h3>
+                                        <p className="text-[11px] text-emerald-600 font-medium">Ready to explain Theory, Formulas, and Math</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex-1 p-6 overflow-y-auto space-y-4 text-xs">
+                                    {chatMessages.map((m, idx) => (
+                                        <div
+                                            key={idx}
+                                            className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                                        >
+                                            <div
+                                                className={`max-w-[80%] px-4 py-3 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
+                                                        ? "bg-slate-900 text-white rounded-br-none font-medium"
+                                                        : "bg-slate-100 text-slate-800 rounded-bl-none font-medium border border-slate-200/60"
+                                                    }`}
+                                            >
+                                                {m.content}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {chatLoading && (
+                                        <div className="flex justify-start">
+                                            <div className="bg-slate-100 text-slate-500 px-4 py-2.5 rounded-2xl text-xs animate-pulse">
+                                                AI is thinking...
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div ref={chatEndRef} />
+                                </div>
+
+                                <form onSubmit={handleSendChat} className="p-4 bg-slate-50 border-t border-slate-200 flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Ask any question (e.g., Explain Ohm's law or Archimedes principle)..."
+                                        value={chatInput}
+                                        onChange={(e) => setChatInput(e.target.value)}
+                                        className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-slate-400"
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={chatLoading || !chatInput.trim()}
+                                        className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold px-5 py-3 rounded-2xl text-xs transition shadow-md"
+                                    >
+                                        Send
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* DEVELOPER CREDIT FOOTER */}
+                    <footer className="w-full py-4 px-6 text-center border-t border-slate-200/80 bg-white/70 backdrop-blur-sm mt-auto">
+                        <p className="text-xs text-slate-500 font-medium tracking-wide">
+                            © {new Date().getFullYear()} EduTrack Platform • Developed with ❤️ by{" "}
+                            <a
+                                href="https://www.linkedin.com/in/sajedul-islam-data/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-bold text-indigo-600 hover:text-indigo-800 hover:underline transition-colors inline-flex items-center gap-1"
+                            >
+                                Mir Mohammad Sajedul Islam
+                                <ExternalLink className="w-3 h-3 inline" />
+                            </a>
+                        </p>
+                    </footer>
+                </div>
             </div>
 
             {/* 3. STUDY PLANNER MODAL */}

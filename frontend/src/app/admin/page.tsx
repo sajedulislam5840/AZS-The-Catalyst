@@ -27,10 +27,7 @@ import {
     Sparkles,
     Video,
     FileText,
-    Calendar,
     GraduationCap,
-    Clock,
-    PlusCircle,
 } from "lucide-react";
 
 interface Student {
@@ -879,7 +876,7 @@ export default function AdminPage() {
                                                                     <button
                                                                         onClick={() => handleMarkUnpaid(student.id)}
                                                                         disabled={actionLoadingId === student.id}
-                                                                        className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/10 border border-amber-500/20 text-amber-300 hover:bg-amber-500/20 transition-all flex items-center gap-1"
+                                                                        className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/10 border border-amber-500/20 text-amber-300 hover:bg-amber-500/20 transition-all flex items-center gap-1"
                                                                         title="Revoke active access and mark unpaid"
                                                                     >
                                                                         <span>Mark as Unpaid</span>
@@ -1337,6 +1334,22 @@ export default function AdminPage() {
                     </div>
                 )}
             </main>
+
+            {/* DEVELOPER CREDIT FOOTER (ADMIN CONSOLE) */}
+            <footer className="w-full py-4 px-6 text-center border-t border-slate-800/80 bg-[#0c1227]/90 backdrop-blur-sm mt-auto">
+                <p className="text-xs text-slate-400 font-medium tracking-wide">
+                    © {new Date().getFullYear()} EduTrack Platform • Designed & Built with precision by{" "}
+                    <a
+                        href="https://www.linkedin.com/in/sajedul-islam-data/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold text-indigo-400 hover:text-indigo-300 hover:underline transition-colors inline-flex items-center gap-1"
+                    >
+                        Mir Mohammad Sajedul Islam
+                        <ExternalLink className="w-3 h-3 inline" />
+                    </a>
+                </p>
+            </footer>
 
             {/* EDIT LECTURE MODAL */}
             {editingLecture && (

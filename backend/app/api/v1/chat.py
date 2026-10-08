@@ -19,9 +19,9 @@ class ChatResponse(BaseModel):
     reply: str
 
 
-# Groq latest verified production model
+# Target Model Setup
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-ACTIVE_MODEL = "llama-3.3-70b-versatile"
+ACTIVE_MODEL = "openai/gpt-oss-120b"
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -94,7 +94,7 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
     }
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=45.0) as client:
             resp = await client.post(GROQ_API_URL, headers=headers, json=req_body)
 
             if resp.status_code == 200:
@@ -105,12 +105,11 @@ async def chat_with_edutrack_ai(payload: ChatRequest, db: AsyncSession = Depends
                     if reply_text.strip():
                         return ChatResponse(reply=reply_text.strip())
 
-            # Error handling with direct detail
             err_detail = resp.text
-            print(f"[Groq Error]: {resp.status_code} - {err_detail}")
+            print(f"[Model Error]: {resp.status_code} - {err_detail}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Groq API Error {resp.status_code}: {err_detail[:120]}"
+                detail=f"API Error {resp.status_code}: {err_detail[:120]}"
             )
 
     except httpx.TimeoutException:

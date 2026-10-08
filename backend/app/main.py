@@ -1,8 +1,9 @@
 import os
+import urllib.parse
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
@@ -12,9 +13,11 @@ from app.api.v1.admin import router as admin_router
 from app.api.v1.academic import router as academic_router
 from app.api.v1.chat import router as chat_router
 
-# Ensure static directories exist so mounting never fails
-STATIC_DIR = Path("static")
+# Static directories resolution
+BASE_DIR = Path(__file__).resolve().parent.parent
+STATIC_DIR = BASE_DIR / "static"
 MATERIALS_DIR = STATIC_DIR / "materials"
+
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 MATERIALS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -86,7 +89,27 @@ async def custom_cors_middleware(request: Request, call_next):
     return response
 
 
-# Mount static files to serve uploaded PDFs and documents
+# Explicit Custom Route: Handles decoded Bangla unicode and %20 spaces in PDF requests
+@app.get("/static/materials/{filename:path}")
+async def serve_material_file(filename: str):
+    decoded_filename = urllib.parse.unquote(filename)
+    file_path = MATERIALS_DIR / decoded_filename
+
+    if not file_path.exists():
+        alt_path = Path("static/materials") / decoded_filename
+        if alt_path.exists():
+            file_path = alt_path
+        else:
+            raise HTTPException(status_code=404, detail="File not found on server disk.")
+
+    return FileResponse(
+        path=file_path,
+        media_type="application/pdf",
+        filename=decoded_filename
+    )
+
+
+# General static files mount
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 app.include_router(auth_router, prefix="/api/v1")

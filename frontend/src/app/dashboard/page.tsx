@@ -24,6 +24,11 @@ import {
     Plus,
     Trash2,
     Clock,
+    Play,
+    FileEdit,
+    Download,
+    ChevronDown,
+    ChevronUp,
 } from "lucide-react";
 import axios from "axios";
 
@@ -85,7 +90,7 @@ interface ChatMessage {
 
 interface StudyPlan {
     id: string;
-    dateKey: string; // YYYY-MM-DD
+    dateKey: string;
     title: string;
     time?: string;
 }
@@ -134,6 +139,14 @@ export default function StudentDashboardPage() {
     const [selectedSubject, setSelectedSubject] = useState<string>("ALL");
     const [searchQuery, setSearchQuery] = useState("");
 
+    // Continue Watching & Resume State
+    const [lastPlayedId, setLastPlayedId] = useState<string>("");
+
+    // In-App Lecture Notes Scratchpad State
+    const [openNotesId, setOpenNotesId] = useState<string | null>(null);
+    const [lectureNotes, setLectureNotes] = useState<Record<string, string>>({});
+    const [saveStatus, setSaveStatus] = useState<Record<string, boolean>>({});
+
     // AI Chat
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
         {
@@ -145,7 +158,7 @@ export default function StudentDashboardPage() {
     const [chatLoading, setChatLoading] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
-    // Prerender-safe calendar state
+    // Calendar State
     const [calendarViewDate, setCalendarViewDate] = useState<Date | null>(null);
     const [todayKey, setTodayKey] = useState<string>("");
     const [tomorrowKey, setTomorrowKey] = useState<string>("");
@@ -163,7 +176,6 @@ export default function StudentDashboardPage() {
     useEffect(() => {
         setMounted(true);
 
-        // Evaluate dates only on the client
         const now = new Date();
         setCalendarViewDate(new Date(now.getFullYear(), now.getMonth(), 1));
 
@@ -184,13 +196,11 @@ export default function StudentDashboardPage() {
         const role = (localStorage.getItem("user_role") || "").toUpperCase();
         const email = (localStorage.getItem("user_email") || "").toLowerCase();
 
-        // Route guard: Redirect admin to /admin console
         if (role === "ADMIN" || email === "rabbi@edutrack.com") {
             router.replace("/admin");
             return;
         }
 
-        // Initialize user profile from storage
         const storedName = localStorage.getItem("user_name") || localStorage.getItem("student_name") || "Student";
         const storedEmail = localStorage.getItem("user_email") || "";
         const storedBatch = localStorage.getItem("batch_no") || "General Batch";
@@ -216,13 +226,26 @@ export default function StudentDashboardPage() {
             }
         }
 
-        // Load persisted study plans
         const storedPlans = localStorage.getItem("edutrack_study_plans");
         if (storedPlans) {
             try {
                 setStudyPlans(JSON.parse(storedPlans));
             } catch {
                 setStudyPlans([]);
+            }
+        }
+
+        const storedLastPlayed = localStorage.getItem("edutrack_last_played_id");
+        if (storedLastPlayed) {
+            setLastPlayedId(storedLastPlayed);
+        }
+
+        const storedNotes = localStorage.getItem("edutrack_lecture_notes");
+        if (storedNotes) {
+            try {
+                setLectureNotes(JSON.parse(storedNotes));
+            } catch {
+                setLectureNotes({});
             }
         }
 
@@ -250,7 +273,7 @@ export default function StudentDashboardPage() {
                 if (res.data.batch_no) localStorage.setItem("batch_no", res.data.batch_no);
             }
         } catch {
-            // Fallback stays on cached localStorage values
+            // Retain cached values
         }
     };
 
@@ -287,6 +310,62 @@ export default function StudentDashboardPage() {
         localStorage.setItem("edutrack_watched_videos", JSON.stringify(updated));
     };
 
+    const recordLecturePlayback = (id: string) => {
+        setLastPlayedId(id);
+        localStorage.setItem("edutrack_last_played_id", id);
+    };
+
+    const handleResumeLecture = (targetId?: string) => {
+        const idToOpen = targetId || lastPlayedId || (videos.length > 0 ? videos[0].id : "");
+        if (!idToOpen) return;
+        setActiveNav("lectures");
+        recordLecturePlayback(idToOpen);
+        setTimeout(() => {
+            const element = document.getElementById(`lecture-card-${idToOpen}`);
+            if (element) {
+                element.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+        }, 150);
+    };
+
+    // Lecture Note Scratchpad Handlers
+    const handleNoteChange = (lectureId: string, content: string) => {
+        const updated = { ...lectureNotes, [lectureId]: content };
+        setLectureNotes(updated);
+        localStorage.setItem("edutrack_lecture_notes", JSON.stringify(updated));
+        setSaveStatus((prev) => ({ ...prev, [lectureId]: true }));
+        setTimeout(() => {
+            setSaveStatus((prev) => ({ ...prev, [lectureId]: false }));
+        }, 1500);
+    };
+
+    const handleAddTimestampTag = (lectureId: string) => {
+        const current = lectureNotes[lectureId] || "";
+        const stamp = `\n[Timestamp Note]: `;
+        handleNoteChange(lectureId, current + stamp);
+    };
+
+    const handleExportNotes = (lecture: VideoLecture) => {
+        const noteText = lectureNotes[lecture.id] || "No notes recorded for this lecture.";
+        const blob = new Blob(
+            [
+                `EduTrack Revision Notes\n`,
+                `Subject: ${lecture.subject}\n`,
+                `Chapter: ${lecture.chapter}\n`,
+                `Lecture #${lecture.lecture_no}: ${lecture.topic}\n`,
+                `----------------------------------------\n\n`,
+                noteText,
+            ],
+            { type: "text/plain;charset=utf-8" }
+        );
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `Lecture_${lecture.lecture_no}_Notes.txt`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
     const handleSendChat = async (e?: FormEvent) => {
         if (e) e.preventDefault();
         const prompt = chatInput.trim();
@@ -318,7 +397,7 @@ export default function StudentDashboardPage() {
         router.push("/login");
     };
 
-    // Safe Calendar Computations
+    // Calendar Controls
     const monthNames = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
@@ -339,7 +418,6 @@ export default function StudentDashboardPage() {
         setCalendarViewDate(new Date(currentYear, currentMonth + 1, 1));
     };
 
-    // Study Plan Handler
     const handleAddPlan = (e: FormEvent) => {
         e.preventDefault();
         if (!selectedDateForPlan || !newPlanTitle.trim()) return;
@@ -391,6 +469,17 @@ export default function StudentDashboardPage() {
         });
         return Object.entries(map);
     }, [videos, watchedVideos]);
+
+    // Determine active lecture to resume
+    const activeResumeLecture = useMemo(() => {
+        if (!videos || videos.length === 0) return null;
+        if (lastPlayedId) {
+            const found = videos.find((v) => v.id === lastPlayedId);
+            if (found) return found;
+        }
+        const unwatched = videos.find((v) => !watchedVideos.includes(v.id));
+        return unwatched || videos[0];
+    }, [videos, lastPlayedId, watchedVideos]);
 
     const normalizedQuery = searchQuery.toLowerCase().trim();
 
@@ -630,6 +719,7 @@ export default function StudentDashboardPage() {
                                                     return (
                                                         <div
                                                             key={vid.id}
+                                                            id={`lecture-card-${vid.id}`}
                                                             className={`bg-white rounded-3xl overflow-hidden border transition-all duration-200 shadow-sm flex flex-col justify-between ${isWatched ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-200"
                                                                 }`}
                                                         >
@@ -670,9 +760,12 @@ export default function StudentDashboardPage() {
                                                                 </div>
                                                             </div>
 
-                                                            <div className="p-5 pt-0">
+                                                            <div className="p-5 pt-0 space-y-2">
                                                                 <button
-                                                                    onClick={() => toggleWatchStatus(vid.id)}
+                                                                    onClick={() => {
+                                                                        toggleWatchStatus(vid.id);
+                                                                        recordLecturePlayback(vid.id);
+                                                                    }}
                                                                     className={`w-full py-2.5 rounded-2xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
                                                                             ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
                                                                             : "bg-slate-900 text-white hover:bg-slate-800"
@@ -862,6 +955,39 @@ export default function StudentDashboardPage() {
                                 </div>
                             </div>
 
+                            {/* FEATURE 1: CONTINUE WATCHING & SMART RESUME BANNER */}
+                            {activeResumeLecture && (
+                                <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-[32px] p-6 text-white border border-indigo-500/20 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                                    <div className="flex items-center space-x-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center shrink-0 shadow-inner">
+                                            <Play className="w-5 h-5 text-indigo-400 fill-indigo-400" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                                    Continue Watching
+                                                </span>
+                                                <span className="text-[10px] text-slate-400 font-bold uppercase">
+                                                    {activeResumeLecture.subject}
+                                                </span>
+                                            </div>
+                                            <h4 className="text-sm sm:text-base font-extrabold text-white leading-snug">
+                                                Lecture #{activeResumeLecture.lecture_no}: {activeResumeLecture.topic}
+                                            </h4>
+                                            <p className="text-xs text-slate-400">{activeResumeLecture.chapter}</p>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={() => handleResumeLecture(activeResumeLecture.id)}
+                                        className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition shadow-lg shadow-indigo-600/30 flex items-center gap-2 shrink-0 w-full sm:w-auto justify-center"
+                                    >
+                                        <Play className="w-3.5 h-3.5 fill-white" />
+                                        <span>Resume Class</span>
+                                    </button>
+                                </div>
+                            )}
+
                             {/* STATISTICS & INTERACTIVE STUDY PLANNER CALENDAR */}
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                                 <div className="lg:col-span-7 space-y-6">
@@ -919,7 +1045,10 @@ export default function StudentDashboardPage() {
                                                         </div>
 
                                                         <button
-                                                            onClick={() => toggleWatchStatus(v.id)}
+                                                            onClick={() => {
+                                                                toggleWatchStatus(v.id);
+                                                                recordLecturePlayback(v.id);
+                                                            }}
                                                             className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition ${isDone
                                                                     ? "bg-emerald-50 text-emerald-600 border-emerald-200"
                                                                     : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
@@ -1084,13 +1213,13 @@ export default function StudentDashboardPage() {
                         </>
                     )}
 
-                    {/* VIEW: VIDEO LECTURES GRID */}
+                    {/* VIEW: VIDEO LECTURES GRID (WITH FEATURE 2: LECTURE NOTES SCRATCHPAD) */}
                     {!isSearchActive && activeNav === "lectures" && (
                         <div className="space-y-6">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div>
                                     <h2 className="text-xl font-extrabold text-slate-900">Video Lectures</h2>
-                                    <p className="text-xs text-slate-400">Stream recorded classes and mark your completed lectures.</p>
+                                    <p className="text-xs text-slate-400">Stream recorded classes, take personal notes, and mark completed lectures.</p>
                                 </div>
 
                                 <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-slate-200">
@@ -1118,10 +1247,13 @@ export default function StudentDashboardPage() {
                                     {filteredVideos.map((vid) => {
                                         const embedUrl = getYouTubeEmbedUrl(vid.youtube_url || vid.video_url || "");
                                         const isWatched = watchedVideos.includes(vid.id);
+                                        const isNotesOpen = openNotesId === vid.id;
+                                        const hasNotes = Boolean(lectureNotes[vid.id]?.trim());
 
                                         return (
                                             <div
                                                 key={vid.id}
+                                                id={`lecture-card-${vid.id}`}
                                                 className={`bg-white rounded-3xl overflow-hidden border transition-all duration-200 shadow-sm flex flex-col justify-between ${isWatched ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-200"
                                                     }`}
                                             >
@@ -1162,9 +1294,68 @@ export default function StudentDashboardPage() {
                                                     </div>
                                                 </div>
 
-                                                <div className="p-5 pt-0">
+                                                <div className="p-5 pt-0 space-y-3">
+                                                    {/* FEATURE 2: COLLAPSIBLE LECTURE NOTES DRAWER */}
+                                                    <div className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
+                                                        <button
+                                                            onClick={() => setOpenNotesId(isNotesOpen ? null : vid.id)}
+                                                            className="w-full px-3.5 py-2 flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-slate-100/60 transition"
+                                                        >
+                                                            <div className="flex items-center gap-1.5">
+                                                                <FileEdit className="w-3.5 h-3.5 text-indigo-600" />
+                                                                <span>My Lecture Notes</span>
+                                                                {hasNotes && (
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                                                                {saveStatus[vid.id] && (
+                                                                    <span className="text-emerald-600 font-semibold text-[10px]">Saved!</span>
+                                                                )}
+                                                                {isNotesOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                                            </div>
+                                                        </button>
+
+                                                        {isNotesOpen && (
+                                                            <div className="p-3 bg-white border-t border-slate-100 space-y-2.5 animate-in fade-in duration-100">
+                                                                <textarea
+                                                                    rows={4}
+                                                                    placeholder="Jot down key formulas, tips, or timestamps here..."
+                                                                    value={lectureNotes[vid.id] || ""}
+                                                                    onChange={(e) => handleNoteChange(vid.id, e.target.value)}
+                                                                    className="w-full bg-[#F4F6FA] border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 resize-none font-sans"
+                                                                />
+
+                                                                <div className="flex items-center justify-between">
+                                                                    <button
+                                                                        onClick={() => handleAddTimestampTag(vid.id)}
+                                                                        className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                                                                    >
+                                                                        <Clock className="w-3 h-3" />
+                                                                        <span>+ Add Timestamp</span>
+                                                                    </button>
+
+                                                                    {hasNotes && (
+                                                                        <button
+                                                                            onClick={() => handleExportNotes(vid)}
+                                                                            className="text-[11px] font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1"
+                                                                            title="Download as TXT file"
+                                                                        >
+                                                                            <Download className="w-3 h-3" />
+                                                                            <span>Export</span>
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Completed / Watched Toggle Button */}
                                                     <button
-                                                        onClick={() => toggleWatchStatus(vid.id)}
+                                                        onClick={() => {
+                                                            toggleWatchStatus(vid.id);
+                                                            recordLecturePlayback(vid.id);
+                                                        }}
                                                         className={`w-full py-2.5 rounded-2xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
                                                                 ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
                                                                 : "bg-slate-900 text-white hover:bg-slate-800"

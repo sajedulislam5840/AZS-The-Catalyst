@@ -14,16 +14,18 @@ class UserRole(str, Enum):
 class User(Base):
     __tablename__ = "users"
 
+    # UUID primary key to match PostgreSQL schema exactly
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     full_name = Column(String, nullable=True)
     email = Column(String, unique=True, index=True, nullable=False)
     
-    # Dual-mapped attributes to guarantee constraint satisfaction
+    # Dual-mapped password fields to satisfy every legacy constraint
     password_hash = Column(String, nullable=True)
     hashed_password = Column(String, nullable=True)
     
     role = Column(SQLEnum(UserRole), default=UserRole.STUDENT)
     is_admin = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
     school = Column(String, nullable=True)
     grade_class = Column(String, nullable=True)
     batch_no = Column(String, nullable=True)

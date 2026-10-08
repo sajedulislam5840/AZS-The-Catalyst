@@ -47,6 +47,7 @@ class LoginResponse(BaseModel):
 def to_safe_bytes(secret: str) -> bytes:
     if not isinstance(secret, str):
         secret = str(secret or "")
+    # bcrypt protocol strictly accepts max 72 bytes
     return secret.encode("utf-8")[:71]
 
 
@@ -59,6 +60,7 @@ def get_password_hash(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     if not hashed_password:
         return False
+    # Direct comparison if plain text in DB
     if plain_password == hashed_password:
         return True
     pwd_bytes = to_safe_bytes(plain_password)
@@ -143,11 +145,12 @@ async def register_student(payload: StudentRegisterRequest, db: AsyncSession = D
         password_hash=hashed,
         hashed_password=hashed,
         role=UserRole.STUDENT,
+        is_admin=False,
+        is_active=True,
+        is_approved=False,
         school=payload.school.strip(),
         grade_class=payload.grade_class.strip(),
         batch_no=payload.batch_no.strip(),
-        is_admin=False,
-        is_approved=False,
         subscription_end_date=None,
     )
     db.add(new_user)
@@ -179,6 +182,7 @@ async def process_user_login(email_input: str, password_input: str, db: AsyncSes
                 hashed_password=hashed_pwd,
                 role=UserRole.ADMIN,
                 is_admin=True,
+                is_active=True,
                 is_approved=True,
             )
             db.add(user)
@@ -188,6 +192,7 @@ async def process_user_login(email_input: str, password_input: str, db: AsyncSes
             user.password_hash = hashed_pwd
             user.hashed_password = hashed_pwd
             user.is_admin = True
+            user.is_active = True
             user.role = UserRole.ADMIN
             user.is_approved = True
             await db.commit()
@@ -199,6 +204,12 @@ async def process_user_login(email_input: str, password_input: str, db: AsyncSes
     stored_hash = user.password_hash or user.hashed_password
     if not stored_hash or not verify_password(cleaned_pass, stored_hash):
         raise HTTPException(status_code=400, detail="Invalid email or password.")
+
+    # Auto-repair unhashed or legacy values
+    if not (stored_hash.startswith("$2b$") or stored_hash.startswith("$2a$")):
+        fresh_hash = get_password_hash(cleaned_pass)
+        user.password_hash = fresh_hash
+        user.hashed_password = fresh_hash
 
     new_session_token = str(uuid.uuid4())
     user.current_session_token = new_session_token
@@ -239,18 +250,3 @@ async def login_via_json(
     db: AsyncSession = Depends(get_db)
 ):
     return await process_user_login(payload.email, payload.password, db)
-
-
-@router.post("/make-admin")
-async def make_admin(email: str, db: AsyncSession = Depends(get_db)):
-    stmt = select(User).where(func.lower(func.trim(User.email)) == email.strip().lower())
-    res = await db.execute(stmt)
-    user = res.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
-
-    user.is_admin = True
-    user.role = UserRole.ADMIN
-    user.is_approved = True
-    await db.commit()
-    return {"message": f"{email} has been granted Admin privileges."}

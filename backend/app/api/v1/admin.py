@@ -3,27 +3,16 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, desc
 
 from app.core.database import get_db
-from app.models.user import User
-from app.models.academic import VideoLecture, Material
+from app.models.user import User, UserRole
+from app.models.academic import Lecture, Material
 from app.api.v1.auth import get_current_active_user
 
-router = APIRouter(prefix="/admin", tags=["Admin Portal"])
+router = APIRouter(prefix="/admin", tags=["Admin Instructor Operations"])
 
 
-# Admin Permission Dependency
-async def get_current_admin(current_user: User = Depends(get_current_active_user)) -> User:
-    if not current_user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Shudhu teacher/admin ei panel access korte parbe."
-        )
-    return current_user
-
-
-# Schemas
 class StudentOut(BaseModel):
     id: int
     full_name: str
@@ -34,6 +23,9 @@ class StudentOut(BaseModel):
     is_approved: bool
     subscription_end_date: Optional[datetime]
     days_left: int
+
+    class Config:
+        from_attributes = True
 
 
 class LectureCreate(BaseModel):
@@ -52,40 +44,50 @@ class MaterialCreate(BaseModel):
     file_url: str
 
 
+async def verify_admin(current_user: User = Depends(get_current_active_user)):
+    if not (current_user.is_admin or current_user.role == UserRole.ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Instructor/Admin privileges required."
+        )
+    return current_user
+
+
 @router.get("/students", response_model=List[StudentOut])
-async def list_all_students(
-    admin: User = Depends(get_current_admin),
+async def list_students(
+    admin: User = Depends(verify_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    stmt = select(User).where(User.is_admin == False).order_by(User.id.desc())
+    stmt = select(User).where(User.is_admin == False).order_by(desc(User.created_at))
     res = await db.execute(stmt)
     students = res.scalars().all()
 
-    now = datetime.utcnow()
     output = []
+    now = datetime.utcnow()
     for s in students:
-        remaining_days = 0
+        days = 0
         if s.subscription_end_date and s.subscription_end_date > now:
-            remaining_days = (s.subscription_end_date - now).days + 1
-
-        output.append(StudentOut(
-            id=s.id,
-            full_name=s.full_name,
-            email=s.email,
-            school=s.school,
-            grade_class=s.grade_class,
-            batch_no=s.batch_no,
-            is_approved=s.is_approved,
-            subscription_end_date=s.subscription_end_date,
-            days_left=remaining_days
-        ))
+            days = (s.subscription_end_date - now).days + 1
+        output.append(
+            StudentOut(
+                id=s.id,
+                full_name=s.full_name or "N/A",
+                email=s.email,
+                school=s.school,
+                grade_class=s.grade_class,
+                batch_no=s.batch_no,
+                is_approved=s.is_approved,
+                subscription_end_date=s.subscription_end_date,
+                days_left=days,
+            )
+        )
     return output
 
 
 @router.post("/students/{student_id}/approve-and-pay")
-async def approve_and_renew_student(
+async def approve_and_extend_30_days(
     student_id: int,
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(verify_admin),
     db: AsyncSession = Depends(get_db)
 ):
     stmt = select(User).where(User.id == student_id)
@@ -93,44 +95,52 @@ async def approve_and_renew_student(
     student = res.scalar_one_or_none()
 
     if not student:
-        raise HTTPException(status_code=404, detail="Student khuje paoa jay ni.")
+        raise HTTPException(status_code=404, detail="Student not found.")
 
+    student.is_approved = True
     now = datetime.utcnow()
-    # 30 Days Rolling Subscription Calculation
     if student.subscription_end_date and student.subscription_end_date > now:
         student.subscription_end_date += timedelta(days=30)
     else:
         student.subscription_end_date = now + timedelta(days=30)
 
-    student.is_approved = True
     await db.commit()
-    await db.refresh(student)
-
     return {
-        "message": f"{student.full_name}-er 30 diner access update kora hoyeche!",
-        "new_end_date": student.subscription_end_date
+        "message": f"Student access extended by 30 days until {student.subscription_end_date.strftime('%Y-%m-%d')}"
     }
 
 
 @router.post("/lectures")
-async def add_video_lecture(
+async def add_lecture(
     payload: LectureCreate,
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(verify_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    lecture = VideoLecture(**payload.dict())
+    lecture = Lecture(
+        lecture_no=payload.lecture_no,
+        title=payload.title,
+        topic=payload.topic,
+        chapter=payload.chapter,
+        subject=payload.subject,
+        video_url=payload.video_url,
+    )
     db.add(lecture)
     await db.commit()
-    return {"message": "Video lecture shofolbhabe upload hoyeche!"}
+    return {"message": "Lecture added successfully."}
 
 
 @router.post("/materials")
-async def add_lecture_material(
+async def add_material(
     payload: MaterialCreate,
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(verify_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    mat = Material(**payload.dict())
-    db.add(mat)
+    material = Material(
+        title=payload.title,
+        chapter=payload.chapter,
+        subject=payload.subject,
+        file_url=payload.file_url,
+    )
+    db.add(material)
     await db.commit()
-    return {"message": "Lecture PDF/Sheet shofolbhabe upload hoyeche!"}
+    return {"message": "Lecture material added successfully."}

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, or_, delete
-from jose import jwt
+from jose import jwt, JWTError
 
 from app.core.database import get_db
 from app.models.user import User
@@ -72,31 +72,51 @@ class MaterialUpdate(BaseModel):
     file_url: Optional[str] = None
 
 
+# --- SECURE VERIFICATION DEPENDENCY (ZERO BYPASS) ---
 async def verify_admin_token(
     authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db)
-):
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
-            email = payload.get("sub")
-            if email:
-                stmt = select(User).where(User.email == email)
-                res = await db.execute(stmt)
-                user = res.scalar_one_or_none()
-                if user and (user.is_admin or str(user.role).upper() == "ADMIN" or user.email == "rabbi@edutrack.com"):
-                    return user
-        except Exception:
-            pass
+) -> User:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication token required.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-    stmt = select(User).where(User.email == "rabbi@edutrack.com")
+    token = authorization.split(" ")[1].strip()
+
+    try:
+        # verify_exp is strictly validated (standard behavior)
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Malformed token: missing subject identity."
+            )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired or is invalid. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    stmt = select(User).where(User.email == email)
     res = await db.execute(stmt)
-    admin_user = res.scalar_one_or_none()
-    if admin_user:
-        return admin_user
+    user = res.scalar_one_or_none()
 
-    raise HTTPException(status_code=403, detail="Instructor/Admin privileges required.")
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User account not found.")
+
+    is_admin = bool(user.is_admin or str(getattr(user, "role", "")).upper() == "ADMIN" or user.email == "rabbi@edutrack.com")
+    if not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: instructor privileges required."
+        )
+
+    return user
 
 
 def parse_subject_enum(subj: str) -> SubjectEnum:
@@ -318,7 +338,6 @@ async def update_lecture(
     return {"message": "Lecture updated successfully."}
 
 
-# Feature 4: Swap Order between two lectures
 @router.post("/lectures/swap-order")
 async def swap_lecture_order(
     payload: SwapOrderPayload,
@@ -340,7 +359,6 @@ async def swap_lecture_order(
     if not lec1 or not lec2:
         raise HTTPException(status_code=404, detail="One or both lectures not found.")
 
-    # Swap the lecture numbers
     temp = lec1.lecture_no
     lec1.lecture_no = lec2.lecture_no
     lec2.lecture_no = temp
@@ -349,7 +367,6 @@ async def swap_lecture_order(
     return {"message": "Lecture sequence swapped successfully."}
 
 
-# Feature 4: Renumber whole chapter from 1 to N
 @router.post("/lectures/normalize-order")
 async def normalize_lecture_order(
     payload: NormalizeOrderPayload,

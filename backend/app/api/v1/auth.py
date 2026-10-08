@@ -16,7 +16,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication & Subscription"])
 
 SECRET_KEY = "EDUTRACK_SUPER_SECRET_KEY_BATCH_SECURITY"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30 days
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30 days token
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
@@ -45,12 +45,24 @@ class LoginResponse(BaseModel):
     full_name: str
 
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+def sanitize_password(password: str) -> str:
+    # Truncate strictly to 72 UTF-8 bytes to comply with bcrypt limits
+    encoded = password.encode("utf-8")[:72]
+    return encoded.decode("utf-8", errors="ignore")
 
 
-def get_password_hash(password):
-    return pwd_context.hash(password)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    safe_pass = sanitize_password(plain_password)
+    try:
+        return pwd_context.verify(safe_pass, hashed_password)
+    except Exception:
+        # Fallback if stored password was stored unhashed prior to migration
+        return plain_password == hashed_password
+
+
+def get_password_hash(password: str) -> str:
+    safe_pass = sanitize_password(password)
+    return pwd_context.hash(safe_pass)
 
 
 def create_access_token(data: dict):
@@ -143,10 +155,16 @@ async def process_user_login(email_input: str, password_input: str, db: AsyncSes
     res = await db.execute(stmt)
     user = res.scalar_one_or_none()
 
-    if not user or not verify_password(password_input, user.hashed_password):
+    if not user or not user.hashed_password:
         raise HTTPException(status_code=400, detail="Invalid email or password.")
 
-    # Generate Unique Device Session Token
+    if not verify_password(password_input, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Invalid email or password.")
+
+    # Automatically rehash legacy/plain passwords into standard bcrypt
+    if not user.hashed_password.startswith("$2b$") and not user.hashed_password.startswith("$2a$"):
+        user.hashed_password = get_password_hash(password_input)
+
     new_session_token = str(uuid.uuid4())
     user.current_session_token = new_session_token
     await db.commit()

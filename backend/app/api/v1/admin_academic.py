@@ -39,11 +39,27 @@ class LectureCreate(BaseModel):
     video_url: str
 
 
+class LectureUpdate(BaseModel):
+    lecture_no: Optional[int] = None
+    title: Optional[str] = None
+    topic: Optional[str] = None
+    chapter: Optional[str] = None
+    subject: Optional[str] = None
+    video_url: Optional[str] = None
+
+
 class MaterialCreate(BaseModel):
     title: str
     chapter: str
     subject: str
     file_url: str
+
+
+class MaterialUpdate(BaseModel):
+    title: Optional[str] = None
+    chapter: Optional[str] = None
+    subject: Optional[str] = None
+    file_url: Optional[str] = None
 
 
 async def verify_admin_token(
@@ -64,7 +80,6 @@ async def verify_admin_token(
         except Exception:
             pass
 
-    # Fallback to instructor account
     stmt = select(User).where(User.email == "rabbi@edutrack.com")
     res = await db.execute(stmt)
     admin_user = res.scalar_one_or_none()
@@ -75,7 +90,7 @@ async def verify_admin_token(
 
 
 def parse_subject_enum(subj: str) -> SubjectEnum:
-    s = subj.strip().upper().replace(" ", "_")
+    s = str(subj).strip().upper().replace(" ", "_")
     if "CHEM" in s:
         return SubjectEnum.CHEMISTRY
     if "MATH" in s:
@@ -83,7 +98,7 @@ def parse_subject_enum(subj: str) -> SubjectEnum:
     return SubjectEnum.PHYSICS
 
 
-# --- STUDENTS MANAGEMENT ---
+# --- STUDENTS & BATCH REGISTRY ---
 @router.get("/students", response_model=List[StudentOut])
 async def list_students(
     admin: User = Depends(verify_admin_token),
@@ -117,8 +132,8 @@ async def list_students(
                 email=s.email,
                 school=s.school,
                 grade_class=s.grade_class,
-                batch_no=s.batch_no,
-                is_approved=bool(s.is_approved),
+                batch_no=s.batch_no or "General",
+                is_approved=bool(s.is_approved and days > 0),
                 subscription_end_date=s.subscription_end_date,
                 days_left=days,
             )
@@ -127,7 +142,7 @@ async def list_students(
 
 
 @router.post("/students/{student_id}/approve-and-pay")
-async def approve_and_extend_30_days(
+async def mark_student_paid(
     student_id: str,
     admin: User = Depends(verify_admin_token),
     db: AsyncSession = Depends(get_db)
@@ -156,11 +171,11 @@ async def approve_and_extend_30_days(
     await db.commit()
     await db.refresh(student)
 
-    return {"message": "Student access approved for 30 days."}
+    return {"message": "Student marked as Paid. Access active for 30 days."}
 
 
 @router.post("/students/{student_id}/revoke-access")
-async def revoke_student_access(
+async def mark_student_unpaid(
     student_id: str,
     admin: User = Depends(verify_admin_token),
     db: AsyncSession = Depends(get_db)
@@ -184,7 +199,7 @@ async def revoke_student_access(
     await db.commit()
     await db.refresh(student)
 
-    return {"message": f"Access revoked for {student.email}."}
+    return {"message": f"Student {student.email} marked as Unpaid."}
 
 
 @router.delete("/students/{student_id}")
@@ -211,7 +226,7 @@ async def delete_student(
     await db.delete(student)
     await db.commit()
 
-    return {"message": "Student deleted successfully."}
+    return {"message": "Student account deleted permanently."}
 
 
 # --- VIDEO LECTURES MANAGEMENT ---
@@ -257,6 +272,41 @@ async def add_lecture(
     await db.commit()
     await db.refresh(lecture)
     return {"message": "Lecture added successfully."}
+
+
+# Edit / Update Lecture
+@router.put("/lectures/{lecture_id}")
+async def update_lecture(
+    lecture_id: str,
+    payload: LectureUpdate,
+    admin: User = Depends(verify_admin_token),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        lec_uuid = uuid.UUID(lecture_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid lecture UUID.")
+
+    stmt = select(VideoLecture).where(VideoLecture.id == lec_uuid)
+    res = await db.execute(stmt)
+    lec = res.scalar_one_or_none()
+    if not lec:
+        raise HTTPException(status_code=404, detail="Lecture not found.")
+
+    if payload.lecture_no is not None:
+        lec.lecture_no = payload.lecture_no
+    if payload.title is not None or payload.topic is not None:
+        lec.topic = (payload.title or payload.topic).strip()
+    if payload.chapter is not None:
+        lec.chapter = payload.chapter.strip()
+    if payload.subject is not None:
+        lec.subject = parse_subject_enum(payload.subject)
+    if payload.video_url is not None:
+        lec.youtube_url = payload.video_url.strip()
+
+    await db.commit()
+    await db.refresh(lec)
+    return {"message": "Lecture updated successfully."}
 
 
 @router.patch("/lectures/{lecture_id}/toggle-publish")
@@ -342,6 +392,39 @@ async def add_material(
     await db.commit()
     await db.refresh(material)
     return {"message": "Lecture material added successfully."}
+
+
+# Edit / Update Material
+@router.put("/materials/{material_id}")
+async def update_material(
+    material_id: str,
+    payload: MaterialUpdate,
+    admin: User = Depends(verify_admin_token),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        mat_uuid = uuid.UUID(material_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid material UUID.")
+
+    stmt = select(Material).where(Material.id == mat_uuid)
+    res = await db.execute(stmt)
+    mat = res.scalar_one_or_none()
+    if not mat:
+        raise HTTPException(status_code=404, detail="Material not found.")
+
+    if payload.title is not None:
+        mat.title = payload.title.strip()
+    if payload.chapter is not None:
+        mat.chapter = payload.chapter.strip()
+    if payload.subject is not None:
+        mat.subject = parse_subject_enum(payload.subject)
+    if payload.file_url is not None:
+        mat.pdf_url = payload.file_url.strip()
+
+    await db.commit()
+    await db.refresh(mat)
+    return {"message": "Material updated successfully."}
 
 
 @router.patch("/materials/{material_id}/toggle-publish")

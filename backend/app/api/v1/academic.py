@@ -3,7 +3,7 @@ import uuid
 import re
 from pathlib import Path
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Header
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -51,25 +51,27 @@ def parse_subject_enum(subj: str) -> SubjectEnum:
     return SubjectEnum.PHYSICS
 
 
+# Student endpoint: fetches all published lectures (case-insensitive & safe fallback)
 @router.get("/lectures")
 async def get_student_lectures(db: AsyncSession = Depends(get_db)):
     stmt = (
         select(VideoLecture)
-        .where(VideoLecture.is_published == True)
+        .where(VideoLecture.is_published.isnot(False))
         .order_by(VideoLecture.lecture_no.asc())
     )
     res = await db.execute(stmt)
     lectures = res.scalars().all()
     return [
-        LectureOut(
-            id=str(l.id),
-            lecture_no=l.lecture_no,
-            title=l.topic,
-            topic=l.topic,
-            chapter=l.chapter,
-            subject=l.subject.value if hasattr(l.subject, "value") else str(l.subject),
-            video_url=l.youtube_url,
-        )
+        {
+            "id": str(l.id),
+            "lecture_no": l.lecture_no,
+            "title": l.topic,
+            "topic": l.topic,
+            "chapter": l.chapter,
+            "subject": l.subject.value if hasattr(l.subject, "value") else str(l.subject),
+            "video_url": l.youtube_url,
+            "youtube_url": l.youtube_url,
+        }
         for l in lectures
     ]
 
@@ -78,19 +80,20 @@ async def get_student_lectures(db: AsyncSession = Depends(get_db)):
 async def get_student_materials(db: AsyncSession = Depends(get_db)):
     stmt = (
         select(Material)
-        .where(Material.is_published == True)
+        .where(Material.is_published.isnot(False))
         .order_by(Material.created_at.desc())
     )
     res = await db.execute(stmt)
     materials = res.scalars().all()
     return [
-        MaterialOut(
-            id=str(m.id),
-            title=m.title,
-            chapter=m.chapter,
-            subject=m.subject.value if hasattr(m.subject, "value") else str(m.subject),
-            file_url=m.pdf_url,
-        )
+        {
+            "id": str(m.id),
+            "title": m.title,
+            "chapter": m.chapter,
+            "subject": m.subject.value if hasattr(m.subject, "value") else str(m.subject),
+            "file_url": m.pdf_url,
+            "pdf_url": m.pdf_url,
+        }
         for m in materials
     ]
 

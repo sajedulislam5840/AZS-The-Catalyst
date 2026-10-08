@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef, FormEvent } from "react";
+import React, { useState, useEffect, useMemo, useRef, FormEvent, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import {
     LayoutDashboard,
@@ -136,7 +136,7 @@ function getDrivePreviewUrl(url: string) {
     }
 }
 
-export default function StudentDashboardPage() {
+function DashboardContent() {
     const router = useRouter();
     const [activeNav, setActiveNav] = useState<"dashboard" | "lectures" | "materials" | "ai">("dashboard");
     const [mounted, setMounted] = useState(false);
@@ -1399,7 +1399,7 @@ export default function StudentDashboardPage() {
                                                                             onClick={() => handleAddTimestampTag(vid.id)}
                                                                             className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
                                                                         >
-                                                                            <Clock className="w-3.5 h-3.5" />
+                                                                            <Clock className="w-3 h-3" />
                                                                             <span>+ Add Timestamp</span>
                                                                         </button>
 
@@ -1737,5 +1737,21 @@ export default function StudentDashboardPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+// TOP-LEVEL EXPORT WITH SUSPENSE BOUNDARY (Fixes Next.js stream/prerendering warning)
+export default function StudentDashboardPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="min-h-screen bg-[#F4F6FA] flex flex-col items-center justify-center space-y-3">
+                    <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-xs font-bold text-slate-600 tracking-wide">Loading EduTrack Workspace...</p>
+                </div>
+            }
+        >
+            <DashboardContent />
+        </Suspense>
     );
 }

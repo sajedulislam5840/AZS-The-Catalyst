@@ -66,6 +66,7 @@ async def verify_admin(current_user: User = Depends(get_current_active_user)):
     return current_user
 
 
+# --- STUDENT MANAGEMENT ---
 @router.get("/students", response_model=List[StudentOut])
 async def list_students(
     admin: User = Depends(verify_admin),
@@ -198,7 +199,7 @@ async def delete_student(
     return {"message": f"Student {student.email} deleted successfully."}
 
 
-# LECTURES CRUD
+# --- VIDEO LECTURES MANAGEMENT ---
 @router.get("/lectures")
 async def get_admin_lectures(
     admin: User = Depends(verify_admin),
@@ -208,7 +209,20 @@ async def get_admin_lectures(
         return []
     stmt = select(Lecture).order_by(Lecture.lecture_no.desc())
     res = await db.execute(stmt)
-    return res.scalars().all()
+    lectures = res.scalars().all()
+    out = []
+    for l in lectures:
+        out.append({
+            "id": l.id,
+            "lecture_no": l.lecture_no,
+            "title": l.title,
+            "topic": l.topic,
+            "chapter": l.chapter,
+            "subject": l.subject,
+            "video_url": l.video_url,
+            "is_published": getattr(l, "is_published", True)
+        })
+    return out
 
 
 @router.post("/lectures")
@@ -232,14 +246,30 @@ async def add_lecture(
     return {"message": "Lecture added successfully."}
 
 
+@router.patch("/lectures/{lecture_id}/toggle-publish")
+async def toggle_lecture_publish(
+    lecture_id: int,
+    admin: User = Depends(verify_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    stmt = select(Lecture).where(Lecture.id == lecture_id)
+    res = await db.execute(stmt)
+    lec = res.scalar_one_or_none()
+    if not lec:
+        raise HTTPException(status_code=404, detail="Lecture not found.")
+    
+    current_status = getattr(lec, "is_published", True)
+    setattr(lec, "is_published", not current_status)
+    await db.commit()
+    return {"message": f"Lecture {'published' if not current_status else 'unpublished'}."}
+
+
 @router.delete("/lectures/{lecture_id}")
 async def delete_lecture(
     lecture_id: int,
     admin: User = Depends(verify_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    if Lecture is None:
-        raise HTTPException(status_code=500, detail="Lecture model is not defined.")
     stmt = select(Lecture).where(Lecture.id == lecture_id)
     res = await db.execute(stmt)
     lec = res.scalar_one_or_none()
@@ -247,10 +277,10 @@ async def delete_lecture(
         raise HTTPException(status_code=404, detail="Lecture not found.")
     await db.delete(lec)
     await db.commit()
-    return {"message": "Lecture deleted successfully."}
+    return {"message": "Lecture deleted permanently."}
 
 
-# MATERIALS CRUD
+# --- PDF MATERIALS MANAGEMENT ---
 @router.get("/materials")
 async def get_admin_materials(
     admin: User = Depends(verify_admin),
@@ -260,7 +290,18 @@ async def get_admin_materials(
         return []
     stmt = select(Material).order_by(Material.id.desc())
     res = await db.execute(stmt)
-    return res.scalars().all()
+    materials = res.scalars().all()
+    out = []
+    for m in materials:
+        out.append({
+            "id": m.id,
+            "title": m.title,
+            "chapter": m.chapter,
+            "subject": m.subject,
+            "file_url": m.file_url,
+            "is_published": getattr(m, "is_published", True)
+        })
+    return out
 
 
 @router.post("/materials")
@@ -282,14 +323,30 @@ async def add_material(
     return {"message": "Lecture material added successfully."}
 
 
+@router.patch("/materials/{material_id}/toggle-publish")
+async def toggle_material_publish(
+    material_id: int,
+    admin: User = Depends(verify_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    stmt = select(Material).where(Material.id == material_id)
+    res = await db.execute(stmt)
+    mat = res.scalar_one_or_none()
+    if not mat:
+        raise HTTPException(status_code=404, detail="Material not found.")
+    
+    current_status = getattr(mat, "is_published", True)
+    setattr(mat, "is_published", not current_status)
+    await db.commit()
+    return {"message": f"Material {'published' if not current_status else 'unpublished'}."}
+
+
 @router.delete("/materials/{material_id}")
 async def delete_material(
     material_id: int,
     admin: User = Depends(verify_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    if Material is None:
-        raise HTTPException(status_code=500, detail="Material model is not defined.")
     stmt = select(Material).where(Material.id == material_id)
     res = await db.execute(stmt)
     mat = res.scalar_one_or_none()
@@ -297,4 +354,4 @@ async def delete_material(
         raise HTTPException(status_code=404, detail="Material not found.")
     await db.delete(mat)
     await db.commit()
-    return {"message": "Material deleted successfully."}
+    return {"message": "Material deleted permanently."}

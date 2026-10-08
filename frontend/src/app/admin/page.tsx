@@ -15,6 +15,9 @@ import {
     XCircle,
     Trash2,
     Upload,
+    Eye,
+    EyeOff,
+    ExternalLink,
 } from "lucide-react";
 
 interface Student {
@@ -36,6 +39,7 @@ interface LectureItem {
     subject: string;
     chapter: string;
     video_url: string;
+    is_published?: boolean;
 }
 
 interface MaterialItem {
@@ -44,6 +48,7 @@ interface MaterialItem {
     subject: string;
     chapter: string;
     file_url: string;
+    is_published?: boolean;
 }
 
 const BACKEND_URL = "https://edutrack-backend-qjxg.onrender.com";
@@ -77,9 +82,23 @@ export default function AdminPage() {
 
     const backendUrl = (process.env.NEXT_PUBLIC_API_URL || BACKEND_URL).replace(/\/$/, "");
 
+    // Safe Token retrieval
+    const getToken = () => {
+        if (typeof window === "undefined") return null;
+        return localStorage.getItem("token") || localStorage.getItem("access_token");
+    };
+
+    const handleAuthError = () => {
+        alert("Session expired or invalid credentials. Please log in again as admin.");
+        localStorage.clear();
+        router.push("/login");
+    };
+
     const fetchStudents = async () => {
         setLoading(true);
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const token = getToken();
+        if (!token) return handleAuthError();
+
         try {
             const res = await fetch(`${backendUrl}/api/v1/admin/students`, {
                 headers: {
@@ -89,9 +108,7 @@ export default function AdminPage() {
             });
 
             if (res.status === 403 || res.status === 401) {
-                alert("Session expired or admin privileges required.");
-                router.push("/login");
-                return;
+                return handleAuthError();
             }
 
             const data = await res.json();
@@ -104,26 +121,32 @@ export default function AdminPage() {
     };
 
     const fetchLectures = async () => {
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const token = getToken();
+        if (!token) return;
         try {
             const res = await fetch(`${backendUrl}/api/v1/admin/lectures`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            const data = await res.json();
-            setLectures(Array.isArray(data) ? data : []);
+            if (res.ok) {
+                const data = await res.json();
+                setLectures(Array.isArray(data) ? data : []);
+            }
         } catch (err) {
             console.error(err);
         }
     };
 
     const fetchMaterials = async () => {
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const token = getToken();
+        if (!token) return;
         try {
             const res = await fetch(`${backendUrl}/api/v1/admin/materials`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            const data = await res.json();
-            setMaterials(Array.isArray(data) ? data : []);
+            if (res.ok) {
+                const data = await res.json();
+                setMaterials(Array.isArray(data) ? data : []);
+            }
         } catch (err) {
             console.error(err);
         }
@@ -137,7 +160,7 @@ export default function AdminPage() {
 
     const handleApproveOrRenew = async (studentId: string) => {
         setActionLoadingId(studentId);
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const token = getToken();
         try {
             const res = await fetch(
                 `${backendUrl}/api/v1/admin/students/${studentId}/approve-and-pay`,
@@ -155,9 +178,9 @@ export default function AdminPage() {
     };
 
     const handleRevoke = async (studentId: string) => {
-        if (!confirm("Are you sure you want to revoke this student's access?")) return;
+        if (!confirm("Are you sure you want to revoke access and mark as unpaid?")) return;
         setActionLoadingId(studentId);
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const token = getToken();
         try {
             const res = await fetch(
                 `${backendUrl}/api/v1/admin/students/${studentId}/revoke-access`,
@@ -177,7 +200,7 @@ export default function AdminPage() {
     const handleDeleteStudent = async (studentId: string, email: string) => {
         if (!confirm(`Are you sure you want to permanently delete student "${email}"?`)) return;
         setActionLoadingId(studentId);
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const token = getToken();
         try {
             const res = await fetch(`${backendUrl}/api/v1/admin/students/${studentId}`, {
                 method: "DELETE",
@@ -191,9 +214,10 @@ export default function AdminPage() {
         }
     };
 
+    // Video Actions
     const handleCreateLecture = async (e: React.FormEvent) => {
         e.preventDefault();
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const token = getToken();
         try {
             const res = await fetch(`${backendUrl}/api/v1/admin/lectures`, {
                 method: "POST",
@@ -204,7 +228,7 @@ export default function AdminPage() {
                 body: JSON.stringify(lectureForm),
             });
             if (res.ok) {
-                alert("Video lecture published.");
+                alert("Video lecture published successfully.");
                 setLectureForm({
                     lecture_no: lectureForm.lecture_no + 1,
                     title: "",
@@ -214,16 +238,31 @@ export default function AdminPage() {
                     video_url: "",
                 });
                 fetchLectures();
+            } else {
+                alert("Failed to save lecture. Please verify credentials.");
             }
         } catch (err) {
             alert("Failed to create lecture.");
         }
     };
 
+    const handleToggleLecturePublish = async (id: number) => {
+        const token = getToken();
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/lectures/${id}/toggle-publish`, {
+                method: "PATCH",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) fetchLectures();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const handleDeleteLecture = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this lecture?")) return;
+        if (!confirm("Are you sure you want to permanently delete this lecture?")) return;
         setActionLoadingId(id);
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const token = getToken();
         try {
             const res = await fetch(`${backendUrl}/api/v1/admin/lectures/${id}`, {
                 method: "DELETE",
@@ -237,16 +276,17 @@ export default function AdminPage() {
         }
     };
 
-    // Local File Upload
+    // Material Actions
     const handleUploadLocalSheet = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedFile) {
-            alert("Please select a PDF file from your computer.");
+            alert("Please select a PDF file from your computer first.");
             return;
         }
-        setUploadingPdf(true);
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const token = getToken();
+        if (!token) return handleAuthError();
 
+        setUploadingPdf(true);
         const formData = new FormData();
         formData.append("title", sheetForm.title);
         formData.append("chapter", sheetForm.chapter);
@@ -256,15 +296,19 @@ export default function AdminPage() {
         try {
             const res = await fetch(`${backendUrl}/api/v1/academic/materials/upload`, {
                 method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
                 body: formData,
             });
 
             if (res.ok) {
-                alert("PDF uploaded from PC successfully.");
+                alert("PDF uploaded from computer successfully!");
                 setSheetForm({ title: "", chapter: "", subject: "Physics" });
                 setSelectedFile(null);
                 fetchMaterials();
+            } else if (res.status === 401 || res.status === 403) {
+                handleAuthError();
             } else {
                 const err = await res.json();
                 alert(err.detail || "Upload failed.");
@@ -276,10 +320,23 @@ export default function AdminPage() {
         }
     };
 
+    const handleToggleMaterialPublish = async (id: number) => {
+        const token = getToken();
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/materials/${id}/toggle-publish`, {
+                method: "PATCH",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) fetchMaterials();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const handleDeleteMaterial = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this material?")) return;
+        if (!confirm("Are you sure you want to permanently delete this PDF material?")) return;
         setActionLoadingId(id);
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const token = getToken();
         try {
             const res = await fetch(`${backendUrl}/api/v1/admin/materials/${id}`, {
                 method: "DELETE",
@@ -295,6 +352,7 @@ export default function AdminPage() {
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+            {/* Header */}
             <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-30">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -346,6 +404,7 @@ export default function AdminPage() {
                 </div>
             </header>
 
+            {/* Main Content */}
             <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* STUDENTS TAB */}
                 {activeTab === "students" && (
@@ -476,7 +535,7 @@ export default function AdminPage() {
                     </div>
                 )}
 
-                {/* VIDEO TAB + PREVIOUS VIDEOS LIST */}
+                {/* VIDEOS TAB: UPLOAD + PREVIOUS VIDEOS MANAGEMENT */}
                 {activeTab === "video" && (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                         <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
@@ -490,7 +549,7 @@ export default function AdminPage() {
                                             required
                                             value={lectureForm.lecture_no}
                                             onChange={(e) => setLectureForm({ ...lectureForm, lecture_no: Number(e.target.value) })}
-                                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
                                         />
                                     </div>
                                     <div>
@@ -498,7 +557,7 @@ export default function AdminPage() {
                                         <select
                                             value={lectureForm.subject}
                                             onChange={(e) => setLectureForm({ ...lectureForm, subject: e.target.value })}
-                                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
                                         >
                                             <option value="Physics">Physics</option>
                                             <option value="Chemistry">Chemistry</option>
@@ -515,7 +574,7 @@ export default function AdminPage() {
                                         placeholder="e.g. Kinematics"
                                         value={lectureForm.chapter}
                                         onChange={(e) => setLectureForm({ ...lectureForm, chapter: e.target.value })}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
                                     />
                                 </div>
 
@@ -527,7 +586,7 @@ export default function AdminPage() {
                                         placeholder="e.g. Projectile Motion Principles"
                                         value={lectureForm.title}
                                         onChange={(e) => setLectureForm({ ...lectureForm, title: e.target.value, topic: e.target.value })}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
                                     />
                                 </div>
 
@@ -539,7 +598,7 @@ export default function AdminPage() {
                                         placeholder="https://www.youtube.com/watch?v=..."
                                         value={lectureForm.video_url}
                                         onChange={(e) => setLectureForm({ ...lectureForm, video_url: e.target.value })}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
                                     />
                                 </div>
 
@@ -547,14 +606,21 @@ export default function AdminPage() {
                                     type="submit"
                                     className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg"
                                 >
-                                    Save Lecture
+                                    Save & Publish Lecture
                                 </button>
                             </form>
                         </div>
 
-                        {/* List of Previous Videos to Delete */}
+                        {/* List of Previous Videos with Unpublish and Delete */}
                         <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-                            <h2 className="text-lg font-bold text-white mb-4">Uploaded Lectures ({lectures.length})</h2>
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-lg font-bold text-white">Uploaded Lectures ({lectures.length})</h2>
+                                <button onClick={fetchLectures} className="text-xs text-slate-400 hover:text-white flex items-center space-x-1">
+                                    <RefreshCw className="w-3 h-3" />
+                                    <span>Refresh</span>
+                                </button>
+                            </div>
+
                             {lectures.length === 0 ? (
                                 <p className="text-xs text-slate-400">No lectures uploaded yet.</p>
                             ) : (
@@ -567,19 +633,50 @@ export default function AdminPage() {
                                                         {lec.subject}
                                                     </span>
                                                     <span className="text-xs text-slate-400 font-mono">Lec #{lec.lecture_no}</span>
+                                                    {lec.is_published === false && (
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                                            Unpublished
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <h4 className="text-sm font-semibold text-white mt-1">{lec.title}</h4>
                                                 <p className="text-xs text-slate-400">{lec.chapter}</p>
                                             </div>
 
-                                            <button
-                                                onClick={() => handleDeleteLecture(lec.id)}
-                                                disabled={actionLoadingId === lec.id}
-                                                className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-600 hover:text-white text-xs font-semibold flex items-center space-x-1"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                                <span>Delete</span>
-                                            </button>
+                                            <div className="flex items-center space-x-2">
+                                                {/* Unpublish Toggle */}
+                                                <button
+                                                    onClick={() => handleToggleLecturePublish(lec.id)}
+                                                    className={`p-2 rounded-xl text-xs font-semibold border transition-all ${lec.is_published === false
+                                                            ? "bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
+                                                            : "bg-slate-700 border-slate-600 text-slate-300 hover:text-white"
+                                                        }`}
+                                                    title={lec.is_published === false ? "Publish to students" : "Unpublish (Hide from students)"}
+                                                >
+                                                    {lec.is_published === false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </button>
+
+                                                {/* Watch link */}
+                                                <a
+                                                    href={lec.video_url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="p-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white"
+                                                    title="Watch video"
+                                                >
+                                                    <ExternalLink className="w-4 h-4" />
+                                                </a>
+
+                                                {/* Permanent Delete */}
+                                                <button
+                                                    onClick={() => handleDeleteLecture(lec.id)}
+                                                    disabled={actionLoadingId === lec.id}
+                                                    className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-600 hover:text-white transition-all"
+                                                    title="Delete permanently"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -588,7 +685,7 @@ export default function AdminPage() {
                     </div>
                 )}
 
-                {/* SHEET TAB: LOCAL PC UPLOAD + PREVIOUS SHEETS LIST */}
+                {/* SHEET TAB: PC UPLOAD + PREVIOUS SHEETS MANAGEMENT */}
                 {activeTab === "sheet" && (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                         <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
@@ -599,7 +696,7 @@ export default function AdminPage() {
                                     <select
                                         value={sheetForm.subject}
                                         onChange={(e) => setSheetForm({ ...sheetForm, subject: e.target.value })}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
                                     >
                                         <option value="Physics">Physics</option>
                                         <option value="Chemistry">Chemistry</option>
@@ -612,10 +709,10 @@ export default function AdminPage() {
                                     <input
                                         type="text"
                                         required
-                                        placeholder="e.g. Work, Energy and Power"
+                                        placeholder="e.g. আলোর প্রতিফলন"
                                         value={sheetForm.chapter}
                                         onChange={(e) => setSheetForm({ ...sheetForm, chapter: e.target.value })}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
                                     />
                                 </div>
 
@@ -624,10 +721,10 @@ export default function AdminPage() {
                                     <input
                                         type="text"
                                         required
-                                        placeholder="e.g. Practice Problems Sheet 01"
+                                        placeholder="e.g. Sheet 02 (CQ Solutions)"
                                         value={sheetForm.title}
                                         onChange={(e) => setSheetForm({ ...sheetForm, title: e.target.value })}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
                                     />
                                 </div>
 
@@ -655,7 +752,7 @@ export default function AdminPage() {
                                     {uploadingPdf ? (
                                         <>
                                             <Loader2 className="w-4 h-4 animate-spin" />
-                                            <span>Uploading from PC...</span>
+                                            <span>Uploading PDF...</span>
                                         </>
                                     ) : (
                                         <>
@@ -667,9 +764,16 @@ export default function AdminPage() {
                             </form>
                         </div>
 
-                        {/* List of Previous Sheets to Delete */}
+                        {/* List of Previous Sheets with Unpublish and Delete */}
                         <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-                            <h2 className="text-lg font-bold text-white mb-4">Uploaded PDF Sheets ({materials.length})</h2>
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-lg font-bold text-white">Uploaded PDF Sheets ({materials.length})</h2>
+                                <button onClick={fetchMaterials} className="text-xs text-slate-400 hover:text-white flex items-center space-x-1">
+                                    <RefreshCw className="w-3 h-3" />
+                                    <span>Refresh</span>
+                                </button>
+                            </div>
+
                             {materials.length === 0 ? (
                                 <p className="text-xs text-slate-400">No lecture sheets uploaded yet.</p>
                             ) : (
@@ -681,27 +785,48 @@ export default function AdminPage() {
                                                     <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-700 text-indigo-300">
                                                         {mat.subject}
                                                     </span>
+                                                    {mat.is_published === false && (
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                                            Unpublished
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <h4 className="text-sm font-semibold text-white mt-1">{mat.title}</h4>
                                                 <p className="text-xs text-slate-400">{mat.chapter}</p>
                                             </div>
 
                                             <div className="flex items-center space-x-2">
+                                                {/* Unpublish Toggle */}
+                                                <button
+                                                    onClick={() => handleToggleMaterialPublish(mat.id)}
+                                                    className={`p-2 rounded-xl text-xs font-semibold border transition-all ${mat.is_published === false
+                                                            ? "bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
+                                                            : "bg-slate-700 border-slate-600 text-slate-300 hover:text-white"
+                                                        }`}
+                                                    title={mat.is_published === false ? "Publish to students" : "Unpublish (Hide from students)"}
+                                                >
+                                                    {mat.is_published === false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </button>
+
+                                                {/* View Link */}
                                                 <a
                                                     href={mat.file_url}
                                                     target="_blank"
                                                     rel="noreferrer"
-                                                    className="px-2.5 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-xs text-white"
+                                                    className="p-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white"
+                                                    title="Open PDF"
                                                 >
-                                                    View
+                                                    <ExternalLink className="w-4 h-4" />
                                                 </a>
+
+                                                {/* Permanent Delete */}
                                                 <button
                                                     onClick={() => handleDeleteMaterial(mat.id)}
                                                     disabled={actionLoadingId === mat.id}
-                                                    className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-600 hover:text-white text-xs font-semibold flex items-center space-x-1"
+                                                    className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-600 hover:text-white transition-all"
+                                                    title="Delete permanently"
                                                 >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                    <span>Delete</span>
+                                                    <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
                                         </div>

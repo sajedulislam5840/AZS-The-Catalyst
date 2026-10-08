@@ -18,6 +18,7 @@ import {
     Bell,
     Sparkles,
     BookOpen,
+    CalendarCheck,
 } from "lucide-react";
 import axios from "axios";
 
@@ -36,6 +37,16 @@ api.interceptors.request.use((config) => {
     }
     return config;
 });
+
+interface UserProfile {
+    id: string;
+    full_name: string;
+    email: string;
+    school?: string;
+    grade_class?: string;
+    batch_no?: string;
+    role?: string;
+}
 
 interface VideoLecture {
     id: string;
@@ -88,9 +99,18 @@ function getYouTubeEmbedUrl(url: string) {
 export default function StudentDashboardPage() {
     const router = useRouter();
     const [activeNav, setActiveNav] = useState<"dashboard" | "lectures" | "materials" | "ai">("dashboard");
-    const [userName, setUserName] = useState("Student");
-    const [userRole, setUserRole] = useState("STUDENT");
     const [mounted, setMounted] = useState(false);
+
+    // Authenticated Student Profile Details
+    const [userProfile, setUserProfile] = useState<UserProfile>({
+        id: "",
+        full_name: "Student",
+        email: "",
+        school: "",
+        grade_class: "",
+        batch_no: "Registered Student",
+        role: "STUDENT",
+    });
 
     const [videos, setVideos] = useState<VideoLecture[]>([]);
     const [materials, setMaterials] = useState<Material[]>([]);
@@ -98,7 +118,7 @@ export default function StudentDashboardPage() {
     const [watchedVideos, setWatchedVideos] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Filters
+    // Search & Filter
     const [selectedSubject, setSelectedSubject] = useState<string>("ALL");
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -106,14 +126,14 @@ export default function StudentDashboardPage() {
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
         {
             role: "assistant",
-            content: "Hello! Ami tomar EduTrack AI Academic Tutor. Physics ba Chemistry niye jekono proshno korte paro!",
+            content: "Hello! I am your EduTrack AI Academic Tutor. Feel free to ask any Physics or Chemistry doubts!",
         },
     ]);
     const [chatInput, setChatInput] = useState("");
     const [chatLoading, setChatLoading] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
-    // Stable Calendar State
+    // Calendar State
     const [calendarData, setCalendarData] = useState({
         currentMonthStr: "",
         daysInMonth: 30,
@@ -124,7 +144,6 @@ export default function StudentDashboardPage() {
     useEffect(() => {
         setMounted(true);
 
-        // Safe client-side date computation to avoid prerender mismatch
         const now = new Date();
         const monthNames = [
             "January", "February", "March", "April", "May", "June",
@@ -146,14 +165,28 @@ export default function StudentDashboardPage() {
         const role = (localStorage.getItem("user_role") || "").toUpperCase();
         const email = (localStorage.getItem("user_email") || "").toLowerCase();
 
+        // Route guard: Redirect admin to /admin console
         if (role === "ADMIN" || email === "rabbi@edutrack.com") {
             router.replace("/admin");
             return;
         }
 
+        // Initialize user profile from storage
         const storedName = localStorage.getItem("user_name") || localStorage.getItem("student_name") || "Student";
-        setUserName(storedName);
-        setUserRole(role);
+        const storedEmail = localStorage.getItem("user_email") || "";
+        const storedBatch = localStorage.getItem("batch_no") || "General Batch";
+        const storedClass = localStorage.getItem("grade_class") || "";
+        const storedSchool = localStorage.getItem("school") || "";
+
+        setUserProfile({
+            id: "",
+            full_name: storedName,
+            email: storedEmail,
+            batch_no: storedBatch,
+            grade_class: storedClass,
+            school: storedSchool,
+            role: role,
+        });
 
         const storedWatched = localStorage.getItem("edutrack_watched_videos");
         if (storedWatched) {
@@ -164,12 +197,33 @@ export default function StudentDashboardPage() {
             }
         }
 
+        fetchUserData();
         fetchAcademicData();
     }, [router]);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [chatMessages]);
+
+    const fetchUserData = async () => {
+        try {
+            const res = await api.get("/api/v1/auth/me");
+            if (res.data) {
+                setUserProfile((prev) => ({
+                    ...prev,
+                    full_name: res.data.full_name || prev.full_name,
+                    email: res.data.email || prev.email,
+                    batch_no: res.data.batch_no || prev.batch_no,
+                    grade_class: res.data.grade_class || prev.grade_class,
+                    school: res.data.school || prev.school,
+                }));
+                if (res.data.full_name) localStorage.setItem("user_name", res.data.full_name);
+                if (res.data.batch_no) localStorage.setItem("batch_no", res.data.batch_no);
+            }
+        } catch {
+            // Fallback stays on cached localStorage values
+        }
+    };
 
     const fetchAcademicData = async () => {
         try {
@@ -222,7 +276,7 @@ export default function StudentDashboardPage() {
                 ...newMsgs,
                 {
                     role: "assistant",
-                    content: err.response?.data?.detail || "AI response paowa jayni, ektu por abar cheshta koro.",
+                    content: err.response?.data?.detail || "Could not retrieve AI response right now.",
                 },
             ]);
         } finally {
@@ -354,14 +408,19 @@ export default function StudentDashboardPage() {
                     </nav>
                 </div>
 
+                {/* Dynamic Registered Student Details */}
                 <div className="pt-6 border-t border-slate-100 space-y-3">
                     <div className="flex items-center space-x-3 px-2">
-                        <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-700 text-xs">
-                            {userName.charAt(0).toUpperCase()}
+                        <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center font-extrabold text-indigo-600 text-sm shadow-sm shrink-0">
+                            {userProfile.full_name.charAt(0).toUpperCase()}
                         </div>
                         <div className="overflow-hidden">
-                            <p className="text-xs font-bold text-slate-900 truncate">{userName}</p>
-                            <p className="text-[10px] text-slate-400">Class 9-10 Batch</p>
+                            <p className="text-xs font-bold text-slate-900 truncate">
+                                {userProfile.full_name}
+                            </p>
+                            <p className="text-[10px] text-slate-400 font-medium truncate">
+                                {userProfile.batch_no || userProfile.email || "Registered Student"}
+                            </p>
                         </div>
                     </div>
 
@@ -416,15 +475,17 @@ export default function StudentDashboardPage() {
                 <main className="p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8">
                     {activeNav === "dashboard" && (
                         <>
-                            {/* HERO "MY PROGRESS" CARD */}
+                            {/* HERO "MY PROGRESS" CARD - ENGLISH & REGISTERED USER */}
                             <div className="space-y-4">
                                 <h2 className="text-lg font-bold text-slate-900 tracking-tight">My progress</h2>
 
                                 <div className="bg-[#1E1E2D] rounded-[32px] p-6 sm:p-8 text-white shadow-xl shadow-slate-900/10 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6">
                                     <div className="space-y-4 max-w-sm">
-                                        <p className="text-xs text-slate-400 font-medium">Hi, {userName}!</p>
+                                        <p className="text-xs text-slate-400 font-medium">
+                                            Hi, {userProfile.full_name}!
+                                        </p>
                                         <h3 className="text-2xl sm:text-3xl font-extrabold leading-tight">
-                                            Tumi shob miliye {completedCount} ti class complete korecho!
+                                            You have completed {completedCount} of {totalLectures} lessons so far!
                                         </h3>
                                         <button
                                             onClick={() => setActiveNav("lectures")}
@@ -654,26 +715,38 @@ export default function StudentDashboardPage() {
                                         </div>
                                     </div>
 
-                                    {/* Upcoming / Live Alert */}
+                                    {/* Upcoming / Live Alert - Empty State if no notice exists */}
                                     <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-3">
                                         <div className="flex items-center justify-between">
                                             <h4 className="text-sm font-extrabold text-slate-900">Upcoming Schedule</h4>
-                                            <span className="text-[10px] font-bold uppercase text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                                                Live Alert
-                                            </span>
+                                            {notice && (
+                                                <span className="text-[10px] font-bold uppercase text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                                                    Live Alert
+                                                </span>
+                                            )}
                                         </div>
 
-                                        <div className="bg-[#1E1E2D] text-white p-4 rounded-2xl flex items-center space-x-3.5">
-                                            <div className="w-10 h-10 rounded-xl bg-[#E1FC5B] text-slate-950 flex items-center justify-center font-black text-sm shrink-0">
-                                                🗓️
+                                        {notice ? (
+                                            <div className="bg-[#1E1E2D] text-white p-4 rounded-2xl flex items-center space-x-3.5">
+                                                <div className="w-10 h-10 rounded-xl bg-[#E1FC5B] text-slate-950 flex items-center justify-center font-black text-sm shrink-0">
+                                                    🗓️
+                                                </div>
+                                                <div className="overflow-hidden">
+                                                    <p className="text-[10px] text-slate-400 font-bold uppercase">Instructor Notice</p>
+                                                    <p className="text-xs font-bold leading-tight truncate">
+                                                        {notice.content}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div className="overflow-hidden">
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase">Weekly Masterclass</p>
-                                                <p className="text-xs font-bold leading-tight truncate">
-                                                    {notice?.content || "Next Live Session: Friday 8:30 PM (CQ Problem Solving)"}
+                                        ) : (
+                                            <div className="py-6 px-4 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center space-y-1">
+                                                <CalendarCheck className="w-6 h-6 text-slate-300 mx-auto" />
+                                                <p className="text-xs font-bold text-slate-600">No Upcoming Events</p>
+                                                <p className="text-[11px] text-slate-400">
+                                                    There are currently no live sessions or notices scheduled.
                                                 </p>
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

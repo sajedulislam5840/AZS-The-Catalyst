@@ -12,6 +12,7 @@ import {
     RefreshCw,
     LogOut,
     Loader2,
+    XCircle,
 } from "lucide-react";
 
 interface Student {
@@ -107,6 +108,38 @@ export default function AdminPage() {
         } catch (err) {
             console.error(err);
             alert("Network error updating student status.");
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
+
+    const handleRevoke = async (studentId: string) => {
+        if (!confirm("Are you sure you want to revoke this student's access and mark them as unpaid?")) {
+            return;
+        }
+        setActionLoadingId(studentId);
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        try {
+            const res = await fetch(
+                `${backendUrl}/api/v1/admin/students/${studentId}/revoke-access`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: "application/json",
+                    },
+                }
+            );
+
+            if (res.ok) {
+                await fetchStudents();
+            } else {
+                const errData = await res.json();
+                alert(errData.detail || "Failed to revoke access.");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Network error revoking student access.");
         } finally {
             setActionLoadingId(null);
         }
@@ -231,7 +264,7 @@ export default function AdminPage() {
                             <div>
                                 <h1 className="text-2xl font-bold text-white">Batch Students & Billing</h1>
                                 <p className="text-slate-400 text-xs mt-1">
-                                    Confirm student registrations, verify payments, and grant 30-day recurring batch access
+                                    Manage student subscriptions: verify payments, add 30-day access, or revoke paid status anytime
                                 </p>
                             </div>
                             <button
@@ -262,7 +295,7 @@ export default function AdminPage() {
                                                 <th className="py-3.5 px-4">Batch</th>
                                                 <th className="py-3.5 px-4">Status</th>
                                                 <th className="py-3.5 px-4">Remaining</th>
-                                                <th className="py-3.5 px-4 text-right">Action</th>
+                                                <th className="py-3.5 px-4 text-right">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-800/60">
@@ -284,7 +317,7 @@ export default function AdminPage() {
                                                     <td className="py-3.5 px-4">
                                                         {!student.is_approved ? (
                                                             <span className="inline-flex items-center text-xs text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20 font-medium">
-                                                                <Clock className="w-3 h-3 mr-1.5" /> Pending Approval
+                                                                <Clock className="w-3 h-3 mr-1.5" /> Pending / Unpaid
                                                             </span>
                                                         ) : student.days_left > 0 ? (
                                                             <span className="inline-flex items-center text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 font-medium">
@@ -304,22 +337,38 @@ export default function AdminPage() {
                                                         )}
                                                     </td>
                                                     <td className="py-3.5 px-4 text-right">
-                                                        <button
-                                                            onClick={() => handleApproveOrRenew(student.id)}
-                                                            disabled={actionLoadingId === student.id}
-                                                            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold shadow-md transition-all ${!student.is_approved
-                                                                    ? "bg-amber-600 hover:bg-amber-500 text-white"
-                                                                    : "bg-emerald-600 hover:bg-emerald-500 text-white"
-                                                                }`}
-                                                        >
-                                                            {actionLoadingId === student.id ? (
-                                                                <Loader2 className="w-3 h-3 animate-spin mx-auto" />
-                                                            ) : !student.is_approved ? (
-                                                                "Confirm & Grant 30 Days"
-                                                            ) : (
-                                                                "Paid: +30 Days"
+                                                        <div className="flex items-center justify-end space-x-2">
+                                                            {/* Approve or Extend Button */}
+                                                            <button
+                                                                onClick={() => handleApproveOrRenew(student.id)}
+                                                                disabled={actionLoadingId === student.id}
+                                                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md transition-all ${!student.is_approved
+                                                                        ? "bg-amber-600 hover:bg-amber-500 text-white"
+                                                                        : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                                                                    }`}
+                                                            >
+                                                                {actionLoadingId === student.id ? (
+                                                                    <Loader2 className="w-3 h-3 animate-spin mx-auto" />
+                                                                ) : !student.is_approved ? (
+                                                                    "Confirm & Grant 30D"
+                                                                ) : (
+                                                                    "+30 Days"
+                                                                )}
+                                                            </button>
+
+                                                            {/* Revoke / Cancel Access Button (Unpaid) */}
+                                                            {student.is_approved && (
+                                                                <button
+                                                                    onClick={() => handleRevoke(student.id)}
+                                                                    disabled={actionLoadingId === student.id}
+                                                                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-500/20 transition-all flex items-center space-x-1"
+                                                                    title="Revoke access and set as unpaid"
+                                                                >
+                                                                    <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                                                                    <span>Revoke</span>
+                                                                </button>
                                                             )}
-                                                        </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}

@@ -10,7 +10,6 @@ from app.core.database import get_db
 from app.models.user import User, UserRole
 from app.api.v1.auth import get_current_active_user
 
-# Safe dynamic import
 try:
     from app.models.academic import Lecture, Material
 except Exception:
@@ -52,7 +51,15 @@ class MaterialCreate(BaseModel):
 
 
 async def verify_admin(current_user: User = Depends(get_current_active_user)):
-    if not (current_user.is_admin or current_user.role == UserRole.ADMIN):
+    # Resilient check: boolean flag, string role, enum role, or superadmin email
+    user_role_str = str(current_user.role.value if hasattr(current_user.role, "value") else current_user.role).upper()
+    is_authorized = bool(
+        current_user.is_admin 
+        or user_role_str == "ADMIN"
+        or (current_user.email and current_user.email.strip().lower() == "rabbi@edutrack.com")
+    )
+    
+    if not is_authorized:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Instructor/Admin privileges required."
@@ -65,14 +72,13 @@ async def list_students(
     admin: User = Depends(verify_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    # Fetch all users that are not the current admin
     stmt = (
         select(User)
         .where(
             or_(
                 User.is_admin == False,
                 User.is_admin.is_(None),
-                User.role == UserRole.STUDENT
+                User.email != "rabbi@edutrack.com"
             )
         )
         .where(User.id != admin.id)
@@ -112,7 +118,7 @@ async def approve_and_extend_30_days(
     try:
         student_uuid = uuid.UUID(student_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid student UUID identifier.")
+        raise HTTPException(status_code=400, detail="Invalid student UUID.")
 
     stmt = select(User).where(User.id == student_uuid)
     res = await db.execute(stmt)
@@ -138,6 +144,35 @@ async def approve_and_extend_30_days(
     }
 
 
+@router.post("/students/{student_id}/revoke-access")
+async def revoke_student_access(
+    student_id: str,
+    admin: User = Depends(verify_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        student_uuid = uuid.UUID(student_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid student UUID.")
+
+    stmt = select(User).where(User.id == student_uuid)
+    res = await db.execute(stmt)
+    student = res.scalar_one_or_none()
+
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found.")
+
+    # Admin revokes access immediately
+    student.is_approved = False
+    student.subscription_end_date = None
+    student.current_session_token = None  # Instantly terminates active student logins
+
+    await db.commit()
+    await db.refresh(student)
+
+    return {"message": f"Access revoked for {student.email}. Marked as unpaid."}
+
+
 @router.post("/lectures")
 async def add_lecture(
     payload: LectureCreate,
@@ -145,10 +180,7 @@ async def add_lecture(
     db: AsyncSession = Depends(get_db)
 ):
     if Lecture is None:
-        raise HTTPException(
-            status_code=500,
-            detail="Lecture model is not defined."
-        )
+        raise HTTPException(status_code=500, detail="Lecture model is not defined.")
     lecture = Lecture(
         lecture_no=payload.lecture_no,
         title=payload.title,
@@ -169,10 +201,7 @@ async def add_material(
     db: AsyncSession = Depends(get_db)
 ):
     if Material is None:
-        raise HTTPException(
-            status_code=500,
-            detail="Material model is not defined."
-        )
+        raise HTTPException(status_code=500, detail="Material model is not defined.")
     material = Material(
         title=payload.title,
         chapter=payload.chapter,

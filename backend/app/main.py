@@ -6,11 +6,10 @@ from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
-from app.api.v1.admin_academic import router as admin_router
 
 from app.core.database import engine, Base
 from app.api.v1.auth import router as auth_router
-from app.api.v1.admin_academic import router as admin_router
+from app.api.v1.admin_academic import router as admin_academic_router
 from app.api.v1.academic import router as academic_router
 from app.api.v1.chat import router as chat_router
 
@@ -54,10 +53,16 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_end_date TIMESTAMP WITHOUT TIME ZONE;",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS current_session_token VARCHAR;",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP;",
+            # ✅ Materials এবং Video Lecture এর জন্য is_published কলামের অটো মাইগ্রেশন
+            "ALTER TABLE materials ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;",
+            "ALTER TABLE video_lectures ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;",
         ]
 
         for query in migration_statements:
-            await conn.execute(text(query))
+            try:
+                await conn.execute(text(query))
+            except Exception as e:
+                print(f"Migration notice: {e}")
 
     yield
 
@@ -113,8 +118,9 @@ async def serve_material_file(filename: str):
 # General static files mount
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+# All Routers included cleanly
 app.include_router(auth_router, prefix="/api/v1")
-app.include_router(admin_router, prefix="/api/v1")
+app.include_router(admin_academic_router, prefix="/api/v1")
 app.include_router(academic_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
 
@@ -131,6 +137,3 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
-
-
-app.include_router(admin_academic_router, prefix="/api/v1")

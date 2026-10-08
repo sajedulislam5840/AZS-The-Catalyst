@@ -8,12 +8,17 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.core.database import engine, Base
+from app.models.user import User
+from app.models.academic import Lecture, Material
 from app.api.v1.auth import router as auth_router
-from app.api.v1.admin_academic import router as admin_academic_router
+from app.api.v1.admin_academic import router as admin_router  # <-- MATCHED TO admin_academic.py
 from app.api.v1.academic import router as academic_router
 from app.api.v1.chat import router as chat_router
 
-# Static directories resolution
+# BASE_DIR resolution:
+# __file__ is in backend/app/main.py
+# .parent is backend/app
+# .parent.parent is backend/
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "static"
 MATERIALS_DIR = STATIC_DIR / "materials"
@@ -25,6 +30,7 @@ MATERIALS_DIR.mkdir(parents=True, exist_ok=True)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
+        # Create all tables if not exist
         await conn.run_sync(Base.metadata.create_all)
 
         migration_statements = [
@@ -53,16 +59,16 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_end_date TIMESTAMP WITHOUT TIME ZONE;",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS current_session_token VARCHAR;",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP;",
-            # ✅ Materials এবং Video Lecture এর জন্য is_published কলামের অটো মাইগ্রেশন
+            # Add is_published column safely to lectures and materials tables
+            "ALTER TABLE lectures ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;",
             "ALTER TABLE materials ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;",
-            "ALTER TABLE video_lectures ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;",
         ]
 
         for query in migration_statements:
             try:
                 await conn.execute(text(query))
             except Exception as e:
-                print(f"Migration notice: {e}")
+                print(f"Migration warning: {e}")
 
     yield
 
@@ -118,9 +124,9 @@ async def serve_material_file(filename: str):
 # General static files mount
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# All Routers included cleanly
+# Registered Routers
 app.include_router(auth_router, prefix="/api/v1")
-app.include_router(admin_academic_router, prefix="/api/v1")
+app.include_router(admin_router, prefix="/api/v1")
 app.include_router(academic_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
 

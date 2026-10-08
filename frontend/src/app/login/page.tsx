@@ -18,14 +18,15 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const backendUrl =
-                process.env.NEXT_PUBLIC_API_URL ||
-                "https://YOUR_ACTUAL_RENDER_URL_HERE";
+            const rawUrl =
+                process.env.NEXT_PUBLIC_API_URL || "https://edutrack-backend.onrender.com";
+            const backendUrl = rawUrl.replace(/\/$/, "");
 
-            const res = await fetch(`${backendUrl.replace(/\/$/, "")}/api/v1/auth/login`, {
+            const res = await fetch(`${backendUrl}/api/v1/auth/login`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
+                    Accept: "application/json",
                 },
                 body: JSON.stringify({
                     email: email.trim().toLowerCase(),
@@ -39,6 +40,14 @@ export default function LoginPage() {
                 throw new Error(data.detail || "Invalid email or password.");
             }
 
+            // Check approval for students
+            if (!data.is_admin && !data.is_approved) {
+                throw new Error(
+                    "Your account has not been approved yet. Please contact your batch teacher to activate access."
+                );
+            }
+
+            // Save auth storage
             localStorage.setItem("token", data.access_token);
             localStorage.setItem("is_admin", String(data.is_admin));
             localStorage.setItem("user_name", data.full_name || "");
@@ -51,7 +60,7 @@ export default function LoginPage() {
         } catch (err: any) {
             if (err.message === "Failed to fetch") {
                 setError(
-                    "Unable to connect to the backend server. Please verify your internet connection or check if the server is starting."
+                    "Unable to connect to the backend server. The backend instance may be waking up from cold sleep. Please wait 15 seconds and try again."
                 );
             } else {
                 setError(err.message || "An unexpected error occurred during sign in.");

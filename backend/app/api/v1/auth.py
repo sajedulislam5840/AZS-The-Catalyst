@@ -32,7 +32,7 @@ class StudentRegisterRequest(BaseModel):
 
 
 class JsonLoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 
@@ -137,32 +137,16 @@ async def register_student(payload: StudentRegisterRequest, db: AsyncSession = D
     }
 
 
-# Standard OAuth2 form handler
-@router.post("/token", response_model=LoginResponse)
-async def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db)
-):
-    return await execute_login(form_data.username, form_data.password, db)
-
-
-# JSON endpoint fallback for /login
-@router.post("/login", response_model=LoginResponse)
-async def login_json(
-    payload: JsonLoginRequest,
-    db: AsyncSession = Depends(get_db)
-):
-    return await execute_login(payload.email, payload.password, db)
-
-
-async def execute_login(email_input: str, password_input: str, db: AsyncSession):
-    stmt = select(User).where(User.email == email_input.strip().lower())
+async def process_user_login(email_input: str, password_input: str, db: AsyncSession) -> LoginResponse:
+    cleaned_email = email_input.strip().lower()
+    stmt = select(User).where(User.email == cleaned_email)
     res = await db.execute(stmt)
     user = res.scalar_one_or_none()
 
     if not user or not verify_password(password_input, user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid email or password.")
 
+    # Generate Unique Device Session Token
     new_session_token = str(uuid.uuid4())
     user.current_session_token = new_session_token
     await db.commit()
@@ -186,6 +170,22 @@ async def execute_login(email_input: str, password_input: str, db: AsyncSession)
         subscription_end_date=user.subscription_end_date,
         full_name=user.full_name or ""
     )
+
+
+@router.post("/token", response_model=LoginResponse)
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db)
+):
+    return await process_user_login(form_data.username, form_data.password, db)
+
+
+@router.post("/login", response_model=LoginResponse)
+async def login_via_json(
+    payload: JsonLoginRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    return await process_user_login(payload.email, payload.password, db)
 
 
 @router.post("/make-admin")

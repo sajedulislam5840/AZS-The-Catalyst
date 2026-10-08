@@ -1,122 +1,128 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import Link from "next/link";
+import axios from "axios";
+import { LogIn, Lock, Mail, AlertCircle, ArrowRight } from "lucide-react";
 
-const BACKEND_URL = "https://edutrack-backend-qjxg.onrender.com";
+const BACKEND_URL = (
+    process.env.NEXT_PUBLIC_API_URL || "https://edutrack-backend-qjxg.onrender.com"
+).replace(/\/$/, "");
 
 export default function LoginPage() {
     const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
+        setError("");
         setLoading(true);
 
         try {
-            const endpoint = `${BACKEND_URL}/api/v1/auth/login`;
-
-            const res = await fetch(endpoint, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    email: email.trim().toLowerCase(),
-                    password: password,
-                }),
+            const res = await axios.post(`${BACKEND_URL}/api/v1/auth/login`, {
+                email: email.trim().toLowerCase(),
+                password: password,
             });
 
-            const data = await res.json();
+            const data = res.data;
+            const token = data.access_token || data.token;
 
-            if (!res.ok) {
-                throw new Error(data.detail || "Invalid email or password.");
+            if (!token) {
+                throw new Error("No authentication token received.");
             }
 
-            if (!data.is_admin && !data.is_approved) {
-                throw new Error(
-                    "Your account is pending verification. Please contact your batch teacher for approval."
-                );
-            }
+            localStorage.setItem("token", token);
+            localStorage.setItem("access_token", token);
 
-            localStorage.setItem("token", data.access_token);
-            localStorage.setItem("is_admin", String(data.is_admin));
-            localStorage.setItem("user_name", data.full_name || "");
+            // Verify the user profile immediately from /me
+            const meRes = await axios.get(`${BACKEND_URL}/api/v1/auth/me`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
 
-            if (data.is_admin) {
-                router.push("/admin");
+            const user = meRes.data;
+            const userRole = (user.role || data.role || "").toUpperCase();
+            const userEmail = (user.email || email).toLowerCase();
+
+            localStorage.setItem("user_role", userRole);
+            localStorage.setItem("user_email", userEmail);
+            localStorage.setItem("user_name", user.full_name || "User");
+            if (user.batch_no) localStorage.setItem("batch_no", user.batch_no);
+
+            const isAdmin =
+                Boolean(user.is_admin) ||
+                userRole === "ADMIN" ||
+                userEmail === "rabbi@edutrack.com";
+
+            // Redirect strictly based on admin status
+            if (isAdmin) {
+                router.replace("/admin");
             } else {
-                router.push("/dashboard");
+                router.replace("/dashboard");
             }
         } catch (err: any) {
-            if (err.message === "Failed to fetch") {
-                setError(
-                    "Unable to connect to the backend server. Please verify your connection or retry in a few moments."
-                );
-            } else {
-                setError(err.message || "An unexpected error occurred during sign in.");
-            }
+            setError(
+                err.response?.data?.detail ||
+                err.message ||
+                "Login failed. Please check your credentials."
+            );
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl">
-                <div className="flex items-center space-x-3 mb-6 justify-center">
-                    <div className="p-2.5 bg-indigo-600 rounded-2xl shadow-lg">
-                        <BookOpen className="w-6 h-6 text-white" />
+        <div className="min-h-screen bg-[#F4F6FA] flex items-center justify-center p-4">
+            <div className="bg-white max-w-md w-full rounded-3xl p-8 shadow-xl border border-slate-200/80 space-y-6">
+                <div className="text-center space-y-2">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-black text-xl flex items-center justify-center mx-auto shadow-md shadow-indigo-600/30">
+                        E
                     </div>
-                    <span className="text-2xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-                        EduTrack
-                    </span>
-                </div>
-
-                <div className="text-center mb-6">
-                    <h2 className="text-xl font-bold text-white">Sign In</h2>
-                    <p className="text-slate-400 text-xs mt-1">Access your registered academic batches</p>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                        Sign In to EduTrack
+                    </h2>
+                    <p className="text-xs text-slate-400">
+                        Access your academic suite or instructor console
+                    </p>
                 </div>
 
                 {error && (
-                    <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs text-center leading-relaxed">
-                        {error}
+                    <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-2xl text-xs flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{error}</span>
                     </div>
                 )}
 
                 <form onSubmit={handleLogin} className="space-y-4">
-                    <div>
-                        <label className="text-xs text-slate-400 block mb-1">Email Address</label>
-                        <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm focus-within:border-indigo-500">
-                            <Mail className="w-4 h-4 text-slate-400 mr-2" />
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-700">Email Address</label>
+                        <div className="relative">
+                            <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                             <input
                                 type="email"
                                 required
                                 placeholder="name@edutrack.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="bg-transparent border-none outline-none w-full text-slate-100 placeholder-slate-500"
+                                className="w-full bg-[#F4F6FA] border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600"
                             />
                         </div>
                     </div>
 
-                    <div>
-                        <label className="text-xs text-slate-400 block mb-1">Password</label>
-                        <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm focus-within:border-indigo-500">
-                            <Lock className="w-4 h-4 text-slate-400 mr-2" />
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-700">Password</label>
+                        <div className="relative">
+                            <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                             <input
                                 type="password"
                                 required
                                 placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="bg-transparent border-none outline-none w-full text-slate-100 placeholder-slate-500"
+                                className="w-full bg-[#F4F6FA] border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600"
                             />
                         </div>
                     </div>
@@ -124,24 +130,29 @@ export default function LoginPage() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full mt-2 flex items-center justify-center space-x-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+                        className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-2xl transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         {loading ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Authenticating...</span>
                         ) : (
                             <>
-                                <span>Sign In</span>
+                                <span>Continue</span>
                                 <ArrowRight className="w-4 h-4" />
                             </>
                         )}
                     </button>
                 </form>
 
-                <div className="mt-6 text-center text-xs text-slate-400">
-                    Don't have an account?{" "}
-                    <Link href="/register" className="text-indigo-400 hover:underline font-medium">
-                        Register here
-                    </Link>
+                <div className="text-center pt-2 border-t border-slate-100">
+                    <p className="text-xs text-slate-400">
+                        Need an account?{" "}
+                        <Link
+                            href="/register"
+                            className="text-indigo-600 font-bold hover:underline"
+                        >
+                            Sign Up
+                        </Link>
+                    </p>
                 </div>
             </div>
         </div>

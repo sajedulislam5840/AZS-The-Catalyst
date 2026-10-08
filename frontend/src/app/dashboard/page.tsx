@@ -21,6 +21,9 @@ import {
     CalendarCheck,
     SearchX,
     X,
+    Plus,
+    Trash2,
+    Clock,
 } from "lucide-react";
 import axios from "axios";
 
@@ -80,6 +83,13 @@ interface ChatMessage {
     content: string;
 }
 
+interface StudyPlan {
+    id: string;
+    dateKey: string; // YYYY-MM-DD
+    title: string;
+    time?: string;
+}
+
 function getYouTubeEmbedUrl(url: string) {
     if (!url) return "";
     try {
@@ -135,28 +145,15 @@ export default function StudentDashboardPage() {
     const [chatLoading, setChatLoading] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
-    // Calendar State
-    const [calendarData, setCalendarData] = useState({
-        currentMonthStr: "",
-        daysInMonth: 30,
-        startDay: 0,
-        todayDate: 1,
-    });
+    // Dynamic Navigable Calendar State
+    const [calendarViewDate, setCalendarViewDate] = useState<Date>(new Date());
+    const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
+    const [selectedDateForPlan, setSelectedDateForPlan] = useState<string | null>(null);
+    const [newPlanTitle, setNewPlanTitle] = useState("");
+    const [newPlanTime, setNewPlanTime] = useState("");
 
     useEffect(() => {
         setMounted(true);
-
-        const now = new Date();
-        const monthNames = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
-        ];
-        setCalendarData({
-            currentMonthStr: `${monthNames[now.getMonth()]} ${now.getFullYear()}`,
-            daysInMonth: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(),
-            startDay: new Date(now.getFullYear(), now.getMonth(), 1).getDay(),
-            todayDate: now.getDate(),
-        });
 
         const token = localStorage.getItem("token") || localStorage.getItem("access_token");
         if (!token) {
@@ -196,6 +193,16 @@ export default function StudentDashboardPage() {
                 setWatchedVideos(JSON.parse(storedWatched));
             } catch {
                 setWatchedVideos([]);
+            }
+        }
+
+        // Load persisted study plans
+        const storedPlans = localStorage.getItem("edutrack_study_plans");
+        if (storedPlans) {
+            try {
+                setStudyPlans(JSON.parse(storedPlans));
+            } catch {
+                setStudyPlans([]);
             }
         }
 
@@ -291,6 +298,79 @@ export default function StudentDashboardPage() {
         router.push("/login");
     };
 
+    // Calendar Controls
+    const monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+
+    const currentYear = calendarViewDate.getFullYear();
+    const currentMonth = calendarViewDate.getMonth();
+    const currentMonthTitle = `${monthNames[currentMonth]} ${currentYear}`;
+
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const startDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+
+    const handlePrevMonth = () => {
+        setCalendarViewDate(new Date(currentYear, currentMonth - 1, 1));
+    };
+
+    const handleNextMonth = () => {
+        setCalendarViewDate(new Date(currentYear, currentMonth + 1, 1));
+    };
+
+    // Helper to format date keys like YYYY-MM-DD
+    const formatDateKey = (year: number, month: number, day: number) => {
+        const m = String(month + 1).padStart(2, "0");
+        const d = String(day).padStart(2, "0");
+        return `${year}-${m}-${d}`;
+    };
+
+    // Study Plan Handler
+    const handleAddPlan = (e: FormEvent) => {
+        e.preventDefault();
+        if (!selectedDateForPlan || !newPlanTitle.trim()) return;
+
+        const newPlan: StudyPlan = {
+            id: `${Date.now()}-${Math.random()}`,
+            dateKey: selectedDateForPlan,
+            title: newPlanTitle.trim(),
+            time: newPlanTime.trim() || undefined,
+        };
+
+        const updated = [...studyPlans, newPlan];
+        setStudyPlans(updated);
+        localStorage.setItem("edutrack_study_plans", JSON.stringify(updated));
+        setNewPlanTitle("");
+        setNewPlanTime("");
+    };
+
+    const handleDeletePlan = (id: string) => {
+        const updated = studyPlans.filter((p) => p.id !== id);
+        setStudyPlans(updated);
+        localStorage.setItem("edutrack_study_plans", JSON.stringify(updated));
+    };
+
+    // Upcoming Day-Before Reminder Calculation
+    const tomorrowKey = useMemo(() => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return formatDateKey(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+    }, []);
+
+    const todayKey = useMemo(() => {
+        const today = new Date();
+        return formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
+    }, []);
+
+    const tomorrowReminders = useMemo(() => {
+        return studyPlans.filter((p) => p.dateKey === tomorrowKey);
+    }, [studyPlans, tomorrowKey]);
+
+    const todayReminders = useMemo(() => {
+        return studyPlans.filter((p) => p.dateKey === todayKey);
+    }, [studyPlans, todayKey]);
+
     const totalLectures = videos.length;
     const completedCount = useMemo(() => {
         return videos.filter((v) => watchedVideos.includes(v.id)).length;
@@ -309,7 +389,6 @@ export default function StudentDashboardPage() {
         return Object.entries(map);
     }, [videos, watchedVideos]);
 
-    // Robust Search Matcher across Topic, Chapter, and Subject
     const normalizedQuery = searchQuery.toLowerCase().trim();
 
     const filteredVideos = useMemo(() => {
@@ -419,7 +498,7 @@ export default function StudentDashboardPage() {
                     </nav>
                 </div>
 
-                {/* Dynamic Registered Student Details */}
+                {/* Registered Student Info */}
                 <div className="pt-6 border-t border-slate-100 space-y-3">
                     <div className="flex items-center space-x-3 px-2">
                         <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center font-extrabold text-indigo-600 text-sm shadow-sm shrink-0">
@@ -492,7 +571,7 @@ export default function StudentDashboardPage() {
                 )}
 
                 <main className="p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8">
-                    {/* SEARCH RESULTS VIEW (SHOWS AUTOMATICALLY WHEN SEARCHING FROM ANYWHERE) */}
+                    {/* SEARCH RESULTS VIEW */}
                     {isSearchActive && (
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
@@ -514,7 +593,6 @@ export default function StudentDashboardPage() {
                             </div>
 
                             {!hasSearchResults ? (
-                                /* EMPTY STATE WHEN NOTHING MATCHES SEARCH KEYWORDS */
                                 <div className="bg-white rounded-3xl p-16 text-center border border-slate-200 shadow-sm space-y-4">
                                     <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
                                         <SearchX className="w-8 h-8" />
@@ -524,7 +602,7 @@ export default function StudentDashboardPage() {
                                             No Results Found
                                         </h3>
                                         <p className="text-xs text-slate-500 max-w-md mx-auto">
-                                            We couldn&apos;t find any lectures or study sheets matching &ldquo;{searchQuery}&rdquo;. Please verify the spelling or try searching by chapter name.
+                                            We couldn&apos;t find any lectures or study sheets matching &ldquo;{searchQuery}&rdquo;. Please verify the spelling or search by chapter name.
                                         </p>
                                     </div>
                                     <button
@@ -536,7 +614,6 @@ export default function StudentDashboardPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-8">
-                                    {/* Matching Lectures */}
                                     {filteredVideos.length > 0 && (
                                         <div className="space-y-4">
                                             <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
@@ -608,7 +685,6 @@ export default function StudentDashboardPage() {
                                         </div>
                                     )}
 
-                                    {/* Matching Study Sheets */}
                                     {filteredMaterials.length > 0 && (
                                         <div className="space-y-4">
                                             <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
@@ -662,7 +738,7 @@ export default function StudentDashboardPage() {
                         </div>
                     )}
 
-                    {/* VIEW: DASHBOARD OVERVIEW (ACTIVE WHEN NOT SEARCHING) */}
+                    {/* VIEW: DASHBOARD OVERVIEW */}
                     {!isSearchActive && activeNav === "dashboard" && (
                         <>
                             {/* HERO "MY PROGRESS" CARD */}
@@ -783,7 +859,7 @@ export default function StudentDashboardPage() {
                                 </div>
                             </div>
 
-                            {/* STATISTICS & CALENDAR LAYOUT */}
+                            {/* STATISTICS & INTERACTIVE STUDY PLANNER CALENDAR */}
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                                 <div className="lg:col-span-7 space-y-6">
                                     <h3 className="text-base font-bold text-slate-900">Statistics</h3>
@@ -856,15 +932,26 @@ export default function StudentDashboardPage() {
                                 </div>
 
                                 <div className="lg:col-span-5 space-y-6">
-                                    {/* Calendar Card */}
+                                    {/* NAVIGABLE CALENDAR CARD WITH DATE-PLANNER */}
                                     <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-4">
                                         <div className="flex items-center justify-between">
-                                            <h4 className="text-sm font-extrabold text-slate-900">{calendarData.currentMonthStr}</h4>
+                                            <div>
+                                                <h4 className="text-sm font-extrabold text-slate-900">{currentMonthTitle}</h4>
+                                                <p className="text-[10px] text-slate-400">Click any date to schedule a study plan</p>
+                                            </div>
                                             <div className="flex items-center space-x-1">
-                                                <button className="p-1 rounded-lg hover:bg-slate-100 text-slate-500">
+                                                <button
+                                                    onClick={handlePrevMonth}
+                                                    className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 transition"
+                                                    title="Previous Month"
+                                                >
                                                     <ChevronLeft className="w-4 h-4" />
                                                 </button>
-                                                <button className="p-1 rounded-lg hover:bg-slate-100 text-slate-500">
+                                                <button
+                                                    onClick={handleNextMonth}
+                                                    className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 transition"
+                                                    title="Next Month"
+                                                >
                                                     <ChevronRight className="w-4 h-4" />
                                                 </button>
                                             </div>
@@ -881,31 +968,86 @@ export default function StudentDashboardPage() {
                                         </div>
 
                                         <div className="grid grid-cols-7 text-center text-xs gap-y-2 font-semibold">
-                                            {Array.from({ length: calendarData.startDay }).map((_, i) => (
-                                                <span key={`empty-${i}`} className="text-slate-300">
+                                            {Array.from({ length: startDayOfMonth }).map((_, i) => (
+                                                <span key={`empty-${i}`} className="text-slate-200">
                                                     -
                                                 </span>
                                             ))}
-                                            {Array.from({ length: calendarData.daysInMonth }).map((_, i) => {
+                                            {Array.from({ length: daysInMonth }).map((_, i) => {
                                                 const dayNum = i + 1;
-                                                const isToday = dayNum === calendarData.todayDate;
+                                                const dateKey = formatDateKey(currentYear, currentMonth, dayNum);
+                                                const isToday =
+                                                    dayNum === new Date().getDate() &&
+                                                    currentMonth === new Date().getMonth() &&
+                                                    currentYear === new Date().getFullYear();
+
+                                                const hasPlans = studyPlans.some((p) => p.dateKey === dateKey);
+
                                                 return (
-                                                    <div key={dayNum} className="flex justify-center">
-                                                        <span
-                                                            className={`w-7 h-7 flex items-center justify-center rounded-xl transition ${isToday
+                                                    <div key={dayNum} className="flex flex-col items-center">
+                                                        <button
+                                                            onClick={() => setSelectedDateForPlan(dateKey)}
+                                                            className={`w-7 h-7 flex items-center justify-center rounded-xl transition relative ${isToday
                                                                     ? "bg-slate-950 text-white font-bold shadow-md"
                                                                     : "text-slate-700 hover:bg-slate-100"
                                                                 }`}
                                                         >
-                                                            {dayNum}
-                                                        </span>
+                                                            <span>{dayNum}</span>
+                                                            {hasPlans && (
+                                                                <span
+                                                                    className={`w-1.5 h-1.5 rounded-full absolute -bottom-1 ${isToday ? "bg-amber-400" : "bg-indigo-600"
+                                                                        }`}
+                                                                />
+                                                            )}
+                                                        </button>
                                                     </div>
                                                 );
                                             })}
                                         </div>
                                     </div>
 
-                                    {/* Upcoming / Live Alert - Empty State if no notice exists */}
+                                    {/* DAY-BEFORE REMINDER CARD (AUTOMATICALLY ALERTS IF PLANS EXIST FOR TOMORROW) */}
+                                    {tomorrowReminders.length > 0 && (
+                                        <div className="bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-300/60 rounded-3xl p-5 space-y-2 shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-extrabold uppercase text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                                    <Bell className="w-3 h-3 text-amber-600" />
+                                                    <span>Reminder: Plan Due Tomorrow!</span>
+                                                </span>
+                                                <span className="text-[10px] text-slate-500 font-mono">{tomorrowKey}</span>
+                                            </div>
+                                            <div className="space-y-1.5 pt-1">
+                                                {tomorrowReminders.map((p) => (
+                                                    <div key={p.id} className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                                                        <span>• {p.title}</span>
+                                                        {p.time && <span className="text-[10px] text-slate-500 font-normal">{p.time}</span>}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {todayReminders.length > 0 && (
+                                        <div className="bg-gradient-to-r from-indigo-500/15 to-violet-500/15 border border-indigo-300/60 rounded-3xl p-5 space-y-2 shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-extrabold uppercase text-indigo-800 bg-indigo-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                                    <Clock className="w-3 h-3 text-indigo-600" />
+                                                    <span>Today&apos;s Scheduled Goals</span>
+                                                </span>
+                                                <span className="text-[10px] text-slate-500 font-mono">{todayKey}</span>
+                                            </div>
+                                            <div className="space-y-1.5 pt-1">
+                                                {todayReminders.map((p) => (
+                                                    <div key={p.id} className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                                                        <span>• {p.title}</span>
+                                                        {p.time && <span className="text-[10px] text-slate-500 font-normal">{p.time}</span>}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Upcoming Schedule / Live Instructor Notice */}
                                     <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-3">
                                         <div className="flex items-center justify-between">
                                             <h4 className="text-sm font-extrabold text-slate-900">Upcoming Schedule</h4>
@@ -1174,6 +1316,88 @@ export default function StudentDashboardPage() {
                     )}
                 </main>
             </div>
+
+            {/* 3. STUDY PLANNER MODAL (APPEARS ON CLICKING ANY DATE) */}
+            {selectedDateForPlan && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div>
+                                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                                    <CalendarIcon className="w-4 h-4 text-indigo-600" />
+                                    <span>Study Planner</span>
+                                </h3>
+                                <p className="text-xs text-slate-400 font-mono mt-0.5">Date: {selectedDateForPlan}</p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedDateForPlan(null)}
+                                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* List of existing plans for this date */}
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            {studyPlans.filter((p) => p.dateKey === selectedDateForPlan).length === 0 ? (
+                                <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-2xl">
+                                    No study plans set for this day yet.
+                                </p>
+                            ) : (
+                                studyPlans
+                                    .filter((p) => p.dateKey === selectedDateForPlan)
+                                    .map((p) => (
+                                        <div
+                                            key={p.id}
+                                            className="flex items-center justify-between bg-slate-50 hover:bg-slate-100/80 p-3 rounded-2xl border border-slate-100 text-xs transition"
+                                        >
+                                            <div className="space-y-0.5">
+                                                <p className="font-bold text-slate-800">{p.title}</p>
+                                                {p.time && <p className="text-[10px] text-slate-400 font-mono">{p.time}</p>}
+                                            </div>
+                                            <button
+                                                onClick={() => handleDeletePlan(p.id)}
+                                                className="text-slate-400 hover:text-rose-500 p-1"
+                                                title="Remove plan"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))
+                            )}
+                        </div>
+
+                        {/* Add New Plan Form */}
+                        <form onSubmit={handleAddPlan} className="space-y-3 pt-2 border-t border-slate-100">
+                            <label className="text-xs font-bold text-slate-700 block">Add Goal / Revision Plan</label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="e.g. Complete Reflection of Light CQ-01"
+                                value={newPlanTitle}
+                                onChange={(e) => setNewPlanTitle(e.target.value)}
+                                className="w-full bg-[#F4F6FA] border border-slate-200 rounded-2xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                            />
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Target Time (e.g. 8:00 PM)"
+                                    value={newPlanTime}
+                                    onChange={(e) => setNewPlanTime(e.target.value)}
+                                    className="flex-1 bg-[#F4F6FA] border border-slate-200 rounded-2xl px-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                                />
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-indigo-600/20"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Save Plan</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

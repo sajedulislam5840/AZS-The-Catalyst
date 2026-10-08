@@ -75,12 +75,10 @@ export default function AdminPage() {
     const [actionLoadingId, setActionLoadingId] = useState<string | number | null>(null);
     const [currentYear, setCurrentYear] = useState<number>(2026);
 
-    // Video Filtering & Ordering State
     const [filterVideoSubject, setFilterVideoSubject] = useState<string>("ALL");
     const [filterVideoChapter, setFilterVideoChapter] = useState<string>("ALL");
     const [reordering, setReordering] = useState(false);
 
-    // Forms
     const [lectureForm, setLectureForm] = useState({
         lecture_no: 1,
         title: "",
@@ -100,7 +98,6 @@ export default function AdminPage() {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [submittingSheet, setSubmittingSheet] = useState(false);
 
-    // Edit Modals
     const [editingLecture, setEditingLecture] = useState<LectureItem | null>(null);
     const [editingMaterial, setEditingMaterial] = useState<MaterialItem | null>(null);
     const [savingEdit, setSavingEdit] = useState(false);
@@ -241,7 +238,6 @@ export default function AdminPage() {
     );
     const totalUnpaidInView = filteredStudents.length - totalPaidInView;
 
-    // Student Actions
     const handleMarkPaid = async (studentId: string) => {
         setActionLoadingId(studentId);
         const token = getToken();
@@ -292,7 +288,6 @@ export default function AdminPage() {
         }
     };
 
-    // Video Actions
     const handleCreateLecture = async (e: React.FormEvent) => {
         e.preventDefault();
         const token = getToken();
@@ -441,7 +436,6 @@ export default function AdminPage() {
         }
     };
 
-    // Sheet Actions
     const handleSubmitSheet = async (e: React.FormEvent) => {
         e.preventDefault();
         const token = getToken();
@@ -572,25 +566,23 @@ export default function AdminPage() {
 
     return (
         <div className="min-h-screen bg-[#070b19] text-slate-100 flex flex-col font-sans antialiased selection:bg-indigo-600 selection:text-white">
-            {/* MODERN GLASS TOPBAR */}
             <header className="border-b border-slate-800/80 bg-[#0c1227]/90 backdrop-blur-md sticky top-0 z-30 shadow-lg shadow-black/20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
                     <div className="flex items-center space-x-3.5">
-                        <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-600/30 ring-1 ring-white/20">
-                            <ShieldCheck className="w-5 h-5 text-white" />
+                        <div className="w-10 h-10 rounded-2xl overflow-hidden bg-slate-900 border border-slate-700/80 shadow-lg flex items-center justify-center shrink-0 p-1">
+                            <img src="/logo.png" alt="AZS Logo" className="w-full h-full object-contain" />
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <span className="font-extrabold text-lg text-white tracking-tight">EduTrack</span>
+                                <span className="font-extrabold text-lg text-white tracking-tight">AZS</span>
                                 <span className="text-[10px] text-indigo-300 font-mono px-2 py-0.5 bg-indigo-500/15 rounded-full border border-indigo-500/30 uppercase tracking-widest font-bold">
-                                    Admin
+                                    Admin Console
                                 </span>
                             </div>
-                            <span className="text-xs text-slate-400 font-medium">Instructor Control Console</span>
+                            <span className="text-xs text-slate-400 font-medium">The Catalyst Instructor Hub</span>
                         </div>
                     </div>
 
-                    {/* PILL NAVIGATION TABS */}
                     <div className="flex items-center space-x-1.5 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800/90 shadow-inner">
                         <button
                             onClick={() => setActiveTab("students")}
@@ -648,7 +640,6 @@ export default function AdminPage() {
             </header>
 
             <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-                {/* QUICK STATS CARDS */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-[#0f172a]/90 border border-slate-800 rounded-3xl p-5 shadow-lg shadow-black/20 flex items-center justify-between">
                         <div>
@@ -695,7 +686,6 @@ export default function AdminPage() {
                     </div>
                 </div>
 
-                {/* TAB 1: BATCH SHEETS & FEES */}
                 {activeTab === "students" && (
                     <div className="space-y-6">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -725,7 +715,6 @@ export default function AdminPage() {
                             </div>
                         </div>
 
-                        {/* BATCH SELECTOR & SEARCH */}
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#0c1227] p-3 rounded-2xl border border-slate-800/80 shadow-md">
                             <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
                                 <button
@@ -907,7 +896,6 @@ export default function AdminPage() {
                     </div>
                 )}
 
-                {/* TAB 2: VIDEOS MANAGEMENT & SEQUENCE MANAGER */}
                 {activeTab === "video" && (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                         <div className="lg:col-span-5 bg-[#0f172a] border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
@@ -1146,7 +1134,6 @@ export default function AdminPage() {
                     </div>
                 )}
 
-                {/* TAB 3: SHEETS MANAGEMENT */}
                 {activeTab === "sheet" && (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                         <div className="lg:col-span-5 bg-[#0f172a] border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
@@ -1338,10 +1325,9 @@ export default function AdminPage() {
                 )}
             </main>
 
-            {/* DEVELOPER CREDIT FOOTER (ADMIN CONSOLE) */}
             <footer className="w-full py-4 px-6 text-center border-t border-slate-800/80 bg-[#0c1227]/90 backdrop-blur-sm mt-auto">
                 <p className="text-xs text-slate-400 font-medium tracking-wide">
-                    © {currentYear} EduTrack Platform • Designed & Built with precision by{" "}
+                    © {currentYear} AZS: The Catalyst • Designed & Built with precision by{" "}
                     <a
                         href="https://www.linkedin.com/in/sajedul-islam-data/"
                         target="_blank"
@@ -1354,7 +1340,6 @@ export default function AdminPage() {
                 </p>
             </footer>
 
-            {/* EDIT LECTURE MODAL */}
             {editingLecture && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-[#0f172a] border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
@@ -1451,7 +1436,6 @@ export default function AdminPage() {
                 </div>
             )}
 
-            {/* EDIT MATERIAL MODAL */}
             {editingMaterial && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-[#0f172a] border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">

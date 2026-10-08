@@ -140,6 +140,7 @@ function DashboardContent() {
     const router = useRouter();
     const [activeNav, setActiveNav] = useState<"dashboard" | "lectures" | "materials" | "ai">("dashboard");
     const [mounted, setMounted] = useState(false);
+    const [currentYear, setCurrentYear] = useState(2026);
 
     const [userProfile, setUserProfile] = useState<UserProfile>({
         id: "",
@@ -157,34 +158,27 @@ function DashboardContent() {
     const [watchedVideos, setWatchedVideos] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Search & Filter
     const [selectedSubject, setSelectedSubject] = useState<string>("ALL");
     const [searchQuery, setSearchQuery] = useState("");
-
-    // Resume State
     const [lastPlayedId, setLastPlayedId] = useState<string>("");
 
-    // In-App Lecture Notes
     const [openNotesId, setOpenNotesId] = useState<string | null>(null);
     const [lectureNotes, setLectureNotes] = useState<Record<string, string>>({});
     const [saveStatus, setSaveStatus] = useState<Record<string, boolean>>({});
 
-    // PDF Preview Modal State
     const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
     const [previewPdfTitle, setPreviewPdfTitle] = useState<string>("");
 
-    // AI Chat
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
         {
             role: "assistant",
-            content: "Hello! I am your EduTrack AI Academic Tutor. Feel free to ask any Physics or Chemistry doubts!",
+            content: "Hello! I am your AZS AI Academic Tutor. Feel free to ask any Physics or Chemistry doubts!",
         },
     ]);
     const [chatInput, setChatInput] = useState("");
     const [chatLoading, setChatLoading] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
-    // Calendar State
     const [calendarViewDate, setCalendarViewDate] = useState<Date | null>(null);
     const [todayKey, setTodayKey] = useState<string>("");
     const [tomorrowKey, setTomorrowKey] = useState<string>("");
@@ -201,6 +195,7 @@ function DashboardContent() {
 
     useEffect(() => {
         setMounted(true);
+        setCurrentYear(new Date().getFullYear());
 
         const now = new Date();
         setCalendarViewDate(new Date(now.getFullYear(), now.getMonth(), 1));
@@ -401,7 +396,7 @@ function DashboardContent() {
         const noteText = lectureNotes[lecture.id] || "No notes recorded for this lecture.";
         const blob = new Blob(
             [
-                `EduTrack Revision Notes\n`,
+                `AZS: The Catalyst - Revision Notes\n`,
                 `Subject: ${lecture.subject}\n`,
                 `Chapter: ${lecture.chapter}\n`,
                 `Lecture #${lecture.lecture_no}: ${lecture.topic || lecture.title}\n`,
@@ -454,19 +449,19 @@ function DashboardContent() {
         "July", "August", "September", "October", "November", "December"
     ];
 
-    const currentYear = calendarViewDate ? calendarViewDate.getFullYear() : 2026;
-    const currentMonth = calendarViewDate ? calendarViewDate.getMonth() : 9;
-    const currentMonthTitle = `${monthNames[currentMonth]} ${currentYear}`;
+    const currentYearCalendar = calendarViewDate ? calendarViewDate.getFullYear() : 2026;
+    const currentMonthCalendar = calendarViewDate ? calendarViewDate.getMonth() : 9;
+    const currentMonthTitle = `${monthNames[currentMonthCalendar]} ${currentYearCalendar}`;
 
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const startDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+    const daysInMonth = new Date(currentYearCalendar, currentMonthCalendar + 1, 0).getDate();
+    const startDayOfMonth = new Date(currentYearCalendar, currentMonthCalendar, 1).getDay();
 
     const handlePrevMonth = () => {
-        setCalendarViewDate(new Date(currentYear, currentMonth - 1, 1));
+        setCalendarViewDate(new Date(currentYearCalendar, currentMonthCalendar - 1, 1));
     };
 
     const handleNextMonth = () => {
-        setCalendarViewDate(new Date(currentYear, currentMonth + 1, 1));
+        setCalendarViewDate(new Date(currentYearCalendar, currentMonthCalendar + 1, 1));
     };
 
     const handleAddPlan = (e: FormEvent) => {
@@ -572,13 +567,13 @@ function DashboardContent() {
                 <aside className="w-64 bg-white border-r border-slate-200/80 p-6 flex flex-col justify-between shrink-0 hidden md:flex">
                     <div className="space-y-8">
                         <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-indigo-600/20">
-                                E
+                            <div className="w-10 h-10 rounded-2xl overflow-hidden bg-slate-900 border border-slate-200 shadow-md flex items-center justify-center shrink-0 p-1">
+                                <img src="/logo.png" alt="AZS Logo" className="w-full h-full object-contain" />
                             </div>
                             <div>
-                                <span className="font-extrabold text-xl tracking-tight text-slate-900">EduTrack</span>
-                                <span className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                                    Student Suite
+                                <span className="font-extrabold text-sm tracking-tight text-slate-900 block leading-tight">AZS</span>
+                                <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-600 block">
+                                    The Catalyst
                                 </span>
                             </div>
                         </div>
@@ -1176,7 +1171,7 @@ function DashboardContent() {
                                                 ))}
                                                 {Array.from({ length: daysInMonth }).map((_, i) => {
                                                     const dayNum = i + 1;
-                                                    const dateKey = formatDateKey(currentYear, currentMonth, dayNum);
+                                                    const dateKey = formatDateKey(currentYearCalendar, currentMonthCalendar, dayNum);
                                                     const isToday = dateKey === todayKey;
                                                     const hasPlans = studyPlans.some((p) => p.dateKey === dateKey);
 
@@ -1540,7 +1535,7 @@ function DashboardContent() {
                                         ✨
                                     </div>
                                     <div>
-                                        <h3 className="text-sm font-extrabold text-slate-900">EduTrack AI Academic Tutor</h3>
+                                        <h3 className="text-sm font-extrabold text-slate-900">AZS: The Catalyst - AI Tutor</h3>
                                         <p className="text-[11px] text-emerald-600 font-medium">Ready to explain Theory, Formulas, and Math</p>
                                     </div>
                                 </div>
@@ -1594,7 +1589,7 @@ function DashboardContent() {
                     {/* DEVELOPER CREDIT FOOTER */}
                     <footer className="w-full py-4 px-6 text-center border-t border-slate-200/80 bg-white/70 backdrop-blur-sm mt-auto">
                         <p className="text-xs text-slate-500 font-medium tracking-wide">
-                            © {new Date().getFullYear()} EduTrack Platform • Developed with ❤️ by{" "}
+                            © {currentYear} AZS: The Catalyst • Developed with ❤️ by{" "}
                             <a
                                 href="https://www.linkedin.com/in/sajedul-islam-data/"
                                 target="_blank"
@@ -1702,7 +1697,7 @@ function DashboardContent() {
                                     <h3 className="text-sm font-extrabold text-white leading-tight">
                                         {previewPdfTitle || "Document Preview"}
                                     </h3>
-                                    <p className="text-[10px] text-slate-400">EduTrack Secure Document Reader</p>
+                                    <p className="text-[10px] text-slate-400">AZS: The Catalyst - Document Reader</p>
                                 </div>
                             </div>
 
@@ -1740,14 +1735,13 @@ function DashboardContent() {
     );
 }
 
-// TOP-LEVEL EXPORT WITH SUSPENSE BOUNDARY (Fixes Next.js stream/prerendering warning)
 export default function StudentDashboardPage() {
     return (
         <Suspense
             fallback={
                 <div className="min-h-screen bg-[#F4F6FA] flex flex-col items-center justify-center space-y-3">
                     <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-xs font-bold text-slate-600 tracking-wide">Loading EduTrack Workspace...</p>
+                    <p className="text-xs font-bold text-slate-600 tracking-wide">Loading AZS Workspace...</p>
                 </div>
             }
         >

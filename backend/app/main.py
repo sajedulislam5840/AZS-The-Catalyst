@@ -15,7 +15,24 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+        # Migration patch: Handle existing table schema discrepancies
         migration_statements = [
+            # Handle password / hashed_password column mismatch
+            """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='users' AND column_name='password'
+                ) AND NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='users' AND column_name='hashed_password'
+                ) THEN
+                    ALTER TABLE users RENAME COLUMN password TO hashed_password;
+                END IF;
+            END $$;
+            """,
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS hashed_password VARCHAR;",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR;",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR DEFAULT 'STUDENT';",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;",
@@ -42,7 +59,6 @@ app = FastAPI(
 )
 
 
-# Native ASGI CORS handler: Intercepts preflight OPTIONS and injects required CORS headers
 @app.middleware("http")
 async def custom_cors_middleware(request: Request, call_next):
     if request.method == "OPTIONS":

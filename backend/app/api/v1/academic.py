@@ -39,11 +39,37 @@ class LectureCreate(BaseModel):
     video_url: str
 
 
+class LectureUpdate(BaseModel):
+    lecture_no: Optional[int] = None
+    title: Optional[str] = None
+    topic: Optional[str] = None
+    chapter: Optional[str] = None
+    subject: Optional[str] = None
+    video_url: Optional[str] = None
+
+
+class SwapOrderPayload(BaseModel):
+    lecture_id_1: str
+    lecture_id_2: str
+
+
+class NormalizeOrderPayload(BaseModel):
+    subject: str
+    chapter: str
+
+
 class MaterialCreate(BaseModel):
     title: str
     chapter: str
     subject: str
     file_url: str
+
+
+class MaterialUpdate(BaseModel):
+    title: Optional[str] = None
+    chapter: Optional[str] = None
+    subject: Optional[str] = None
+    file_url: Optional[str] = None
 
 
 async def verify_admin_token(
@@ -59,7 +85,7 @@ async def verify_admin_token(
                 stmt = select(User).where(User.email == email)
                 res = await db.execute(stmt)
                 user = res.scalar_one_or_none()
-                if user and (user.is_admin or str(user.role).upper() == "ADMIN" or user.email == "rabbi@edutrack.com"):
+                if user and (user.is_admin or str(getattr(user, "role", "")).upper() == "ADMIN" or user.email == "rabbi@edutrack.com"):
                     return user
         except Exception:
             pass
@@ -223,7 +249,7 @@ async def get_admin_lectures(
     admin: User = Depends(verify_admin_token),
     db: AsyncSession = Depends(get_db)
 ):
-    stmt = select(VideoLecture).order_by(VideoLecture.lecture_no.desc())
+    stmt = select(VideoLecture).order_by(VideoLecture.lecture_no.asc())
     res = await db.execute(stmt)
     lectures = res.scalars().all()
     return [
@@ -260,6 +286,92 @@ async def add_lecture(
     await db.commit()
     await db.refresh(lecture)
     return {"message": "Lecture added successfully."}
+
+
+@router.put("/lectures/{lecture_id}")
+async def update_lecture(
+    lecture_id: str,
+    payload: LectureUpdate,
+    admin: User = Depends(verify_admin_token),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        lec_uuid = uuid.UUID(lecture_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid lecture UUID.")
+
+    stmt = select(VideoLecture).where(VideoLecture.id == lec_uuid)
+    res = await db.execute(stmt)
+    lec = res.scalar_one_or_none()
+    if not lec:
+        raise HTTPException(status_code=404, detail="Lecture not found.")
+
+    if payload.lecture_no is not None:
+        lec.lecture_no = payload.lecture_no
+    if payload.title is not None or payload.topic is not None:
+        lec.topic = (payload.title or payload.topic).strip()
+    if payload.chapter is not None:
+        lec.chapter = payload.chapter.strip()
+    if payload.subject is not None:
+        lec.subject = parse_subject_enum(payload.subject)
+    if payload.video_url is not None:
+        lec.youtube_url = payload.video_url.strip()
+
+    await db.commit()
+    await db.refresh(lec)
+    return {"message": "Lecture updated successfully."}
+
+
+@router.post("/lectures/swap-order")
+async def swap_lecture_order(
+    payload: SwapOrderPayload,
+    admin: User = Depends(verify_admin_token),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        u1 = uuid.UUID(payload.lecture_id_1)
+        u2 = uuid.UUID(payload.lecture_id_2)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID format.")
+
+    res1 = await db.execute(select(VideoLecture).where(VideoLecture.id == u1))
+    lec1 = res1.scalar_one_or_none()
+
+    res2 = await db.execute(select(VideoLecture).where(VideoLecture.id == u2))
+    lec2 = res2.scalar_one_or_none()
+
+    if not lec1 or not lec2:
+        raise HTTPException(status_code=404, detail="One or both lectures not found.")
+
+    temp = lec1.lecture_no
+    lec1.lecture_no = lec2.lecture_no
+    lec2.lecture_no = temp
+
+    await db.commit()
+    return {"message": "Lecture sequence swapped successfully."}
+
+
+@router.post("/lectures/normalize-order")
+async def normalize_lecture_order(
+    payload: NormalizeOrderPayload,
+    admin: User = Depends(verify_admin_token),
+    db: AsyncSession = Depends(get_db)
+):
+    subj_enum = parse_subject_enum(payload.subject)
+    stmt = (
+        select(VideoLecture)
+        .where(VideoLecture.subject == subj_enum)
+        .where(VideoLecture.chapter == payload.chapter.strip())
+        .order_by(VideoLecture.lecture_no.asc(), VideoLecture.created_at.asc())
+    )
+    res = await db.execute(stmt)
+    chapter_lectures = res.scalars().all()
+
+    for idx, lec in enumerate(chapter_lectures, start=1):
+        lec.lecture_no = idx
+
+    await db.commit()
+    return {"message": f"Renumbered {len(chapter_lectures)} lectures sequentially (1..{len(chapter_lectures)})."}
 
 
 @router.patch("/lectures/{lecture_id}/toggle-publish")
@@ -345,6 +457,38 @@ async def add_material(
     await db.commit()
     await db.refresh(material)
     return {"message": "Lecture material added successfully."}
+
+
+@router.put("/materials/{material_id}")
+async def update_material(
+    material_id: str,
+    payload: MaterialUpdate,
+    admin: User = Depends(verify_admin_token),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        mat_uuid = uuid.UUID(material_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid material UUID.")
+
+    stmt = select(Material).where(Material.id == mat_uuid)
+    res = await db.execute(stmt)
+    mat = res.scalar_one_or_none()
+    if not mat:
+        raise HTTPException(status_code=404, detail="Material not found.")
+
+    if payload.title is not None:
+        mat.title = payload.title.strip()
+    if payload.chapter is not None:
+        mat.chapter = payload.chapter.strip()
+    if payload.subject is not None:
+        mat.subject = parse_subject_enum(payload.subject)
+    if payload.file_url is not None:
+        mat.pdf_url = payload.file_url.strip()
+
+    await db.commit()
+    await db.refresh(mat)
+    return {"message": "Material updated successfully."}
 
 
 @router.patch("/materials/{material_id}/toggle-publish")

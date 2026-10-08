@@ -126,7 +126,7 @@ export default function RegisterPage() {
                                     <input
                                         type="text"
                                         required
-                                        placeholder="e.g. Shukriya"
+                                        placeholder="e.g. Razon"
                                         value={formData.fullName}
                                         onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                                         className="bg-transparent border-none outline-none w-full text-slate-100 placeholder-slate-500"

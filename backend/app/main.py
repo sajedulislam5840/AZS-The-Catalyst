@@ -1,6 +1,9 @@
+import os
+from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.core.database import engine, Base
@@ -9,21 +12,23 @@ from app.api.v1.admin import router as admin_router
 from app.api.v1.academic import router as academic_router
 from app.api.v1.chat import router as chat_router
 
+# Ensure static directories exist so mounting never fails
+STATIC_DIR = Path("static")
+MATERIALS_DIR = STATIC_DIR / "materials"
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
+MATERIALS_DIR.mkdir(parents=True, exist_ok=True)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-        # Permanent migration script to eliminate all NOT NULL / schema friction
         migration_statements = [
-            # 1. Reconcile password fields and drop rigid NOT NULL barriers
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR;",
             "ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS hashed_password VARCHAR;",
             "ALTER TABLE users ALTER COLUMN hashed_password DROP NOT NULL;",
-            
-            # Sync passwords between variants
             """
             DO $$
             BEGIN
@@ -31,14 +36,10 @@ async def lifespan(app: FastAPI):
                 UPDATE users SET hashed_password = password_hash WHERE hashed_password IS NULL AND password_hash IS NOT NULL;
             END $$;
             """,
-
-            # 2. Reconcile is_active status
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;",
             "ALTER TABLE users ALTER COLUMN is_active DROP NOT NULL;",
             "ALTER TABLE users ALTER COLUMN is_active SET DEFAULT TRUE;",
             "UPDATE users SET is_active = TRUE WHERE is_active IS NULL;",
-
-            # 3. Ensure all academic & profile columns exist
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR;",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR DEFAULT 'STUDENT';",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;",
@@ -65,7 +66,6 @@ app = FastAPI(
 )
 
 
-# Native ASGI CORS handler: guarantees preflight OPTIONS always return 200 with wildcard headers
 @app.middleware("http")
 async def custom_cors_middleware(request: Request, call_next):
     if request.method == "OPTIONS":
@@ -85,6 +85,9 @@ async def custom_cors_middleware(request: Request, call_next):
     response.headers["Access-Control-Expose-Headers"] = "*"
     return response
 
+
+# Mount static files to serve uploaded PDFs and documents
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")

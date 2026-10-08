@@ -7,8 +7,14 @@ from sqlalchemy import select, desc
 
 from app.core.database import get_db
 from app.models.user import User, UserRole
-from app.models.academic import Lecture, Material
 from app.api.v1.auth import get_current_active_user
+
+# Safe dynamic import jate model missing thakleo server crash na kore
+try:
+    from app.models.academic import Lecture, Material
+except Exception:
+    Lecture = None
+    Material = None
 
 router = APIRouter(prefix="/admin", tags=["Admin Instructor Operations"])
 
@@ -116,6 +122,11 @@ async def add_lecture(
     admin: User = Depends(verify_admin),
     db: AsyncSession = Depends(get_db)
 ):
+    if Lecture is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Lecture database model is not configured properly in app.models.academic"
+        )
     lecture = Lecture(
         lecture_no=payload.lecture_no,
         title=payload.title,
@@ -135,6 +146,11 @@ async def add_material(
     admin: User = Depends(verify_admin),
     db: AsyncSession = Depends(get_db)
 ):
+    if Material is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Material database model is not configured properly in app.models.academic"
+        )
     material = Material(
         title=payload.title,
         chapter=payload.chapter,

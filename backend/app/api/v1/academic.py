@@ -1,166 +1,219 @@
-import os
 import uuid
-import re
-import shutil
-from typing import List, Optional
-from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, status
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select
+from pydantic import BaseModel
 
 from app.core.database import get_db
-from app.models.academic import Material, VideoLecture, Notice, SubjectEnum
-from app.schemas.academic import (
-    MaterialResponse,
-    VideoCreate,
-    VideoResponse,
-    NoticeCreate,
-    NoticeResponse,
-)
 from app.core.deps import require_admin
+from app.models.academic import Material, VideoLecture, SubjectEnum
+from app.core.cloudinary_config import upload_pdf_to_cloudinary, delete_pdf_from_cloudinary
 
-router = APIRouter(prefix="/academic", tags=["Academic"])
-
-# পাথ কনফিগারেশন
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-UPLOAD_DIR = BASE_DIR / "static" / "materials"
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+router = APIRouter(prefix="/admin", tags=["Admin Academic"])
 
 
-# ================= NOTICE BOARD =================
+# ============ SCHEMAS ============
+class VideoCreateIn(BaseModel):
+    lecture_no: int
+    title: str
+    topic: Optional[str] = ""
+    chapter: str
+    subject: str
+    video_url: str
 
-@router.get("/notice", response_model=Optional[NoticeResponse])
-async def get_latest_notice(db: AsyncSession = Depends(get_db)):
-    stmt = select(Notice).order_by(Notice.created_at.desc()).limit(1)
+
+class MaterialLinkIn(BaseModel):
+    title: str
+    chapter: str
+    subject: str
+    file_url: str
+
+
+# ============ VIDEO LECTURES (ADMIN) ============
+
+@router.get("/lectures", dependencies=[Depends(require_admin)])
+async def admin_list_lectures(db: AsyncSession = Depends(get_db)):
+    """Admin সব ভিডিও দেখতে পারবে (published এবং unpublished উভয়)"""
+    stmt = select(VideoLecture).order_by(VideoLecture.lecture_no.asc())
     result = await db.execute(stmt)
-    return result.scalar_one_or_none()
+    lectures = result.scalars().all()
+    return [
+        {
+            "id": str(l.id),
+            "lecture_no": l.lecture_no,
+            "title": l.topic,
+            "topic": l.topic,
+            "chapter": l.chapter,
+            "subject": l.subject.value if hasattr(l.subject, "value") else l.subject,
+            "video_url": l.youtube_url,
+            "is_published": getattr(l, "is_published", True),
+        }
+        for l in lectures
+    ]
 
 
-@router.post("/notice", response_model=NoticeResponse, dependencies=[Depends(require_admin)])
-async def broadcast_notice(payload: NoticeCreate, db: AsyncSession = Depends(get_db)):
-    if not payload.content.strip():
-        raise HTTPException(status_code=400, detail="Notice content cannot be empty")
-    
-    await db.execute(delete(Notice))
-    notice = Notice(content=payload.content.strip())
-    db.add(notice)
-    await db.commit()
-    await db.refresh(notice)
-    return notice
+@router.post("/lectures", dependencies=[Depends(require_admin)])
+async def admin_create_lecture(payload: VideoCreateIn, db: AsyncSession = Depends(get_db)):
+    try:
+        subj = SubjectEnum(payload.subject.upper().replace(" ", "_"))
+    except ValueError:
+        raise HTTPException(400, f"Invalid subject: {payload.subject}")
 
-
-@router.delete("/notice", dependencies=[Depends(require_admin)])
-async def clear_notice(db: AsyncSession = Depends(get_db)):
-    await db.execute(delete(Notice))
-    await db.commit()
-    return {"message": "Active notice cleared"}
-
-
-# ================= MATERIALS (HANDOUTS/PDF) =================
-
-@router.get("/materials", response_model=List[MaterialResponse])
-async def list_materials(db: AsyncSession = Depends(get_db)):
-    stmt = select(Material).order_by(Material.created_at.desc())
-    result = await db.execute(stmt)
-    return result.scalars().all()
-
-
-@router.post("/materials/upload", response_model=MaterialResponse, dependencies=[Depends(require_admin)])
-async def upload_material(
-    request: Request,
-    title: str = Form(...),
-    chapter: str = Form(...),
-    subject: str = Form(...),
-    file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db)
-):
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
-
-    subj_val = subject.upper()
-    valid_subjects = [s.value for s in SubjectEnum]
-    if subj_val not in valid_subjects:
-        raise HTTPException(status_code=400, detail=f"Subject must be one of: {', '.join(valid_subjects)}")
-
-    # নিরাপদ ফাইল নেইমিং
-    clean_filename = re.sub(r'[\s]+', '_', file.filename)
-    unique_filename = f"{uuid.uuid4().hex[:10]}_{clean_filename}"
-    file_path = UPLOAD_DIR / unique_filename
-
-    # ফাইল সেভ করা
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    # ডাইনামিক URL (Render বা Localhost দুই জায়গাতেই কাজ করবে)
-    base_url = str(request.base_url).rstrip("/")
-    pdf_url = f"{base_url}/static/materials/{unique_filename}"
-
-    material = Material(
-        title=title.strip(),
-        chapter=chapter.strip(),
-        subject=SubjectEnum(subj_val),
-        pdf_url=pdf_url
-    )
-    db.add(material)
-    await db.commit()
-    await db.refresh(material)
-    return material
-
-
-@router.delete("/materials/{material_id}", dependencies=[Depends(require_admin)])
-async def delete_material(material_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    stmt = select(Material).where(Material.id == material_id)
-    res = await db.execute(stmt)
-    item = res.scalar_one_or_none()
-    if not item:
-        raise HTTPException(status_code=404, detail="Material not found")
-
-    # ডিস্ক থেকে ফাইল মুছে ফেলা
-    filename = item.pdf_url.split("/")[-1]
-    local_path = UPLOAD_DIR / filename
-    if local_path.exists():
-        try:
-            local_path.unlink()
-        except OSError:
-            pass
-
-    await db.delete(item)
-    await db.commit()
-    return {"message": "Material deleted successfully"}
-
-
-# ================= VIDEO LECTURES =================
-
-@router.get("/videos", response_model=List[VideoResponse])
-async def list_videos(db: AsyncSession = Depends(get_db)):
-    stmt = select(VideoLecture).order_by(VideoLecture.lecture_no.asc(), VideoLecture.created_at.desc())
-    result = await db.execute(stmt)
-    return result.scalars().all()
-
-
-@router.post("/videos", response_model=VideoResponse, dependencies=[Depends(require_admin)])
-async def create_video(payload: VideoCreate, db: AsyncSession = Depends(get_db)):
     video = VideoLecture(
         lecture_no=payload.lecture_no,
-        topic=payload.topic.strip(),
+        topic=payload.title.strip(),
         chapter=payload.chapter.strip(),
-        subject=payload.subject,
-        youtube_url=payload.youtube_url.strip()
+        subject=subj,
+        youtube_url=payload.video_url.strip(),
+        is_published=True,
     )
     db.add(video)
     await db.commit()
     await db.refresh(video)
-    return video
+    return {"message": "Lecture created", "id": str(video.id)}
 
 
-@router.delete("/videos/{video_id}", dependencies=[Depends(require_admin)])
-async def delete_video(video_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    stmt = select(VideoLecture).where(VideoLecture.id == video_id)
+@router.patch("/lectures/{lecture_id}/toggle-publish", dependencies=[Depends(require_admin)])
+async def toggle_lecture_publish(lecture_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    stmt = select(VideoLecture).where(VideoLecture.id == lecture_id)
     res = await db.execute(stmt)
-    item = res.scalar_one_or_none()
-    if not item:
-        raise HTTPException(status_code=404, detail="Video not found")
-
-    await db.delete(item)
+    lec = res.scalar_one_or_none()
+    if not lec:
+        raise HTTPException(404, "Lecture not found")
+    
+    lec.is_published = not getattr(lec, "is_published", True)
     await db.commit()
-    return {"message": "Video lecture removed successfully"}
+    return {"message": "Toggled", "is_published": lec.is_published}
+
+
+@router.delete("/lectures/{lecture_id}", dependencies=[Depends(require_admin)])
+async def admin_delete_lecture(lecture_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    stmt = select(VideoLecture).where(VideoLecture.id == lecture_id)
+    res = await db.execute(stmt)
+    lec = res.scalar_one_or_none()
+    if not lec:
+        raise HTTPException(404, "Lecture not found")
+    await db.delete(lec)
+    await db.commit()
+    return {"message": "Lecture deleted permanently"}
+
+
+# ============ MATERIALS / PDF (ADMIN) ============
+
+@router.get("/materials", dependencies=[Depends(require_admin)])
+async def admin_list_materials(db: AsyncSession = Depends(get_db)):
+    """Admin সব PDF দেখতে পারবে"""
+    stmt = select(Material).order_by(Material.created_at.desc())
+    result = await db.execute(stmt)
+    mats = result.scalars().all()
+    return [
+        {
+            "id": str(m.id),
+            "title": m.title,
+            "chapter": m.chapter,
+            "subject": m.subject.value if hasattr(m.subject, "value") else m.subject,
+            "file_url": m.pdf_url,
+            "is_published": getattr(m, "is_published", True),
+        }
+        for m in mats
+    ]
+
+
+@router.post("/materials", dependencies=[Depends(require_admin)])
+async def admin_create_material_link(payload: MaterialLinkIn, db: AsyncSession = Depends(get_db)):
+    """Google Drive link দিয়ে PDF add"""
+    try:
+        subj = SubjectEnum(payload.subject.upper().replace(" ", "_"))
+    except ValueError:
+        raise HTTPException(400, f"Invalid subject")
+
+    material = Material(
+        title=payload.title.strip(),
+        chapter=payload.chapter.strip(),
+        subject=subj,
+        pdf_url=payload.file_url.strip(),
+        is_published=True,
+    )
+    db.add(material)
+    await db.commit()
+    await db.refresh(material)
+    return {"message": "Link saved", "id": str(material.id)}
+
+
+@router.post("/materials/upload", dependencies=[Depends(require_admin)])
+async def admin_upload_material_pdf(
+    title: str = Form(...),
+    chapter: str = Form(...),
+    subject: str = Form(...),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """PC থেকে PDF upload → Cloudinary তে store"""
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(400, "Only PDF files allowed")
+
+    try:
+        subj = SubjectEnum(subject.upper().replace(" ", "_"))
+    except ValueError:
+        raise HTTPException(400, f"Invalid subject: {subject}")
+
+    # ফাইল bytes read
+    contents = await file.read()
+    
+    if len(contents) > 20 * 1024 * 1024:  # 20MB limit
+        raise HTTPException(400, "File too large (max 20MB)")
+
+    # Cloudinary তে upload
+    try:
+        pdf_url = upload_pdf_to_cloudinary(contents, file.filename)
+    except Exception as e:
+        raise HTTPException(500, f"Upload failed: {str(e)}")
+
+    # Database তে save
+    material = Material(
+        title=title.strip(),
+        chapter=chapter.strip(),
+        subject=subj,
+        pdf_url=pdf_url,
+        is_published=True,
+    )
+    db.add(material)
+    await db.commit()
+    await db.refresh(material)
+    
+    return {
+        "message": "PDF uploaded successfully",
+        "file_url": pdf_url,
+        "id": str(material.id),
+    }
+
+
+@router.patch("/materials/{material_id}/toggle-publish", dependencies=[Depends(require_admin)])
+async def toggle_material_publish(material_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    stmt = select(Material).where(Material.id == material_id)
+    res = await db.execute(stmt)
+    mat = res.scalar_one_or_none()
+    if not mat:
+        raise HTTPException(404, "Material not found")
+    
+    mat.is_published = not getattr(mat, "is_published", True)
+    await db.commit()
+    return {"message": "Toggled", "is_published": mat.is_published}
+
+
+@router.delete("/materials/{material_id}", dependencies=[Depends(require_admin)])
+async def admin_delete_material(material_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    stmt = select(Material).where(Material.id == material_id)
+    res = await db.execute(stmt)
+    mat = res.scalar_one_or_none()
+    if not mat:
+        raise HTTPException(404, "Material not found")
+    
+    # Cloudinary থেকেও delete করো
+    if mat.pdf_url and "cloudinary.com" in mat.pdf_url:
+        delete_pdf_from_cloudinary(mat.pdf_url)
+    
+    await db.delete(mat)
+    await db.commit()
+    return {"message": "Material deleted permanently"}

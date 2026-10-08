@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
+from app.api.v1 import admin_academic 
 
 from app.core.database import engine, Base
 from app.api.v1.auth import router as auth_router
@@ -130,3 +131,6 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+
+app.include_router(admin_academic.router, prefix="/api/v1") 

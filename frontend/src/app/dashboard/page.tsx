@@ -35,12 +35,16 @@ import {
     MessageCircle,
     Globe,
     Video,
+    Atom,
+    FlaskConical,
+    ShieldAlert,
+    Zap,
 } from "lucide-react";
 import axios from "axios";
 
-// --- Professional Teacher Social Config ---
 const TEACHER_SOCIAL = {
     name: "AZS RAZON SIR",
+    role: "Lead Physics & Chemistry Instructor",
     whatsapp: "https://wa.me/8801916201426",
     facebook: "https://www.facebook.com/razon.sikdar.1",
     youtube: "https://www.youtube.com/@AZSChemistry",
@@ -155,16 +159,28 @@ function DashboardContent() {
     const [mounted, setMounted] = useState(false);
     const [currentYear, setCurrentYear] = useState(2026);
 
-    // Floating AI Chat States
+    // Subject-specific micro-animation / loading state without text
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const [transitionSubject, setTransitionSubject] = useState<"PHYSICS" | "CHEMISTRY" | null>(null);
+
+    const triggerSubjectTransition = (subj: "PHYSICS" | "CHEMISTRY", callback: () => void) => {
+        setTransitionSubject(subj);
+        setIsTransitioning(true);
+        setTimeout(() => {
+            setIsTransitioning(false);
+            callback();
+        }, 500);
+    };
+
     const [isFloatingChatOpen, setIsFloatingChatOpen] = useState(false);
 
     const [userProfile, setUserProfile] = useState<UserProfile>({
         id: "",
-        full_name: "Student",
+        full_name: "Cadet",
         email: "",
         school: "",
         grade_class: "",
-        batch_no: "Registered Student",
+        batch_no: "Catalyst Command Batch",
         role: "STUDENT",
     });
 
@@ -188,7 +204,7 @@ function DashboardContent() {
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
         {
             role: "assistant",
-            content: "Hello! I am your AZS AI Academic Tutor. Feel free to ask any Physics or Chemistry doubts!",
+            content: "AZS AI Core online. Standing by for Physics mechanics or Chemistry reaction equations.",
         },
     ]);
     const [chatInput, setChatInput] = useState("");
@@ -238,9 +254,9 @@ function DashboardContent() {
             return;
         }
 
-        const storedName = localStorage.getItem("user_name") || localStorage.getItem("student_name") || "Student";
+        const storedName = localStorage.getItem("user_name") || localStorage.getItem("student_name") || "Cadet";
         const storedEmail = localStorage.getItem("user_email") || "";
-        const storedBatch = localStorage.getItem("batch_no") || "General Batch";
+        const storedBatch = localStorage.getItem("batch_no") || "Catalyst Command Batch";
         const storedClass = localStorage.getItem("grade_class") || "";
         const storedSchool = localStorage.getItem("school") || "";
 
@@ -321,7 +337,7 @@ function DashboardContent() {
                 if (res.data.batch_no) localStorage.setItem("batch_no", res.data.batch_no);
             }
         } catch {
-            // Retain stored local values
+            // Retain local stored values
         }
     };
 
@@ -404,15 +420,15 @@ function DashboardContent() {
 
     const handleAddTimestampTag = (lectureId: string) => {
         const current = lectureNotes[lectureId] || "";
-        const stamp = `\n[Timestamp Note]: `;
+        const stamp = `\n[Timestamp Record]: `;
         handleNoteChange(lectureId, current + stamp);
     };
 
     const handleExportNotes = (lecture: VideoLecture) => {
-        const noteText = lectureNotes[lecture.id] || "No notes recorded for this lecture.";
+        const noteText = lectureNotes[lecture.id] || "No revision notes recorded.";
         const blob = new Blob(
             [
-                `AZS: The Catalyst - Revision Notes\n`,
+                `AZS: The Catalyst - Revision Terminal\n`,
                 `Subject: ${lecture.subject}\n`,
                 `Chapter: ${lecture.chapter}\n`,
                 `Lecture #${lecture.lecture_no}: ${lecture.topic || lecture.title}\n`,
@@ -447,7 +463,7 @@ function DashboardContent() {
                 ...newMsgs,
                 {
                     role: "assistant",
-                    content: err.response?.data?.detail || "Could not retrieve AI response right now.",
+                    content: err.response?.data?.detail || "AI Core connection interrupted.",
                 },
             ]);
         } finally {
@@ -577,13 +593,37 @@ function DashboardContent() {
     if (!mounted) return null;
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans antialiased relative">
+        <div className="min-h-screen bg-[#07090E] text-slate-100 flex flex-col font-sans antialiased relative selection:bg-indigo-500 selection:text-white">
+            {/* Subject-specific scientific micro-animation transition overlay */}
+            {isTransitioning && (
+                <div className="fixed inset-0 z-50 bg-[#07090E]/90 backdrop-blur-md flex items-center justify-center animate-in fade-in duration-200">
+                    <div className="flex flex-col items-center space-y-6">
+                        {transitionSubject === "PHYSICS" ? (
+                            <div className="relative flex items-center justify-center">
+                                <div className="w-24 h-24 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+                                <div className="absolute w-16 h-16 rounded-full border-2 border-cyan-400/30 border-b-cyan-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }} />
+                                <Zap className="w-8 h-8 text-indigo-400 absolute animate-pulse" />
+                            </div>
+                        ) : (
+                            <div className="relative flex items-center justify-center">
+                                <div className="w-24 h-24 rounded-full border-2 border-amber-500/20 border-t-amber-500 animate-spin" />
+                                <div className="absolute w-16 h-16 rounded-full border-2 border-orange-400/30 border-b-orange-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.2s' }} />
+                                <FlaskConical className="w-8 h-8 text-amber-400 absolute animate-pulse" />
+                            </div>
+                        )}
+                        <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden">
+                            <div className={`h-full w-full animate-pulse ${transitionSubject === "PHYSICS" ? "bg-indigo-500 shadow-[0_0_15px_#6366f1]" : "bg-amber-500 shadow-[0_0_15px_#f59e0b]"}`} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex-1 flex min-w-0">
-                {/* 1. LEFT SIDEBAR */}
-                <aside className="w-68 bg-white border-r border-slate-200/80 p-6 flex flex-col justify-between shrink-0 hidden md:flex shadow-sm">
+                {/* 1. LEFT SIDEBAR (Desktop Cyber-Deck Command Center) */}
+                <aside className="w-72 bg-[#0B0F19] border-r border-slate-800/80 p-6 flex flex-col justify-between shrink-0 hidden md:flex shadow-2xl">
                     <div className="space-y-8">
-                        <div className="flex items-center space-x-3 px-1">
-                            <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-900 border border-slate-800 shadow-md flex items-center justify-center shrink-0 p-1.5">
+                        <div className="flex items-center space-x-3.5 px-1">
+                            <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-900 border border-slate-700 shadow-inner flex items-center justify-center shrink-0 p-1.5">
                                 <img
                                     src="/logo.png"
                                     alt="AZS Logo"
@@ -594,8 +634,8 @@ function DashboardContent() {
                                 />
                             </div>
                             <div>
-                                <span className="font-extrabold text-sm tracking-tight text-slate-900 block leading-tight">AZS</span>
-                                <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-600 block">
+                                <span className="font-extrabold text-sm tracking-tight text-white block leading-tight">AZS</span>
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-400 block">
                                     The Catalyst
                                 </span>
                             </div>
@@ -608,24 +648,24 @@ function DashboardContent() {
                                     setSearchQuery("");
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "dashboard"
-                                        ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+                                        ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-600/30 border border-indigo-500/30"
+                                        : "text-slate-400 hover:text-white hover:bg-slate-900/60"
                                     }`}
                             >
                                 <LayoutDashboard className="w-4 h-4" />
-                                <span>Dashboard</span>
+                                <span>Command Deck</span>
                             </button>
 
                             <button
                                 onClick={() => setActiveNav("lectures")}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "lectures"
-                                        ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+                                        ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-600/30 border border-indigo-500/30"
+                                        : "text-slate-400 hover:text-white hover:bg-slate-900/60"
                                     }`}
                             >
                                 <PlayCircle className="w-4 h-4" />
                                 <span>Video Lectures</span>
-                                <span className="ml-auto text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono">
+                                <span className="ml-auto text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">
                                     {videos.length}
                                 </span>
                             </button>
@@ -633,13 +673,13 @@ function DashboardContent() {
                             <button
                                 onClick={() => setActiveNav("materials")}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "materials"
-                                        ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+                                        ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-600/30 border border-indigo-500/30"
+                                        : "text-slate-400 hover:text-white hover:bg-slate-900/60"
                                     }`}
                             >
                                 <FileText className="w-4 h-4" />
                                 <span>Study Sheets (PDF)</span>
-                                <span className="ml-auto text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono">
+                                <span className="ml-auto text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">
                                     {materials.length}
                                 </span>
                             </button>
@@ -647,35 +687,35 @@ function DashboardContent() {
                             <button
                                 onClick={() => setActiveNav("ai")}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "ai"
-                                        ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+                                        ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-600/30 border border-indigo-500/30"
+                                        : "text-slate-400 hover:text-white hover:bg-slate-900/60"
                                     }`}
                             >
-                                <Bot className="w-4 h-4 text-indigo-500" />
-                                <span>AI Tutor</span>
-                                <span className="ml-auto text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md font-bold">
+                                <Bot className="w-4 h-4 text-indigo-400" />
+                                <span>AI Tutor Core</span>
+                                <span className="ml-auto text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-bold border border-indigo-500/30">
                                     Online
                                 </span>
                             </button>
                         </nav>
                     </div>
 
-                    {/* GOOGLE/STRIPE STANDARD PROFESSIONAL INSTRUCTOR CARD */}
-                    <div className="pt-6 border-t border-slate-100 space-y-4 mb-2">
-                        <div className="bg-gradient-to-br from-slate-900 via-[#181824] to-slate-950 rounded-2xl p-4 text-white shadow-xl border border-slate-800/80 relative overflow-hidden group">
+                    {/* ELITE INSTRUCTOR DIRECT UPLINK TERMINAL */}
+                    <div className="pt-6 border-t border-slate-800/80 space-y-4 mb-2">
+                        <div className="bg-gradient-to-br from-[#121826] via-[#0D121F] to-[#0A0E17] rounded-2xl p-4 text-white shadow-xl border border-slate-700/60 relative overflow-hidden group">
                             <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all duration-500" />
 
                             <div className="relative z-10 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[9px] font-extrabold tracking-widest text-indigo-400 uppercase bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
-                                        Instructor
+                                        Lead Instructor
                                     </span>
-                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Active" />
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#34d399]" title="Secure Uplink Active" />
                                 </div>
 
                                 <div>
                                     <h4 className="text-sm font-extrabold text-white tracking-tight">{TEACHER_SOCIAL.name}</h4>
-                                    <p className="text-[10px] text-slate-400 font-medium mt-0.5">Physics & Chemistry Instructor</p>
+                                    <p className="text-[10px] text-slate-400 font-medium mt-0.5">{TEACHER_SOCIAL.role}</p>
                                 </div>
 
                                 <div className="grid grid-cols-3 gap-1.5 pt-1">
@@ -683,8 +723,8 @@ function DashboardContent() {
                                         href={TEACHER_SOCIAL.whatsapp}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.06] hover:bg-emerald-500/20 hover:border-emerald-500/40 border border-white/10 rounded-xl transition-all group/btn"
-                                        title="WhatsApp Direct"
+                                        className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.04] hover:bg-emerald-500/20 hover:border-emerald-500/40 border border-white/10 rounded-xl transition-all group/btn"
+                                        title="WhatsApp Direct Uplink"
                                     >
                                         <MessageCircle className="w-4 h-4 text-emerald-400 mb-1 group-hover/btn:scale-110 transition-transform" />
                                         <span className="text-[9px] font-semibold text-slate-300 group-hover/btn:text-white">WhatsApp</span>
@@ -694,8 +734,8 @@ function DashboardContent() {
                                         href={TEACHER_SOCIAL.facebook}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.06] hover:bg-blue-500/20 hover:border-blue-500/40 border border-white/10 rounded-xl transition-all group/btn"
-                                        title="Facebook Profile"
+                                        className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.04] hover:bg-blue-500/20 hover:border-blue-500/40 border border-white/10 rounded-xl transition-all group/btn"
+                                        title="Facebook Command Node"
                                     >
                                         <Globe className="w-4 h-4 text-blue-400 mb-1 group-hover/btn:scale-110 transition-transform" />
                                         <span className="text-[9px] font-semibold text-slate-300 group-hover/btn:text-white">Facebook</span>
@@ -705,8 +745,8 @@ function DashboardContent() {
                                         href={TEACHER_SOCIAL.youtube}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.06] hover:bg-rose-500/20 hover:border-rose-500/40 border border-white/10 rounded-xl transition-all group/btn"
-                                        title="YouTube Channel"
+                                        className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.04] hover:bg-rose-500/20 hover:border-rose-500/40 border border-white/10 rounded-xl transition-all group/btn"
+                                        title="YouTube Archive Vault"
                                     >
                                         <Video className="w-4 h-4 text-rose-400 mb-1 group-hover/btn:scale-110 transition-transform" />
                                         <span className="text-[9px] font-semibold text-slate-300 group-hover/btn:text-white">YouTube</span>
@@ -715,27 +755,27 @@ function DashboardContent() {
                             </div>
                         </div>
 
-                        <div className="pt-3 border-t border-slate-100 space-y-3">
+                        <div className="pt-3 border-t border-slate-800/80 space-y-3">
                             <div className="flex items-center space-x-3 px-2">
-                                <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center font-extrabold text-indigo-600 text-xs shadow-sm shrink-0">
+                                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center font-extrabold text-indigo-400 text-xs shadow-inner shrink-0">
                                     {userProfile.full_name.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="overflow-hidden">
-                                    <p className="text-xs font-bold text-slate-900 truncate">
+                                    <p className="text-xs font-bold text-white truncate">
                                         {userProfile.full_name}
                                     </p>
-                                    <p className="text-[10px] text-slate-400 font-medium truncate">
-                                        {userProfile.batch_no || userProfile.email || "Registered Student"}
+                                    <p className="text-[10px] text-slate-400 font-mono truncate">
+                                        {userProfile.batch_no || userProfile.email || "Catalyst Cadet"}
                                     </p>
                                 </div>
                             </div>
 
                             <button
                                 onClick={handleLogout}
-                                className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50/80 transition"
+                                className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-500/10 transition"
                             >
                                 <LogOut className="w-4 h-4" />
-                                <span>Sign Out</span>
+                                <span>Disconnect Deck</span>
                             </button>
                         </div>
                     </div>
@@ -743,24 +783,25 @@ function DashboardContent() {
 
                 {/* 2. MAIN WORKSPACE */}
                 <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-                    <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/80 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+                    {/* TELEMETRY STATUS BAR (TOP HEADER) */}
+                    <header className="h-20 bg-[#0B0F19]/90 backdrop-blur-md border-b border-slate-800/80 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-30 shadow-md">
                         <div className="flex items-center gap-3 flex-1 max-w-md">
                             <div className="w-9 h-9 rounded-xl overflow-hidden bg-slate-900 border border-slate-800 shadow-sm flex md:hidden items-center justify-center shrink-0 p-1">
                                 <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
                             </div>
                             <div className="relative flex-1">
-                                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
                                 <input
                                     type="text"
-                                    placeholder="Search topic or chapter..."
+                                    placeholder="Search physics equations or chemical notes..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full bg-slate-100/80 border border-transparent focus:border-slate-300 rounded-xl pl-10 pr-9 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none transition"
+                                    className="w-full bg-[#121826] border border-slate-800 focus:border-indigo-500 rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition shadow-inner"
                                 />
                                 {searchQuery && (
                                     <button
                                         onClick={() => setSearchQuery("")}
-                                        className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                                        className="absolute right-3 top-3 text-slate-500 hover:text-white"
                                     >
                                         <X className="w-3.5 h-3.5" />
                                     </button>
@@ -769,12 +810,12 @@ function DashboardContent() {
                         </div>
 
                         <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200/60 rounded-full text-amber-700 text-xs font-bold shadow-xs">
-                                <Flame className="w-4 h-4 text-amber-500" />
+                            <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-xs font-bold shadow-sm">
+                                <Flame className="w-4 h-4 text-amber-500 animate-pulse" />
                                 <span>Streak Active</span>
                             </div>
 
-                            <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 relative hover:bg-slate-200/60 transition cursor-pointer">
+                            <div className="p-2.5 rounded-xl bg-[#121826] border border-slate-800 text-slate-400 relative hover:text-white transition cursor-pointer">
                                 <Bell className="w-4 h-4" />
                                 {notice && <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 animate-ping" />}
                             </div>
@@ -782,7 +823,7 @@ function DashboardContent() {
                     </header>
 
                     {notice && (
-                        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 px-6 py-2.5 flex items-center space-x-3 shadow-sm">
+                        <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-slate-950 px-6 py-2.5 flex items-center space-x-3 shadow-md">
                             <span className="px-2 py-0.5 rounded bg-black text-amber-400 font-black text-[10px] tracking-wider uppercase">
                                 Notice
                             </span>
@@ -796,8 +837,8 @@ function DashboardContent() {
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-                                            <Search className="w-5 h-5 text-indigo-600" />
+                                        <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+                                            <Search className="w-5 h-5 text-indigo-400" />
                                             <span>Search Results for &ldquo;{searchQuery}&rdquo;</span>
                                         </h2>
                                         <p className="text-xs text-slate-400 mt-0.5">
@@ -806,37 +847,37 @@ function DashboardContent() {
                                     </div>
                                     <button
                                         onClick={() => setSearchQuery("")}
-                                        className="text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl transition shadow-xs"
+                                        className="text-xs font-bold text-slate-400 hover:text-white bg-[#121826] border border-slate-800 px-3 py-1.5 rounded-xl transition"
                                     >
                                         Clear Search
                                     </button>
                                 </div>
 
                                 {!hasSearchResults ? (
-                                    <div className="bg-white rounded-3xl p-16 text-center border border-slate-200/80 shadow-sm space-y-4">
-                                        <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+                                    <div className="bg-[#0B0F19] rounded-3xl p-16 text-center border border-slate-800 shadow-xl space-y-4">
+                                        <div className="w-16 h-16 rounded-full bg-slate-900 text-slate-500 mx-auto flex items-center justify-center border border-slate-800">
                                             <SearchX className="w-8 h-8" />
                                         </div>
                                         <div className="space-y-1">
-                                            <h3 className="text-base font-extrabold text-slate-800">
-                                                No Results Found
+                                            <h3 className="text-base font-extrabold text-white">
+                                                No Telemetry Data Found
                                             </h3>
-                                            <p className="text-xs text-slate-500 max-w-md mx-auto">
-                                                We couldn&apos;t find any lectures or study sheets matching &ldquo;{searchQuery}&rdquo;.
+                                            <p className="text-xs text-slate-400 max-w-md mx-auto">
+                                                No records match &ldquo;{searchQuery}&rdquo; across the physics & chemistry archives.
                                             </p>
                                         </div>
                                         <button
                                             onClick={() => setSearchQuery("")}
-                                            className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition"
+                                            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/30"
                                         >
-                                            Reset & View All Content
+                                            Reset Query
                                         </button>
                                     </div>
                                 ) : (
                                     <div className="space-y-8">
                                         {filteredVideos.length > 0 && (
                                             <div className="space-y-4">
-                                                <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+                                                <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">
                                                     Video Lectures ({filteredVideos.length})
                                                 </h3>
                                                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -848,11 +889,11 @@ function DashboardContent() {
                                                             <div
                                                                 key={vid.id}
                                                                 id={`lecture-card-${vid.id}`}
-                                                                className={`bg-white rounded-2xl overflow-hidden border transition-all duration-200 shadow-xs flex flex-col justify-between ${isWatched ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-200/80"
+                                                                className={`bg-[#0B0F19] rounded-2xl overflow-hidden border transition-all duration-200 shadow-lg flex flex-col justify-between ${isWatched ? "border-emerald-500/40 ring-2 ring-emerald-500/10" : "border-slate-800"
                                                                     }`}
                                                             >
                                                                 <div>
-                                                                    <div className="aspect-video w-full bg-slate-900 relative">
+                                                                    <div className="aspect-video w-full bg-black relative">
                                                                         {embedUrl ? (
                                                                             <iframe
                                                                                 src={embedUrl}
@@ -862,28 +903,28 @@ function DashboardContent() {
                                                                                 className="w-full h-full border-none"
                                                                             />
                                                                         ) : (
-                                                                            <div className="h-full flex items-center justify-center text-xs text-slate-400">
-                                                                                Invalid Video Link
+                                                                            <div className="h-full flex items-center justify-center text-xs text-slate-500">
+                                                                                Signal Error
                                                                             </div>
                                                                         )}
                                                                     </div>
 
                                                                     <div className="p-5 space-y-2">
                                                                         <div className="flex items-center justify-between">
-                                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
                                                                                 Lecture #{vid.lecture_no}
                                                                             </span>
                                                                             <span
-                                                                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
-                                                                                        ? "bg-indigo-50 text-indigo-700"
-                                                                                        : "bg-amber-50 text-amber-800"
+                                                                                className={`text-[10px] font-bold px-2 py-0.5 rounded ${vid.subject === "PHYSICS"
+                                                                                        ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                                                                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                                                                                     }`}
                                                                             >
                                                                                 {vid.subject}
                                                                             </span>
                                                                         </div>
 
-                                                                        <h4 className="font-extrabold text-sm text-slate-900 line-clamp-2">
+                                                                        <h4 className="font-extrabold text-sm text-white line-clamp-2">
                                                                             {vid.topic || vid.title}
                                                                         </h4>
                                                                         <p className="text-xs text-slate-400">{vid.chapter}</p>
@@ -897,11 +938,11 @@ function DashboardContent() {
                                                                             recordLecturePlayback(vid.id);
                                                                         }}
                                                                         className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
-                                                                                ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                                                                                : "bg-slate-900 text-white hover:bg-slate-800"
+                                                                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                                                                                : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30"
                                                                             }`}
                                                                     >
-                                                                        <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
+                                                                        <span>{isWatched ? "✓ Completed" : "Mark Completed"}</span>
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -913,7 +954,7 @@ function DashboardContent() {
 
                                         {filteredMaterials.length > 0 && (
                                             <div className="space-y-4">
-                                                <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+                                                <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">
                                                     Study Materials ({filteredMaterials.length})
                                                 </h3>
                                                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -924,14 +965,14 @@ function DashboardContent() {
                                                         return (
                                                             <div
                                                                 key={mat.id}
-                                                                className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-4"
+                                                                className="bg-[#0B0F19] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between space-y-4"
                                                             >
                                                                 <div className="space-y-3">
                                                                     <div className="flex items-center justify-between">
                                                                         <span
-                                                                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
-                                                                                    ? "bg-indigo-50 text-indigo-700"
-                                                                                    : "bg-amber-50 text-amber-800"
+                                                                            className={`text-[10px] font-bold px-2 py-0.5 rounded ${mat.subject === "PHYSICS"
+                                                                                    ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                                                                    : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                                                                                 }`}
                                                                         >
                                                                             {mat.subject}
@@ -940,11 +981,11 @@ function DashboardContent() {
                                                                     </div>
 
                                                                     <div className="flex items-start space-x-3">
-                                                                        <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
+                                                                        <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-indigo-400 font-bold text-xs shrink-0 shadow-inner">
                                                                             PDF
                                                                         </div>
                                                                         <div>
-                                                                            <h4 className="font-extrabold text-sm text-slate-900 leading-snug">{mat.title}</h4>
+                                                                            <h4 className="font-extrabold text-sm text-white leading-snug">{mat.title}</h4>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -955,7 +996,7 @@ function DashboardContent() {
                                                                             setPreviewPdfUrl(drivePreviewLink);
                                                                             setPreviewPdfTitle(mat.title);
                                                                         }}
-                                                                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-sm shadow-indigo-600/20"
+                                                                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-600/30"
                                                                     >
                                                                         <Eye className="w-3.5 h-3.5" />
                                                                         <span>Preview</span>
@@ -965,8 +1006,8 @@ function DashboardContent() {
                                                                         href={rawFileUrl}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
-                                                                        className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition border border-slate-200/80"
-                                                                        title="Open in new tab / Download"
+                                                                        className="p-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800"
+                                                                        title="Open / Download"
                                                                     >
                                                                         <ExternalLink className="w-3.5 h-3.5" />
                                                                     </a>
@@ -982,135 +1023,112 @@ function DashboardContent() {
                             </div>
                         )}
 
-                        {/* VIEW: DASHBOARD OVERVIEW */}
+                        {/* VIEW: DASHBOARD COMMAND DECK (HOME) */}
                         {!isSearchActive && activeNav === "dashboard" && (
                             <>
-                                {/* HERO "MY PROGRESS" CARD */}
+                                {/* 1. HERO "EXPLORATION CORE" SUBJECT CARDS (PHYSICS & CHEMISTRY) */}
                                 <div className="space-y-4">
-                                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">My progress</h2>
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-lg font-bold text-white tracking-tight">Subject Exploration Core</h2>
+                                        <span className="text-xs text-indigo-400 font-mono">Telemetry: Online</span>
+                                    </div>
 
-                                    <div className="bg-[#1E1E2D] rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-slate-900/10 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6">
-                                        <div className="space-y-4 max-w-sm">
-                                            <p className="text-xs text-slate-400 font-medium">
-                                                Hi, {userProfile.full_name}!
-                                            </p>
-                                            <h3 className="text-2xl sm:text-3xl font-extrabold leading-tight">
-                                                You have completed {completedCount} of {totalLectures} lessons so far!
-                                            </h3>
-                                            <button
-                                                onClick={() => setActiveNav("lectures")}
-                                                className="px-5 py-2.5 bg-white text-slate-950 rounded-xl text-xs font-extrabold flex items-center space-x-2 hover:bg-slate-100 transition shadow-lg"
-                                            >
-                                                <span>SEE ALL LECTURES</span>
-                                                <ExternalLink className="w-3.5 h-3.5" />
-                                            </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* PHYSICS ENGINE CARD */}
+                                        <div
+                                            onClick={() => {
+                                                triggerSubjectTransition("PHYSICS", () => {
+                                                    setSelectedSubject("PHYSICS");
+                                                    setActiveNav("lectures");
+                                                });
+                                            }}
+                                            className="group relative bg-gradient-to-br from-[#0B0F19] via-[#0F1423] to-[#0A0D14] rounded-3xl p-8 border border-indigo-500/30 shadow-2xl hover:border-indigo-500/60 transition-all duration-300 cursor-pointer overflow-hidden"
+                                        >
+                                            <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-indigo-600/10 rounded-full blur-3xl group-hover:bg-indigo-600/20 transition-all" />
+                                            <div className="relative z-10 space-y-6">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-[0_0_20px_#6366f133]">
+                                                        <Atom className="w-7 h-7 animate-spin" style={{ animationDuration: '12s' }} />
+                                                    </div>
+                                                    <span className="text-[10px] font-mono tracking-widest text-indigo-400 uppercase bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20">
+                                                        Engine 01
+                                                    </span>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <h3 className="text-2xl font-black text-white group-hover:text-indigo-300 transition-colors">
+                                                        Physics Matrix
+                                                    </h3>
+                                                    <p className="text-xs text-slate-400 leading-relaxed">
+                                                        Engage optics, mechanics, thermodynamics, and electromagnetic theory archives.
+                                                    </p>
+                                                </div>
+
+                                                <div className="flex items-center justify-between pt-2 text-xs font-bold text-indigo-400">
+                                                    <span className="group-hover:translate-x-1 transition-transform inline-flex items-center gap-1.5">
+                                                        Engage Physics Engine &rarr;
+                                                    </span>
+                                                    <span className="font-mono text-[11px] text-slate-500">
+                                                        {videos.filter(v => v.subject === "PHYSICS").length} Modules
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div className="flex items-center gap-4 overflow-x-auto pb-2 lg:pb-0">
-                                            <div className="w-48 sm:w-52 bg-[#C9B6FD] text-slate-950 rounded-2xl p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
-                                                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                                                    <span>01</span>
-                                                    <span>PHYSICS</span>
+                                        {/* CHEMISTRY MATRIX CARD */}
+                                        <div
+                                            onClick={() => {
+                                                triggerSubjectTransition("CHEMISTRY", () => {
+                                                    setSelectedSubject("CHEMISTRY");
+                                                    setActiveNav("lectures");
+                                                });
+                                            }}
+                                            className="group relative bg-gradient-to-br from-[#0B0F19] via-[#141210] to-[#0A0D14] rounded-3xl p-8 border border-amber-500/30 shadow-2xl hover:border-amber-500/60 transition-all duration-300 cursor-pointer overflow-hidden"
+                                        >
+                                            <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-amber-600/10 rounded-full blur-3xl group-hover:bg-amber-600/20 transition-all" />
+                                            <div className="relative z-10 space-y-6">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-[0_0_20px_#f59e0b33]">
+                                                        <FlaskConical className="w-7 h-7 animate-pulse" />
+                                                    </div>
+                                                    <span className="text-[10px] font-mono tracking-widest text-amber-400 uppercase bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+                                                        Engine 02
+                                                    </span>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <BookOpen className="w-6 h-6 text-slate-900 mb-2" />
-                                                    <h4 className="font-extrabold text-sm leading-snug truncate">
-                                                        {chapterStats[0]?.[0] || "আলোর প্রতিফলন"}
-                                                    </h4>
-                                                    <p className="text-[11px] font-medium text-slate-700">
-                                                        {chapterStats[0]?.[1]?.completed || 0}/{chapterStats[0]?.[1]?.total || 6} lessons |{" "}
-                                                        {chapterStats[0]?.[1]?.total
-                                                            ? Math.round(
-                                                                ((chapterStats[0][1].completed || 0) / chapterStats[0][1].total) * 100
-                                                            )
-                                                            : 0}
-                                                        %
-                                                    </p>
-                                                </div>
-                                                <div className="w-full bg-slate-900/20 h-1.5 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="bg-slate-950 h-full rounded-full"
-                                                        style={{
-                                                            width: `${chapterStats[0]?.[1]?.total
-                                                                    ? Math.round(
-                                                                        ((chapterStats[0][1].completed || 0) / chapterStats[0][1].total) * 100
-                                                                    )
-                                                                    : 0
-                                                                }%`,
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
 
-                                            <div className="w-48 sm:w-52 bg-[#FFE3B3] text-slate-950 rounded-2xl p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
-                                                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                                                    <span>02</span>
-                                                    <span>CHEMISTRY</span>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Sparkles className="w-6 h-6 text-slate-900 mb-2" />
-                                                    <h4 className="font-extrabold text-sm leading-snug truncate">
-                                                        {chapterStats[1]?.[0] || "রাসায়নিক বিক্রিয়া"}
-                                                    </h4>
-                                                    <p className="text-[11px] font-medium text-slate-700">
-                                                        {chapterStats[1]?.[1]?.completed || 0}/{chapterStats[1]?.[1]?.total || 13} lessons |{" "}
-                                                        {chapterStats[1]?.[1]?.total
-                                                            ? Math.round(
-                                                                ((chapterStats[1][1].completed || 0) / chapterStats[1][1].total) * 100
-                                                            )
-                                                            : 0}
-                                                        %
+                                                <div className="space-y-2">
+                                                    <h3 className="text-2xl font-black text-white group-hover:text-amber-300 transition-colors">
+                                                        Chemistry Protocol
+                                                    </h3>
+                                                    <p className="text-xs text-slate-400 leading-relaxed">
+                                                        Explore organic reaction mechanisms, stoichiometry, and periodic synthesis vaults.
                                                     </p>
                                                 </div>
-                                                <div className="w-full bg-slate-900/20 h-1.5 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="bg-slate-950 h-full rounded-full"
-                                                        style={{
-                                                            width: `${chapterStats[1]?.[1]?.total
-                                                                    ? Math.round(
-                                                                        ((chapterStats[1][1].completed || 0) / chapterStats[1][1].total) * 100
-                                                                    )
-                                                                    : 0
-                                                                }%`,
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
 
-                                            <div className="w-48 sm:w-52 bg-[#E1FC5B] text-slate-950 rounded-2xl p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
-                                                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                                                    <span>03</span>
-                                                    <span>OVERALL</span>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <CheckCircle2 className="w-6 h-6 text-slate-900 mb-2" />
-                                                    <h4 className="font-extrabold text-sm leading-snug">Full Syllabus</h4>
-                                                    <p className="text-[11px] font-medium text-slate-700">
-                                                        {completedCount}/{totalLectures} lessons | {completionPercentage}%
-                                                    </p>
-                                                </div>
-                                                <div className="w-full bg-slate-900/20 h-1.5 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="bg-slate-950 h-full rounded-full"
-                                                        style={{ width: `${completionPercentage}%` }}
-                                                    />
+                                                <div className="flex items-center justify-between pt-2 text-xs font-bold text-amber-400">
+                                                    <span className="group-hover:translate-x-1 transition-transform inline-flex items-center gap-1.5">
+                                                        Activate Chemistry Protocol &rarr;
+                                                    </span>
+                                                    <span className="font-mono text-[11px] text-slate-500">
+                                                        {videos.filter(v => v.subject === "CHEMISTRY").length} Modules
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* CONTINUE WATCHING & RESUME BANNER */}
+                                {/* 2. CONTINUE WATCHING & RESUME BANNER */}
                                 {activeResumeLecture && (
-                                    <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 text-white border border-indigo-500/20 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                                    <div className="bg-gradient-to-r from-[#0B0F19] via-[#121826] to-[#0B0F19] rounded-3xl p-6 text-white border border-indigo-500/30 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
                                         <div className="flex items-center space-x-4">
-                                            <div className="w-12 h-12 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center shrink-0 shadow-inner">
+                                            <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center shrink-0 shadow-inner">
                                                 <Play className="w-5 h-5 text-indigo-400 fill-indigo-400" />
                                             </div>
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                                                        Continue Watching
+                                                        Resume Telemetry
                                                     </span>
                                                     <span className="text-[10px] text-slate-400 font-bold uppercase">
                                                         {activeResumeLecture.subject}
@@ -1133,34 +1151,34 @@ function DashboardContent() {
                                     </div>
                                 )}
 
-                                {/* STATISTICS & INTERACTIVE STUDY PLANNER CALENDAR */}
+                                {/* 3. METRICS & STUDY PLANNER */}
                                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                                     <div className="lg:col-span-7 space-y-6">
-                                        <h3 className="text-base font-bold text-slate-900">Statistics</h3>
+                                        <h3 className="text-base font-bold text-white">Deck Telemetry Metrics</h3>
 
                                         <div className="grid grid-cols-3 gap-4">
-                                            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
-                                                <p className="text-2xl sm:text-3xl font-black text-slate-900">{completedCount}</p>
-                                                <p className="text-xs font-medium text-slate-400 mt-2">Lectures completed</p>
+                                            <div className="bg-[#0B0F19] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
+                                                <p className="text-2xl sm:text-3xl font-black text-white">{completedCount}</p>
+                                                <p className="text-xs font-medium text-slate-400 mt-2">Lessons completed</p>
                                             </div>
 
-                                            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
-                                                <p className="text-2xl sm:text-3xl font-black text-slate-900">{chapterStats.length}</p>
-                                                <p className="text-xs font-medium text-slate-400 mt-2">Chapters in progress</p>
+                                            <div className="bg-[#0B0F19] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
+                                                <p className="text-2xl sm:text-3xl font-black text-white">{chapterStats.length}</p>
+                                                <p className="text-xs font-medium text-slate-400 mt-2">Active chapters</p>
                                             </div>
 
-                                            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
-                                                <p className="text-2xl sm:text-3xl font-black text-slate-900">{completionPercentage}%</p>
-                                                <p className="text-xs font-medium text-slate-400 mt-2">Syllabus coverage</p>
+                                            <div className="bg-[#0B0F19] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
+                                                <p className="text-2xl sm:text-3xl font-black text-white">{completionPercentage}%</p>
+                                                <p className="text-xs font-medium text-slate-400 mt-2">Syllabus integrity</p>
                                             </div>
                                         </div>
 
                                         <div className="space-y-3">
                                             <div className="flex items-center justify-between">
-                                                <h3 className="text-base font-bold text-slate-900">Recommended Lectures</h3>
+                                                <h3 className="text-base font-bold text-white">Recommended Modules</h3>
                                                 <button
                                                     onClick={() => setActiveNav("lectures")}
-                                                    className="text-xs font-bold text-indigo-600 hover:underline"
+                                                    className="text-xs font-bold text-indigo-400 hover:underline"
                                                 >
                                                     View all
                                                 </button>
@@ -1172,19 +1190,19 @@ function DashboardContent() {
                                                     return (
                                                         <div
                                                             key={v.id}
-                                                            className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between"
+                                                            className="bg-[#0B0F19] rounded-2xl p-4 border border-slate-800 shadow-lg flex items-center justify-between"
                                                         >
                                                             <div className="flex items-center space-x-3.5">
                                                                 <div
                                                                     className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs ${v.subject === "PHYSICS"
-                                                                            ? "bg-indigo-50 text-indigo-700"
-                                                                            : "bg-amber-50 text-amber-800"
+                                                                            ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                                                            : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                                                                         }`}
                                                                 >
                                                                     #{v.lecture_no}
                                                                 </div>
                                                                 <div>
-                                                                    <h4 className="text-xs font-extrabold text-slate-900 line-clamp-1">
+                                                                    <h4 className="text-xs font-extrabold text-white line-clamp-1">
                                                                         {v.topic || v.title}
                                                                     </h4>
                                                                     <p className="text-[11px] text-slate-400">{v.chapter}</p>
@@ -1197,8 +1215,8 @@ function DashboardContent() {
                                                                     recordLecturePlayback(v.id);
                                                                 }}
                                                                 className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition ${isDone
-                                                                        ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                                                                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                                                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                                                        : "bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800"
                                                                     }`}
                                                             >
                                                                 {isDone ? "✓ Done" : "Mark Watched"}
@@ -1211,23 +1229,23 @@ function DashboardContent() {
                                     </div>
 
                                     <div className="lg:col-span-5 space-y-6">
-                                        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+                                        <div className="bg-[#0B0F19] rounded-3xl p-6 border border-slate-800 shadow-lg space-y-4">
                                             <div className="flex items-center justify-between">
                                                 <div>
-                                                    <h4 className="text-sm font-extrabold text-slate-900">{currentMonthTitle}</h4>
-                                                    <p className="text-[10px] text-slate-400">Click any date to schedule a study plan</p>
+                                                    <h4 className="text-sm font-extrabold text-white">{currentMonthTitle}</h4>
+                                                    <p className="text-[10px] text-slate-400">Click any date to schedule study goals</p>
                                                 </div>
                                                 <div className="flex items-center space-x-1">
                                                     <button
                                                         onClick={handlePrevMonth}
-                                                        className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 transition"
+                                                        className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition"
                                                         title="Previous Month"
                                                     >
                                                         <ChevronLeft className="w-4 h-4" />
                                                     </button>
                                                     <button
                                                         onClick={handleNextMonth}
-                                                        className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-600 transition"
+                                                        className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition"
                                                         title="Next Month"
                                                     >
                                                         <ChevronRight className="w-4 h-4" />
@@ -1235,7 +1253,7 @@ function DashboardContent() {
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-7 text-center text-[11px] font-bold text-slate-400">
+                                            <div className="grid grid-cols-7 text-center text-[11px] font-bold text-slate-500">
                                                 <span>Sun</span>
                                                 <span>Mon</span>
                                                 <span>Tue</span>
@@ -1247,7 +1265,7 @@ function DashboardContent() {
 
                                             <div className="grid grid-cols-7 text-center text-xs gap-y-2 font-semibold">
                                                 {Array.from({ length: startDayOfMonth }).map((_, i) => (
-                                                    <span key={`empty-${i}`} className="text-slate-200">
+                                                    <span key={`empty-${i}`} className="text-slate-800">
                                                         -
                                                     </span>
                                                 ))}
@@ -1262,14 +1280,14 @@ function DashboardContent() {
                                                             <button
                                                                 onClick={() => setSelectedDateForPlan(dateKey)}
                                                                 className={`w-7 h-7 flex items-center justify-center rounded-xl transition relative ${isToday
-                                                                        ? "bg-slate-950 text-white font-bold shadow-md"
-                                                                        : "text-slate-700 hover:bg-slate-100"
+                                                                        ? "bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/40"
+                                                                        : "text-slate-300 hover:bg-slate-800"
                                                                     }`}
                                                             >
                                                                 <span>{dayNum}</span>
                                                                 {hasPlans && (
                                                                     <span
-                                                                        className={`w-1.5 h-1.5 rounded-full absolute -bottom-1 ${isToday ? "bg-amber-400" : "bg-indigo-600"
+                                                                        className={`w-1.5 h-1.5 rounded-full absolute -bottom-1 ${isToday ? "bg-amber-400" : "bg-indigo-400"
                                                                             }`}
                                                                     />
                                                                 )}
@@ -1281,19 +1299,19 @@ function DashboardContent() {
                                         </div>
 
                                         {tomorrowReminders.length > 0 && (
-                                            <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-300/60 rounded-2xl p-5 space-y-2 shadow-xs">
+                                            <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl p-5 space-y-2 shadow-lg">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-extrabold uppercase text-amber-800 bg-amber-100/80 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                                                        <Bell className="w-3 h-3 text-amber-600" />
+                                                    <span className="text-[10px] font-extrabold uppercase text-amber-300 bg-amber-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-amber-500/30">
+                                                        <Bell className="w-3 h-3 text-amber-400" />
                                                         <span>Reminder: Plan Due Tomorrow!</span>
                                                     </span>
-                                                    <span className="text-[10px] text-slate-500 font-mono">{tomorrowKey}</span>
+                                                    <span className="text-[10px] text-slate-400 font-mono">{tomorrowKey}</span>
                                                 </div>
                                                 <div className="space-y-1.5 pt-1">
                                                     {tomorrowReminders.map((p) => (
-                                                        <div key={p.id} className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                                                        <div key={p.id} className="text-xs font-bold text-slate-200 flex items-center justify-between">
                                                             <span>• {p.title}</span>
-                                                            {p.time && <span className="text-[10px] text-slate-500 font-normal">{p.time}</span>}
+                                                            {p.time && <span className="text-[10px] text-slate-400 font-mono">{p.time}</span>}
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1301,53 +1319,53 @@ function DashboardContent() {
                                         )}
 
                                         {todayReminders.length > 0 && (
-                                            <div className="bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-300/60 rounded-2xl p-5 space-y-2 shadow-xs">
+                                            <div className="bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-500/30 rounded-2xl p-5 space-y-2 shadow-lg">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-extrabold uppercase text-indigo-800 bg-indigo-100/80 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                                                        <Clock className="w-3 h-3 text-indigo-600" />
-                                                        <span>Today&apos;s Scheduled Goals</span>
+                                                    <span className="text-[10px] font-extrabold uppercase text-indigo-300 bg-indigo-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-indigo-500/30">
+                                                        <Clock className="w-3 h-3 text-indigo-400" />
+                                                        <span>Today&apos;s Target Goals</span>
                                                     </span>
-                                                    <span className="text-[10px] text-slate-500 font-mono">{todayKey}</span>
+                                                    <span className="text-[10px] text-slate-400 font-mono">{todayKey}</span>
                                                 </div>
                                                 <div className="space-y-1.5 pt-1">
                                                     {todayReminders.map((p) => (
-                                                        <div key={p.id} className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                                                        <div key={p.id} className="text-xs font-bold text-slate-200 flex items-center justify-between">
                                                             <span>• {p.title}</span>
-                                                            {p.time && <span className="text-[10px] text-slate-500 font-normal">{p.time}</span>}
+                                                            {p.time && <span className="text-[10px] text-slate-400 font-mono">{p.time}</span>}
                                                         </div>
                                                     ))}
                                                 </div>
                                             </div>
                                         )}
 
-                                        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-3">
+                                        <div className="bg-[#0B0F19] rounded-3xl p-6 border border-slate-800 shadow-lg space-y-3">
                                             <div className="flex items-center justify-between">
-                                                <h4 className="text-sm font-extrabold text-slate-900">Upcoming Schedule</h4>
+                                                <h4 className="text-sm font-extrabold text-white">Live Command Broadcast</h4>
                                                 {notice && (
-                                                    <span className="text-[10px] font-bold uppercase text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                                                        Live Alert
+                                                    <span className="text-[10px] font-bold uppercase text-indigo-400 bg-indigo-500/20 px-2 py-0.5 rounded border border-indigo-500/30">
+                                                        Active
                                                     </span>
                                                 )}
                                             </div>
 
                                             {notice ? (
-                                                <div className="bg-[#1E1E2D] text-white p-4 rounded-2xl flex items-center space-x-3.5">
-                                                    <div className="w-10 h-10 rounded-xl bg-[#E1FC5B] text-slate-950 flex items-center justify-center font-black text-sm shrink-0">
-                                                        🗓️
+                                                <div className="bg-[#121826] text-white p-4 rounded-2xl border border-slate-800 flex items-center space-x-3.5">
+                                                    <div className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-500/40 text-indigo-400 flex items-center justify-center font-black text-sm shrink-0">
+                                                        📢
                                                     </div>
                                                     <div className="overflow-hidden">
                                                         <p className="text-[10px] text-slate-400 font-bold uppercase">Instructor Notice</p>
-                                                        <p className="text-xs font-bold leading-tight truncate">
+                                                        <p className="text-xs font-bold leading-tight text-white truncate">
                                                             {notice.content}
                                                         </p>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="py-6 px-4 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center space-y-1">
-                                                    <CalendarCheck className="w-6 h-6 text-slate-300 mx-auto" />
-                                                    <p className="text-xs font-bold text-slate-600">No Upcoming Events</p>
-                                                    <p className="text-[11px] text-slate-400">
-                                                        There are currently no live sessions or notices scheduled.
+                                                <div className="py-6 px-4 rounded-2xl bg-[#121826]/50 border border-dashed border-slate-800 text-center space-y-1">
+                                                    <CalendarCheck className="w-6 h-6 text-slate-600 mx-auto" />
+                                                    <p className="text-xs font-bold text-slate-400">All Telemetry Clear</p>
+                                                    <p className="text-[11px] text-slate-500">
+                                                        No special emergency broadcasts at this hour.
                                                     </p>
                                                 </div>
                                             )}
@@ -1362,29 +1380,35 @@ function DashboardContent() {
                             <div className="space-y-6">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div>
-                                        <h2 className="text-xl font-extrabold text-slate-900">Video Lectures</h2>
-                                        <p className="text-xs text-slate-400">Stream recorded classes, take personal notes, and mark completed lectures.</p>
+                                        <h2 className="text-xl font-extrabold text-white">Video Lectures Vault</h2>
+                                        <p className="text-xs text-slate-400">Stream physics & chemistry sessions and record timestamp revision notes.</p>
                                     </div>
 
-                                    <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200/80 shadow-xs">
+                                    <div className="flex items-center gap-1.5 bg-[#0B0F19] p-1 rounded-xl border border-slate-800 shadow-sm">
                                         {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
                                             <button
                                                 key={subj}
-                                                onClick={() => setSelectedSubject(subj)}
+                                                onClick={() => {
+                                                    if (subj !== "ALL") {
+                                                        triggerSubjectTransition(subj, () => setSelectedSubject(subj));
+                                                    } else {
+                                                        setSelectedSubject("ALL");
+                                                    }
+                                                }}
                                                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${selectedSubject === subj
-                                                        ? "bg-slate-900 text-white shadow-xs"
-                                                        : "text-slate-600 hover:text-slate-900"
+                                                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                                        : "text-slate-400 hover:text-white"
                                                     }`}
                                             >
-                                                {subj === "ALL" ? "All Subjects" : subj === "PHYSICS" ? "Physics" : "Chemistry"}
+                                                {subj === "ALL" ? "All Subjects" : subj === "PHYSICS" ? "Physics Engine" : "Chemistry Protocol"}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
                                 {filteredVideos.length === 0 ? (
-                                    <div className="bg-white rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-200/80">
-                                        No video lectures match your filter.
+                                    <div className="bg-[#0B0F19] rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-800">
+                                        No video modules found for this telemetry filter.
                                     </div>
                                 ) : (
                                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1398,11 +1422,11 @@ function DashboardContent() {
                                                 <div
                                                     key={vid.id}
                                                     id={`lecture-card-${vid.id}`}
-                                                    className={`bg-white rounded-2xl overflow-hidden border transition-all duration-200 shadow-xs flex flex-col justify-between ${isWatched ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-200/80"
+                                                    className={`bg-[#0B0F19] rounded-2xl overflow-hidden border transition-all duration-200 shadow-xl flex flex-col justify-between ${isWatched ? "border-emerald-500/40 ring-2 ring-emerald-500/10" : "border-slate-800"
                                                         }`}
                                                 >
                                                     <div>
-                                                        <div className="aspect-video w-full bg-slate-900 relative">
+                                                        <div className="aspect-video w-full bg-black relative">
                                                             {embedUrl ? (
                                                                 <iframe
                                                                     src={embedUrl}
@@ -1412,28 +1436,28 @@ function DashboardContent() {
                                                                     className="w-full h-full border-none"
                                                                 />
                                                             ) : (
-                                                                <div className="h-full flex items-center justify-center text-xs text-slate-400">
-                                                                    Invalid Video Link
+                                                                <div className="h-full flex items-center justify-center text-xs text-slate-500">
+                                                                    Signal Error
                                                                 </div>
                                                             )}
                                                         </div>
 
                                                         <div className="p-5 space-y-2">
                                                             <div className="flex items-center justify-between">
-                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
                                                                     Lecture #{vid.lecture_no}
                                                                 </span>
                                                                 <span
-                                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
-                                                                            ? "bg-indigo-50 text-indigo-700"
-                                                                            : "bg-amber-50 text-amber-800"
+                                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded ${vid.subject === "PHYSICS"
+                                                                            ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                                                            : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                                                                         }`}
                                                                 >
                                                                     {vid.subject}
                                                                 </span>
                                                             </div>
 
-                                                            <h3 className="font-extrabold text-sm text-slate-900 line-clamp-2">
+                                                            <h3 className="font-extrabold text-sm text-white line-clamp-2">
                                                                 {vid.topic || vid.title}
                                                             </h3>
                                                             <p className="text-xs text-slate-400">{vid.chapter}</p>
@@ -1441,40 +1465,40 @@ function DashboardContent() {
                                                     </div>
 
                                                     <div className="p-5 pt-0 space-y-3">
-                                                        <div className="border border-slate-200/60 rounded-xl overflow-hidden bg-slate-50/50">
+                                                        <div className="border border-slate-800 rounded-xl overflow-hidden bg-[#121826]/60">
                                                             <button
                                                                 onClick={() => setOpenNotesId(isNotesOpen ? null : vid.id)}
-                                                                className="w-full px-3.5 py-2 flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-slate-100/80 transition"
+                                                                className="w-full px-3.5 py-2.5 flex items-center justify-between text-xs font-bold text-slate-300 hover:bg-[#121826] transition"
                                                             >
                                                                 <div className="flex items-center gap-1.5">
-                                                                    <FileEdit className="w-3.5 h-3.5 text-indigo-600" />
-                                                                    <span>My Lecture Notes</span>
+                                                                    <FileEdit className="w-3.5 h-3.5 text-indigo-400" />
+                                                                    <span>Revision & Timestamp Notes</span>
                                                                     {hasNotes && (
-                                                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+                                                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
                                                                     )}
                                                                 </div>
                                                                 <div className="flex items-center gap-1 text-[11px] text-slate-400">
                                                                     {saveStatus[vid.id] && (
-                                                                        <span className="text-emerald-600 font-semibold text-[10px]">Saved!</span>
+                                                                        <span className="text-emerald-400 font-semibold text-[10px]">Saved!</span>
                                                                     )}
                                                                     {isNotesOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                                                                 </div>
                                                             </button>
 
                                                             {isNotesOpen && (
-                                                                <div className="p-3 bg-white border-t border-slate-200/60 space-y-2.5 animate-in fade-in duration-100">
+                                                                <div className="p-3 bg-[#0B0F19] border-t border-slate-800 space-y-2.5 animate-in fade-in duration-100">
                                                                     <textarea
                                                                         rows={4}
-                                                                        placeholder="Jot down key formulas, tips, or timestamps here..."
+                                                                        placeholder="Jot down formula derivations, problem shortcuts, or timestamps..."
                                                                         value={lectureNotes[vid.id] || ""}
                                                                         onChange={(e) => handleNoteChange(vid.id, e.target.value)}
-                                                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 resize-none font-sans"
+                                                                        className="w-full bg-[#121826] border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none font-sans"
                                                                     />
 
                                                                     <div className="flex items-center justify-between">
                                                                         <button
                                                                             onClick={() => handleAddTimestampTag(vid.id)}
-                                                                            className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                                                                            className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
                                                                         >
                                                                             <Clock className="w-3 h-3" />
                                                                             <span>+ Add Timestamp</span>
@@ -1483,8 +1507,8 @@ function DashboardContent() {
                                                                         {hasNotes && (
                                                                             <button
                                                                                 onClick={() => handleExportNotes(vid)}
-                                                                                className="text-[11px] font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1"
-                                                                                title="Download as TXT file"
+                                                                                className="text-[11px] font-bold text-slate-300 hover:text-white flex items-center gap-1"
+                                                                                title="Export revision notes as TXT"
                                                                             >
                                                                                 <Download className="w-3.5 h-3.5" />
                                                                                 <span>Export</span>
@@ -1501,11 +1525,11 @@ function DashboardContent() {
                                                                 recordLecturePlayback(vid.id);
                                                             }}
                                                             className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
-                                                                    ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                                                                    : "bg-slate-900 text-white hover:bg-slate-800"
+                                                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                                                                    : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30"
                                                                 }`}
                                                         >
-                                                            <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
+                                                            <span>{isWatched ? "✓ Completed" : "Mark Completed"}</span>
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1521,18 +1545,24 @@ function DashboardContent() {
                             <div className="space-y-6">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div>
-                                        <h2 className="text-xl font-extrabold text-slate-900">Study Materials & Handouts</h2>
-                                        <p className="text-xs text-slate-400">Download lecture notes and practice problem sets.</p>
+                                        <h2 className="text-xl font-extrabold text-white">Study Sheets & Handouts Vault</h2>
+                                        <p className="text-xs text-slate-400">Access and preview physics equation sheets and chemistry problem sets.</p>
                                     </div>
 
-                                    <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200/80 shadow-xs">
+                                    <div className="flex items-center gap-1.5 bg-[#0B0F19] p-1 rounded-xl border border-slate-800 shadow-sm">
                                         {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
                                             <button
                                                 key={subj}
-                                                onClick={() => setSelectedSubject(subj)}
+                                                onClick={() => {
+                                                    if (subj !== "ALL") {
+                                                        triggerSubjectTransition(subj, () => setSelectedSubject(subj));
+                                                    } else {
+                                                        setSelectedSubject("ALL");
+                                                    }
+                                                }}
                                                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${selectedSubject === subj
-                                                        ? "bg-slate-900 text-white shadow-xs"
-                                                        : "text-slate-600 hover:text-slate-900"
+                                                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                                        : "text-slate-400 hover:text-white"
                                                     }`}
                                             >
                                                 {subj === "ALL" ? "All" : subj === "PHYSICS" ? "Physics" : "Chemistry"}
@@ -1542,8 +1572,8 @@ function DashboardContent() {
                                 </div>
 
                                 {filteredMaterials.length === 0 ? (
-                                    <div className="bg-white rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-200/80">
-                                        No study sheets found.
+                                    <div className="bg-[#0B0F19] rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-800">
+                                        No study sheets found in this sector.
                                     </div>
                                 ) : (
                                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1554,14 +1584,14 @@ function DashboardContent() {
                                             return (
                                                 <div
                                                     key={mat.id}
-                                                    className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-4"
+                                                    className="bg-[#0B0F19] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between space-y-4"
                                                 >
                                                     <div className="space-y-3">
                                                         <div className="flex items-center justify-between">
                                                             <span
-                                                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
-                                                                        ? "bg-indigo-50 text-indigo-700"
-                                                                        : "bg-amber-50 text-amber-800"
+                                                                className={`text-[10px] font-bold px-2 py-0.5 rounded ${mat.subject === "PHYSICS"
+                                                                        ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                                                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                                                                     }`}
                                                             >
                                                                 {mat.subject}
@@ -1570,11 +1600,11 @@ function DashboardContent() {
                                                         </div>
 
                                                         <div className="flex items-start space-x-3">
-                                                            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
+                                                            <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-indigo-400 font-bold text-xs shrink-0 shadow-inner">
                                                                 PDF
                                                             </div>
                                                             <div>
-                                                                <h3 className="font-extrabold text-sm text-slate-900 leading-snug">{mat.title}</h3>
+                                                                <h3 className="font-extrabold text-sm text-white leading-snug">{mat.title}</h3>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1585,7 +1615,7 @@ function DashboardContent() {
                                                                 setPreviewPdfUrl(drivePreviewLink);
                                                                 setPreviewPdfTitle(mat.title);
                                                             }}
-                                                            className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-sm shadow-indigo-600/20"
+                                                            className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-600/30"
                                                         >
                                                             <Eye className="w-3.5 h-3.5" />
                                                             <span>Preview</span>
@@ -1595,8 +1625,8 @@ function DashboardContent() {
                                                             href={rawFileUrl}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition border border-slate-200/80"
-                                                            title="Open in new tab / Download"
+                                                            className="p-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800"
+                                                            title="Open / Download"
                                                         >
                                                             <ExternalLink className="w-3.5 h-3.5" />
                                                         </a>
@@ -1611,14 +1641,14 @@ function DashboardContent() {
 
                         {/* VIEW: INTEGRATED AI TUTOR (FULL PAGE) */}
                         {!isSearchActive && activeNav === "ai" && (
-                            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col h-[640px]">
-                                <div className="p-5 bg-slate-50 border-b border-slate-200/80 flex items-center space-x-3">
+                            <div className="bg-[#0B0F19] rounded-3xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col h-[640px]">
+                                <div className="p-5 bg-[#121826] border-b border-slate-800 flex items-center space-x-3">
                                     <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow">
                                         ✨
                                     </div>
                                     <div>
-                                        <h3 className="text-sm font-extrabold text-slate-900">AZS: The Catalyst - AI Tutor</h3>
-                                        <p className="text-[11px] text-emerald-600 font-medium">Ready to explain Theory, Formulas, and Math</p>
+                                        <h3 className="text-sm font-extrabold text-white">AZS AI Assistant Core</h3>
+                                        <p className="text-[11px] text-emerald-400 font-mono">Quantum Simulation & Formula Solver Online</p>
                                     </div>
                                 </div>
 
@@ -1630,8 +1660,8 @@ function DashboardContent() {
                                         >
                                             <div
                                                 className={`max-w-[80%] px-4 py-3 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
-                                                        ? "bg-slate-900 text-white rounded-br-none font-medium"
-                                                        : "bg-slate-100 text-slate-800 rounded-bl-none font-medium border border-slate-200/60"
+                                                        ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-md shadow-indigo-600/20"
+                                                        : "bg-[#121826] text-slate-200 rounded-bl-none font-medium border border-slate-800 shadow-sm"
                                                     }`}
                                             >
                                                 {m.content}
@@ -1640,28 +1670,28 @@ function DashboardContent() {
                                     ))}
                                     {chatLoading && (
                                         <div className="flex justify-start">
-                                            <div className="bg-slate-100 text-slate-500 px-4 py-2.5 rounded-2xl text-xs animate-pulse">
-                                                AI is thinking...
+                                            <div className="bg-[#121826] text-slate-400 px-4 py-2.5 rounded-2xl text-xs border border-slate-800 animate-pulse">
+                                                Calculating physics/chemistry matrices...
                                             </div>
                                         </div>
                                     )}
                                     <div ref={chatEndRef} />
                                 </div>
 
-                                <form onSubmit={handleSendChat} className="p-4 bg-slate-50 border-t border-slate-200/80 flex items-center gap-2">
+                                <form onSubmit={handleSendChat} className="p-4 bg-[#121826] border-t border-slate-800 flex items-center gap-2">
                                     <input
                                         type="text"
-                                        placeholder="Ask any question (e.g., Explain Ohm's law or Archimedes principle)..."
+                                        placeholder="Ask any doubt (e.g., Explain Newton's laws or Le Chatelier's principle)..."
                                         value={chatInput}
                                         onChange={(e) => setChatInput(e.target.value)}
-                                        className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-slate-400"
+                                        className="flex-1 bg-[#0B0F19] border border-slate-800 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 shadow-inner"
                                     />
                                     <button
                                         type="submit"
                                         disabled={chatLoading || !chatInput.trim()}
-                                        className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold px-5 py-3 rounded-xl text-xs transition shadow-md"
+                                        className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-5 py-3 rounded-xl text-xs transition shadow-md shadow-indigo-600/30"
                                     >
-                                        Send
+                                        Transmit
                                     </button>
                                 </form>
                             </div>
@@ -1669,14 +1699,14 @@ function DashboardContent() {
                     </main>
 
                     {/* DEVELOPER CREDIT FOOTER */}
-                    <footer className="w-full py-4 px-6 text-center border-t border-slate-200/80 bg-white/80 backdrop-blur-sm mt-auto">
+                    <footer className="w-full py-4 px-6 text-center border-t border-slate-800/80 bg-[#0B0F19]/90 backdrop-blur-sm mt-auto">
                         <p className="text-xs text-slate-500 font-medium tracking-wide">
                             © {currentYear} AZS: The Catalyst • Developed with ❤️ by{" "}
                             <a
                                 href="https://www.linkedin.com/in/sajedul-islam-data/"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="font-bold text-indigo-600 hover:text-indigo-800 hover:underline transition-colors inline-flex items-center gap-1"
+                                className="font-bold text-indigo-400 hover:text-indigo-300 hover:underline transition-colors inline-flex items-center gap-1"
                             >
                                 Mir Mohammad Sajedul Islam
                                 <ExternalLink className="w-3 h-3 inline" />
@@ -1687,38 +1717,38 @@ function DashboardContent() {
             </div>
 
             {/* MOBILE BOTTOM NAVIGATION BAR */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2 flex md:hidden items-center justify-around z-40 shadow-lg">
+            <div className="fixed bottom-0 left-0 right-0 bg-[#0B0F19] border-t border-slate-800 px-4 py-2 flex md:hidden items-center justify-around z-40 shadow-2xl">
                 <button
                     onClick={() => { setActiveNav("dashboard"); setSearchQuery(""); }}
-                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "dashboard" ? "text-indigo-600" : "text-slate-500"}`}
+                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "dashboard" ? "text-indigo-400" : "text-slate-400"}`}
                 >
                     <LayoutDashboard className="w-5 h-5 mb-0.5" />
-                    <span>Home</span>
+                    <span>Deck</span>
                 </button>
                 <button
                     onClick={() => setActiveNav("lectures")}
-                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "lectures" ? "text-indigo-600" : "text-slate-500"}`}
+                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "lectures" ? "text-indigo-400" : "text-slate-400"}`}
                 >
                     <PlayCircle className="w-5 h-5 mb-0.5" />
                     <span>Lectures</span>
                 </button>
                 <button
                     onClick={() => setActiveNav("materials")}
-                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "materials" ? "text-indigo-600" : "text-slate-500"}`}
+                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "materials" ? "text-indigo-400" : "text-slate-400"}`}
                 >
                     <FileText className="w-5 h-5 mb-0.5" />
                     <span>Sheets</span>
                 </button>
                 <button
                     onClick={() => setActiveNav("ai")}
-                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "ai" ? "text-indigo-600" : "text-slate-500"}`}
+                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "ai" ? "text-indigo-400" : "text-slate-400"}`}
                 >
-                    <Bot className="w-5 h-5 mb-0.5 text-indigo-600" />
+                    <Bot className="w-5 h-5 mb-0.5 text-indigo-400" />
                     <span>AI Tutor</span>
                 </button>
                 <button
                     onClick={handleLogout}
-                    className="flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold text-rose-500"
+                    className="flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold text-rose-400"
                 >
                     <LogOut className="w-5 h-5 mb-0.5" />
                     <span>Logout</span>
@@ -1730,21 +1760,21 @@ function DashboardContent() {
                 {!isFloatingChatOpen ? (
                     <button
                         onClick={() => setIsFloatingChatOpen(true)}
-                        className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 group relative border-2 border-white/20"
-                        title="Ask AI Tutor"
+                        className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 group relative border-2 border-indigo-400/30"
+                        title="Open AI Core"
                     >
                         <Bot className="w-7 h-7 text-white animate-bounce" />
-                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 border-2 border-[#07090E] rounded-full shadow-[0_0_10px_#34d399]" />
                     </button>
                 ) : (
-                    <div className="bg-white border border-slate-200 rounded-3xl w-[90vw] sm:w-[380px] h-[500px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
-                        <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
+                    <div className="bg-[#0B0F19] border border-slate-800 rounded-3xl w-[90vw] sm:w-[380px] h-[500px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+                        <div className="px-5 py-3.5 bg-[#121826] text-white flex items-center justify-between border-b border-slate-800">
                             <div className="flex items-center space-x-2.5">
                                 <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-sm shadow">
                                     ✨
                                 </div>
                                 <div>
-                                    <h4 className="text-xs font-extrabold">AZS AI Assistant</h4>
+                                    <h4 className="text-xs font-extrabold text-white">AZS AI Assistant</h4>
                                     <p className="text-[10px] text-emerald-400 font-mono">Online • Physics & Chemistry</p>
                                 </div>
                             </div>
@@ -1756,7 +1786,7 @@ function DashboardContent() {
                             </button>
                         </div>
 
-                        <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-[#F4F6FA]/50">
+                        <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-[#07090E]">
                             {chatMessages.map((m, idx) => (
                                 <div
                                     key={idx}
@@ -1764,8 +1794,8 @@ function DashboardContent() {
                                 >
                                     <div
                                         className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
-                                                ? "bg-slate-900 text-white rounded-br-none font-medium"
-                                                : "bg-white text-slate-800 rounded-bl-none font-medium border border-slate-200/80 shadow-sm"
+                                                ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-md shadow-indigo-600/20"
+                                                : "bg-[#121826] text-slate-200 rounded-bl-none font-medium border border-slate-800 shadow-sm"
                                             }`}
                                     >
                                         {m.content}
@@ -1774,26 +1804,26 @@ function DashboardContent() {
                             ))}
                             {chatLoading && (
                                 <div className="flex justify-start">
-                                    <div className="bg-white text-slate-500 px-3 py-2 rounded-2xl text-[11px] border border-slate-200 animate-pulse shadow-sm">
-                                        AI is thinking...
+                                    <div className="bg-[#121826] text-slate-400 px-3 py-2 rounded-2xl text-[11px] border border-slate-800 animate-pulse shadow-sm">
+                                        Calculating...
                                     </div>
                                 </div>
                             )}
                             <div ref={chatEndRef} />
                         </div>
 
-                        <form onSubmit={handleSendChat} className="p-3 bg-white border-t border-slate-200 flex items-center gap-2">
+                        <form onSubmit={handleSendChat} className="p-3 bg-[#121826] border-t border-slate-800 flex items-center gap-2">
                             <input
                                 type="text"
-                                placeholder="Ask your doubt..."
+                                placeholder="Ask doubt..."
                                 value={chatInput}
                                 onChange={(e) => setChatInput(e.target.value)}
-                                className="flex-1 bg-[#F4F6FA] border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                                className="flex-1 bg-[#0B0F19] border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 shadow-inner"
                             />
                             <button
                                 type="submit"
                                 disabled={chatLoading || !chatInput.trim()}
-                                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white p-2.5 rounded-xl transition shadow-md shadow-indigo-600/20"
+                                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white p-2.5 rounded-xl transition shadow-md shadow-indigo-600/30"
                             >
                                 <Send className="w-3.5 h-3.5" />
                             </button>
@@ -1804,19 +1834,19 @@ function DashboardContent() {
 
             {/* 3. STUDY PLANNER MODAL */}
             {selectedDateForPlan && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                    <div className="bg-[#0B0F19] border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                             <div>
-                                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                                    <CalendarIcon className="w-4 h-4 text-indigo-600" />
+                                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                                    <CalendarIcon className="w-4 h-4 text-indigo-400" />
                                     <span>Study Planner</span>
                                 </h3>
-                                <p className="text-xs text-slate-400 font-mono mt-0.5">Date: {selectedDateForPlan}</p>
+                                <p className="text-xs text-slate-400 font-mono mt-0.5">Telemetry Date: {selectedDateForPlan}</p>
                             </div>
                             <button
                                 onClick={() => setSelectedDateForPlan(null)}
-                                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                                className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white"
                             >
                                 <X className="w-5 h-5" />
                             </button>
@@ -1824,8 +1854,8 @@ function DashboardContent() {
 
                         <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                             {studyPlans.filter((p) => p.dateKey === selectedDateForPlan).length === 0 ? (
-                                <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-2xl">
-                                    No study plans set for this day yet.
+                                <p className="text-xs text-slate-400 text-center py-4 bg-[#121826] rounded-2xl border border-slate-800">
+                                    No active study goals set for this date.
                                 </p>
                             ) : (
                                 studyPlans
@@ -1833,16 +1863,16 @@ function DashboardContent() {
                                     .map((p) => (
                                         <div
                                             key={p.id}
-                                            className="flex items-center justify-between bg-slate-50 hover:bg-slate-100/80 p-3 rounded-2xl border border-slate-100 text-xs transition"
+                                            className="flex items-center justify-between bg-[#121826] hover:bg-slate-800/80 p-3 rounded-2xl border border-slate-800 text-xs transition"
                                         >
                                             <div className="space-y-0.5">
-                                                <p className="font-bold text-slate-800">{p.title}</p>
-                                                {p.time && <p className="text-[10px] text-slate-400 font-mono">{p.time}</p>}
+                                                <p className="font-bold text-white">{p.title}</p>
+                                                {p.time && <p className="text-[10px] text-indigo-400 font-mono">{p.time}</p>}
                                             </div>
                                             <button
                                                 onClick={() => handleDeletePlan(p.id)}
-                                                className="text-slate-400 hover:text-rose-500 p-1"
-                                                title="Remove plan"
+                                                className="text-slate-500 hover:text-rose-400 p-1"
+                                                title="Remove goal"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
@@ -1851,15 +1881,15 @@ function DashboardContent() {
                             )}
                         </div>
 
-                        <form onSubmit={handleAddPlan} className="space-y-3 pt-2 border-t border-slate-100">
-                            <label className="text-xs font-bold text-slate-700 block">Add Goal / Revision Plan</label>
+                        <form onSubmit={handleAddPlan} className="space-y-3 pt-2 border-t border-slate-800">
+                            <label className="text-xs font-bold text-slate-300 block">Add Goal / Target Revision</label>
                             <input
                                 type="text"
                                 required
-                                placeholder="e.g. Complete Reflection of Light CQ-01"
+                                placeholder="e.g. Complete Organic Chemistry Isomerism Problems"
                                 value={newPlanTitle}
                                 onChange={(e) => setNewPlanTitle(e.target.value)}
-                                className="w-full bg-[#F4F6FA] border border-slate-200 rounded-2xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                                className="w-full bg-[#121826] border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                             />
                             <div className="flex gap-2">
                                 <input
@@ -1867,14 +1897,14 @@ function DashboardContent() {
                                     placeholder="Target Time (e.g. 8:00 PM)"
                                     value={newPlanTime}
                                     onChange={(e) => setNewPlanTime(e.target.value)}
-                                    className="flex-1 bg-[#F4F6FA] border border-slate-200 rounded-2xl px-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                                    className="flex-1 bg-[#121826] border border-slate-800 rounded-2xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                                 />
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-indigo-600/20"
+                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-indigo-600/30"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
-                                    <span>Save Plan</span>
+                                    <span>Save Goal</span>
                                 </button>
                             </div>
                         </form>
@@ -1884,18 +1914,18 @@ function DashboardContent() {
 
             {/* 4. PDF IN-APP PREVIEW MODAL */}
             {previewPdfUrl && (
-                <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-6 animate-in fade-in duration-200">
-                    <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
-                        <div className="px-6 py-4 bg-slate-900/95 border-b border-slate-800 flex items-center justify-between">
+                <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-6 animate-in fade-in duration-200">
+                    <div className="bg-[#0B0F19] border border-slate-800 rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+                        <div className="px-6 py-4 bg-[#121826] border-b border-slate-800 flex items-center justify-between">
                             <div className="flex items-center space-x-3">
                                 <div className="w-9 h-9 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-xs">
                                     PDF
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-extrabold text-white leading-tight">
-                                        {previewPdfTitle || "Document Preview"}
+                                        {previewPdfTitle || "Study Document"}
                                     </h3>
-                                    <p className="text-[10px] text-slate-400">AZS: The Catalyst - Document Reader</p>
+                                    <p className="text-[10px] text-slate-400 font-mono">AZS: The Catalyst - Secure Vault Reader</p>
                                 </div>
                             </div>
 
@@ -1918,7 +1948,7 @@ function DashboardContent() {
                             </div>
                         </div>
 
-                        <div className="flex-1 w-full bg-slate-950 relative">
+                        <div className="flex-1 w-full bg-black relative">
                             <iframe
                                 src={previewPdfUrl}
                                 title={previewPdfTitle}
@@ -1937,9 +1967,9 @@ export default function StudentDashboardPage() {
     return (
         <Suspense
             fallback={
-                <div className="min-h-0 min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center space-y-3">
+                <div className="min-h-0 min-h-screen bg-[#07090E] flex flex-col items-center justify-center space-y-3">
                     <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-xs font-bold text-slate-600 tracking-wide">Loading AZS Workspace...</p>
+                    <p className="text-xs font-bold text-indigo-400 tracking-widest uppercase">Initializing Catalyst Cyber-Deck...</p>
                 </div>
             }
         >

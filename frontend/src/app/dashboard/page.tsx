@@ -41,7 +41,6 @@ import axios from "axios";
 // --- Professional Teacher Social Config ---
 const TEACHER_SOCIAL = {
     name: "AZS RAZON SIR",
-    role: "Lead Physics & Chemistry Instructor",
     whatsapp: "https://wa.me/8801916201426",
     facebook: "https://www.facebook.com/razon.sikdar.1",
     youtube: "https://www.youtube.com/@AZSChemistry",
@@ -609,8 +608,8 @@ function DashboardContent() {
                                     setSearchQuery("");
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "dashboard"
-                                        ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+                                    ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                                     }`}
                             >
                                 <LayoutDashboard className="w-4 h-4" />
@@ -620,8 +619,8 @@ function DashboardContent() {
                             <button
                                 onClick={() => setActiveNav("lectures")}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "lectures"
-                                        ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+                                    ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                                     }`}
                             >
                                 <PlayCircle className="w-4 h-4" />
@@ -634,8 +633,8 @@ function DashboardContent() {
                             <button
                                 onClick={() => setActiveNav("materials")}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "materials"
-                                        ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+                                    ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                                     }`}
                             >
                                 <FileText className="w-4 h-4" />
@@ -648,8 +647,8 @@ function DashboardContent() {
                             <button
                                 onClick={() => setActiveNav("ai")}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "ai"
-                                        ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+                                    ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                                     }`}
                             >
                                 <Bot className="w-4 h-4 text-indigo-500" />
@@ -876,8 +875,8 @@ function DashboardContent() {
                                                                             </span>
                                                                             <span
                                                                                 className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
-                                                                                        ? "bg-indigo-50 text-indigo-700"
-                                                                                        : "bg-amber-50 text-amber-800"
+                                                                                    ? "bg-indigo-50 text-indigo-700"
+                                                                                    : "bg-amber-50 text-amber-800"
                                                                                     }`}
                                                                             >
                                                                                 {vid.subject}
@@ -898,8 +897,8 @@ function DashboardContent() {
                                                                             recordLecturePlayback(vid.id);
                                                                         }}
                                                                         className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
-                                                                                ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                                                                                : "bg-slate-900 text-white hover:bg-slate-800"
+                                                                            ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                                                                            : "bg-slate-900 text-white hover:bg-slate-800"
                                                                             }`}
                                                                     >
                                                                         <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
@@ -931,8 +930,8 @@ function DashboardContent() {
                                                                     <div className="flex items-center justify-between">
                                                                         <span
                                                                             className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
-                                                                                    ? "bg-indigo-50 text-indigo-700"
-                                                                                    : "bg-amber-50 text-amber-800"
+                                                                                ? "bg-indigo-50 text-indigo-700"
+                                                                                : "bg-amber-50 text-amber-800"
                                                                                 }`}
                                                                         >
                                                                             {mat.subject}
@@ -1033,10 +1032,10 @@ function DashboardContent() {
                                                         className="bg-slate-950 h-full rounded-full"
                                                         style={{
                                                             width: `${chapterStats[0]?.[1]?.total
-                                                                    ? Math.round(
-                                                                        ((chapterStats[0][1].completed || 0) / chapterStats[0][1].total) * 100
-                                                                    )
-                                                                    : 0
+                                                                ? Math.round(
+                                                                    ((chapterStats[0][1].completed || 0) / chapterStats[0][1].total) * 100
+                                                                )
+                                                                : 0
                                                                 }%`,
                                                         }}
                                                     />
@@ -1068,10 +1067,10 @@ function DashboardContent() {
                                                         className="bg-slate-950 h-full rounded-full"
                                                         style={{
                                                             width: `${chapterStats[1]?.[1]?.total
-                                                                    ? Math.round(
-                                                                        ((chapterStats[1][1].completed || 0) / chapterStats[1][1].total) * 100
-                                                                    )
-                                                                    : 0
+                                                                ? Math.round(
+                                                                    ((chapterStats[1][1].completed || 0) / chapterStats[1][1].total) * 100
+                                                                )
+                                                                : 0
                                                                 }%`,
                                                         }}
                                                     />
@@ -1178,8 +1177,8 @@ function DashboardContent() {
                                                             <div className="flex items-center space-x-3.5">
                                                                 <div
                                                                     className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs ${v.subject === "PHYSICS"
-                                                                            ? "bg-indigo-50 text-indigo-700"
-                                                                            : "bg-amber-50 text-amber-800"
+                                                                        ? "bg-indigo-50 text-indigo-700"
+                                                                        : "bg-amber-50 text-amber-800"
                                                                         }`}
                                                                 >
                                                                     #{v.lecture_no}
@@ -1198,8 +1197,8 @@ function DashboardContent() {
                                                                     recordLecturePlayback(v.id);
                                                                 }}
                                                                 className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition ${isDone
-                                                                        ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                                                                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                                                                    ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                                                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
                                                                     }`}
                                                             >
                                                                 {isDone ? "✓ Done" : "Mark Watched"}
@@ -1263,8 +1262,8 @@ function DashboardContent() {
                                                             <button
                                                                 onClick={() => setSelectedDateForPlan(dateKey)}
                                                                 className={`w-7 h-7 flex items-center justify-center rounded-xl transition relative ${isToday
-                                                                        ? "bg-slate-950 text-white font-bold shadow-md"
-                                                                        : "text-slate-700 hover:bg-slate-100"
+                                                                    ? "bg-slate-950 text-white font-bold shadow-md"
+                                                                    : "text-slate-700 hover:bg-slate-100"
                                                                     }`}
                                                             >
                                                                 <span>{dayNum}</span>
@@ -1373,8 +1372,8 @@ function DashboardContent() {
                                                 key={subj}
                                                 onClick={() => setSelectedSubject(subj)}
                                                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${selectedSubject === subj
-                                                        ? "bg-slate-900 text-white shadow-xs"
-                                                        : "text-slate-600 hover:text-slate-900"
+                                                    ? "bg-slate-900 text-white shadow-xs"
+                                                    : "text-slate-600 hover:text-slate-900"
                                                     }`}
                                             >
                                                 {subj === "ALL" ? "All Subjects" : subj === "PHYSICS" ? "Physics" : "Chemistry"}
@@ -1426,8 +1425,8 @@ function DashboardContent() {
                                                                 </span>
                                                                 <span
                                                                     className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
-                                                                            ? "bg-indigo-50 text-indigo-700"
-                                                                            : "bg-amber-50 text-amber-800"
+                                                                        ? "bg-indigo-50 text-indigo-700"
+                                                                        : "bg-amber-50 text-amber-800"
                                                                         }`}
                                                                 >
                                                                     {vid.subject}
@@ -1502,8 +1501,8 @@ function DashboardContent() {
                                                                 recordLecturePlayback(vid.id);
                                                             }}
                                                             className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
-                                                                    ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                                                                    : "bg-slate-900 text-white hover:bg-slate-800"
+                                                                ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                                                                : "bg-slate-900 text-white hover:bg-slate-800"
                                                                 }`}
                                                         >
                                                             <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
@@ -1532,8 +1531,8 @@ function DashboardContent() {
                                                 key={subj}
                                                 onClick={() => setSelectedSubject(subj)}
                                                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${selectedSubject === subj
-                                                        ? "bg-slate-900 text-white shadow-xs"
-                                                        : "text-slate-600 hover:text-slate-900"
+                                                    ? "bg-slate-900 text-white shadow-xs"
+                                                    : "text-slate-600 hover:text-slate-900"
                                                     }`}
                                             >
                                                 {subj === "ALL" ? "All" : subj === "PHYSICS" ? "Physics" : "Chemistry"}
@@ -1561,8 +1560,8 @@ function DashboardContent() {
                                                         <div className="flex items-center justify-between">
                                                             <span
                                                                 className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
-                                                                        ? "bg-indigo-50 text-indigo-700"
-                                                                        : "bg-amber-50 text-amber-800"
+                                                                    ? "bg-indigo-50 text-indigo-700"
+                                                                    : "bg-amber-50 text-amber-800"
                                                                     }`}
                                                             >
                                                                 {mat.subject}
@@ -1631,8 +1630,8 @@ function DashboardContent() {
                                         >
                                             <div
                                                 className={`max-w-[80%] px-4 py-3 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
-                                                        ? "bg-slate-900 text-white rounded-br-none font-medium"
-                                                        : "bg-slate-100 text-slate-800 rounded-bl-none font-medium border border-slate-200/60"
+                                                    ? "bg-slate-900 text-white rounded-br-none font-medium"
+                                                    : "bg-slate-100 text-slate-800 rounded-bl-none font-medium border border-slate-200/60"
                                                     }`}
                                             >
                                                 {m.content}
@@ -1765,8 +1764,8 @@ function DashboardContent() {
                                 >
                                     <div
                                         className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
-                                                ? "bg-slate-900 text-white rounded-br-none font-medium"
-                                                : "bg-white text-slate-800 rounded-bl-none font-medium border border-slate-200/80 shadow-sm"
+                                            ? "bg-slate-900 text-white rounded-br-none font-medium"
+                                            : "bg-white text-slate-800 rounded-bl-none font-medium border border-slate-200/80 shadow-sm"
                                             }`}
                                     >
                                         {m.content}

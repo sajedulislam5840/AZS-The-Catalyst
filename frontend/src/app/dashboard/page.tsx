@@ -41,7 +41,8 @@ import {
     ArrowLeft,
     Menu,
     ShieldAlert,
-    Lock,
+    AlertCircle,
+    CreditCard,
 } from "lucide-react";
 import axios from "axios";
 
@@ -185,7 +186,7 @@ function DashboardContent() {
         grade_class: "",
         batch_no: "Registered Student",
         role: "STUDENT",
-        days_left: 30, // Default safe days left
+        days_left: 30,
         is_approved: true,
     });
 
@@ -667,9 +668,9 @@ function DashboardContent() {
     const isSearchActive = normalizedQuery.length > 0;
     const hasSearchResults = filteredVideos.length > 0 || filteredMaterials.length > 0;
 
-    // --- SUBSCRIPTION STATUS CHECKS ---
+    // --- SUBSCRIPTION STATUS CHECKS (Allows entry, but shows urgent warning if expired or <= 3 days) ---
     const daysLeft = userProfile.days_left !== undefined ? userProfile.days_left : 30;
-    const isLocked = daysLeft <= 0 || userProfile.is_approved === false;
+    const isExpired = daysLeft <= 0 || userProfile.is_approved === false;
     const isExpiringSoon = daysLeft > 0 && daysLeft <= 3;
 
     if (!mounted) return null;
@@ -711,44 +712,6 @@ function DashboardContent() {
             )}
 
             <div className="flex-1 flex min-w-0 relative">
-
-                {/* SUBSCRIPTION EXPIRED / LOCKED FULLSCREEN OVERLAY */}
-                {isLocked && (
-                    <div className="absolute inset-0 bg-[#090D16]/95 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-6 text-center">
-                        <div className="max-w-md w-full bg-[#0B101D] border border-rose-500/40 rounded-3xl p-8 shadow-[0_0_50px_rgba(244,63,94,0.2)] space-y-6">
-                            <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
-                                <Lock className="w-8 h-8 animate-pulse" />
-                            </div>
-                            <div className="space-y-2">
-                                <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-3 py-1 bg-rose-500/10 text-rose-400 rounded-full border border-rose-500/30">
-                                    Access Restricted
-                                </span>
-                                <h2 className="text-xl font-black text-white">Subscription Expired</h2>
-                                <p className="text-xs text-slate-400 leading-relaxed">
-                                    Your 30-day coaching pass has expired or is awaiting fee verification. Please contact AZS Razon Sir or complete your payment to restore full access to video lectures and materials.
-                                </p>
-                            </div>
-
-                            <div className="pt-2 space-y-3">
-                                <a
-                                    href={TEACHER_SOCIAL.whatsapp}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30"
-                                >
-                                    <MessageCircle className="w-4 h-4" />
-                                    <span>Contact Sir on WhatsApp for Renewal</span>
-                                </a>
-                                <button
-                                    onClick={handleLogout}
-                                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition border border-slate-800"
-                                >
-                                    Sign Out
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 {/* 1. MOBILE SIDEBAR OVERLAY BACKDROP */}
                 {isMobileSidebarOpen && (
@@ -993,22 +956,40 @@ function DashboardContent() {
                         </div>
                     </header>
 
-                    {/* SUBSCRIPTION EXPIRING SOON WARNING BANNER (3 Days Left Reminder) */}
-                    {isExpiringSoon && (
-                        <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 text-white px-6 py-3 flex items-center justify-between shadow-lg animate-pulse">
+                    {/* SUBSCRIPTION EXPIRED OR 3-DAYS RENEWAL WARNING BANNER */}
+                    {(isExpired || isExpiringSoon) && (
+                        <div className={`px-6 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-xl gap-3 ${isExpired
+                                ? "bg-gradient-to-r from-rose-950 via-rose-900 to-slate-900 border-b border-rose-500/40 text-rose-200"
+                                : "bg-gradient-to-r from-amber-950 via-orange-950 to-slate-900 border-b border-amber-500/40 text-amber-200"
+                            }`}>
                             <div className="flex items-center space-x-3">
-                                <ShieldAlert className="w-5 h-5 text-amber-200 shrink-0" />
-                                <p className="text-xs font-extrabold tracking-wide">
-                                    ⚠️ SUBSCRIPTION EXPIRING SOON: Your coaching pass expires in <span className="underline font-mono text-amber-200">{daysLeft} {daysLeft === 1 ? 'Day' : 'Days'}</span>! Please renew to avoid account lockout.
-                                </p>
+                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isExpired ? "bg-rose-500/20 text-rose-400" : "bg-amber-500/20 text-amber-400"}`}>
+                                    <ShieldAlert className="w-5 h-5 animate-pulse" />
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-black uppercase tracking-wider text-white">
+                                        {isExpired ? "🔴 Subscription Expired — Payment Required" : `⚠️ Payment Reminder: ${daysLeft} ${daysLeft === 1 ? 'Day' : 'Days'} Remaining`}
+                                    </h4>
+                                    <p className="text-[11px] text-slate-300 mt-0.5">
+                                        {isExpired
+                                            ? "Your 30-day coaching pass has ended. Please clear your coaching fee to maintain full access."
+                                            : "Your coaching pass is due for renewal soon. Please complete your payment to avoid interruption."
+                                        }
+                                    </p>
+                                </div>
                             </div>
+
                             <a
                                 href={TEACHER_SOCIAL.whatsapp}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="px-3 py-1.5 bg-black/40 hover:bg-black/60 text-amber-200 rounded-lg text-xs font-bold transition shrink-0 border border-white/20"
+                                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md ${isExpired
+                                        ? "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30"
+                                        : "bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/30"
+                                    }`}
                             >
-                                Renew Now
+                                <CreditCard className="w-3.5 h-3.5" />
+                                <span>Pay / Renew via WhatsApp</span>
                             </a>
                         </div>
                     )}

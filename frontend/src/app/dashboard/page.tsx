@@ -32,12 +32,16 @@ import {
     Eye,
     MessageSquare,
     Send,
+    MessageCircle,
+    Globe,
+    Video,
 } from "lucide-react";
 import axios from "axios";
 
-// --- Teacher Social Links ---
+// --- Professional Teacher Social Config ---
 const TEACHER_SOCIAL = {
     name: "AZS RAZON SIR",
+    role: "Lead Physics & Chemistry Instructor",
     whatsapp: "https://wa.me/8801916201426",
     facebook: "https://www.facebook.com/razon.sikdar.1",
     youtube: "https://www.youtube.com/@AZSChemistry",
@@ -574,13 +578,13 @@ function DashboardContent() {
     if (!mounted) return null;
 
     return (
-        <div className="min-h-screen bg-[#F4F6FA] text-slate-800 flex flex-col font-sans antialiased relative">
+        <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans antialiased relative">
             <div className="flex-1 flex min-w-0">
                 {/* 1. LEFT SIDEBAR */}
-                <aside className="w-64 bg-white border-r border-slate-200/80 p-6 flex flex-col justify-between shrink-0 hidden md:flex">
+                <aside className="w-68 bg-white border-r border-slate-200/80 p-6 flex flex-col justify-between shrink-0 hidden md:flex shadow-sm">
                     <div className="space-y-8">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-2xl overflow-hidden bg-slate-900 border border-slate-200 shadow-md flex items-center justify-center shrink-0 p-1">
+                        <div className="flex items-center space-x-3 px-1">
+                            <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-900 border border-slate-800 shadow-md flex items-center justify-center shrink-0 p-1.5">
                                 <img
                                     src="/logo.png"
                                     alt="AZS Logo"
@@ -592,7 +596,7 @@ function DashboardContent() {
                             </div>
                             <div>
                                 <span className="font-extrabold text-sm tracking-tight text-slate-900 block leading-tight">AZS</span>
-                                <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-600 block">
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-600 block">
                                     The Catalyst
                                 </span>
                             </div>
@@ -604,9 +608,9 @@ function DashboardContent() {
                                     setActiveNav("dashboard");
                                     setSearchQuery("");
                                 }}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${activeNav === "dashboard"
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "dashboard"
                                         ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                                     }`}
                             >
                                 <LayoutDashboard className="w-4 h-4" />
@@ -615,93 +619,108 @@ function DashboardContent() {
 
                             <button
                                 onClick={() => setActiveNav("lectures")}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${activeNav === "lectures"
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "lectures"
                                         ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                                     }`}
                             >
                                 <PlayCircle className="w-4 h-4" />
                                 <span>Video Lectures</span>
-                                <span className="ml-auto text-[10px] bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-full font-mono">
+                                <span className="ml-auto text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono">
                                     {videos.length}
                                 </span>
                             </button>
 
                             <button
                                 onClick={() => setActiveNav("materials")}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${activeNav === "materials"
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "materials"
                                         ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                                     }`}
                             >
                                 <FileText className="w-4 h-4" />
                                 <span>Study Sheets (PDF)</span>
-                                <span className="ml-auto text-[10px] bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-full font-mono">
+                                <span className="ml-auto text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono">
                                     {materials.length}
                                 </span>
                             </button>
 
                             <button
                                 onClick={() => setActiveNav("ai")}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${activeNav === "ai"
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "ai"
                                         ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                                     }`}
                             >
                                 <Bot className="w-4 h-4 text-indigo-500" />
                                 <span>AI Tutor</span>
-                                <span className="ml-auto text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold">
+                                <span className="ml-auto text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md font-bold">
                                     Online
                                 </span>
                             </button>
                         </nav>
                     </div>
 
-                    {/* INSTRUCTOR & SOCIAL HUB WIDGET (BOTTOM LEFT) */}
-                    <div className="pt-6 border-t border-slate-100 space-y-4 mb-6">
-                        <div className="bg-[#1E1E2D] rounded-2xl p-4 text-white shadow-lg border border-slate-700">
-                            <h4 className="text-[11px] font-black text-amber-400 uppercase tracking-wider mb-1.5">
-                                Your Academic Guide
-                            </h4>
-                            <p className="text-xs font-extrabold text-white mb-3 truncate">{TEACHER_SOCIAL.name}</p>
+                    {/* GOOGLE/STRIPE STANDARD PROFESSIONAL INSTRUCTOR CARD */}
+                    <div className="pt-6 border-t border-slate-100 space-y-4 mb-2">
+                        <div className="bg-gradient-to-br from-slate-900 via-[#181824] to-slate-950 rounded-2xl p-4 text-white shadow-xl border border-slate-800/80 relative overflow-hidden group">
+                            {/* Subtle background glow */}
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all duration-500" />
 
-                            <div className="grid grid-cols-3 gap-2">
-                                <a
-                                    href={TEACHER_SOCIAL.whatsapp}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex flex-col items-center gap-1 p-2 bg-[#128C7E] hover:bg-[#075E54] rounded-xl transition group"
-                                    title="WhatsApp Support"
-                                >
-                                    <img src="https://img.icons8.com/color/48/whatsapp--v1.png" alt="WhatsApp" className="w-5 h-5" />
-                                    <span className="text-[9px] font-bold text-white text-center">WhatsApp</span>
-                                </a>
-                                <a
-                                    href={TEACHER_SOCIAL.facebook}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex flex-col items-center gap-1 p-2 bg-[#3b5998] hover:bg-[#2d4373] rounded-xl transition group"
-                                    title="Facebook Profile"
-                                >
-                                    <img src="https://img.icons8.com/color/48/facebook-new.png" alt="Facebook" className="w-5 h-5" />
-                                    <span className="text-[9px] font-bold text-white text-center">Facebook</span>
-                                </a>
-                                <a
-                                    href={TEACHER_SOCIAL.youtube}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex flex-col items-center gap-1 p-2 bg-[#FF0000] hover:bg-[#cc0000] rounded-xl transition group"
-                                    title="YouTube Channel"
-                                >
-                                    <img src="https://img.icons8.com/color/48/youtube-play.png" alt="YouTube" className="w-5 h-5" />
-                                    <span className="text-[9px] font-bold text-white text-center">YouTube</span>
-                                </a>
+                            <div className="relative z-10 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[9px] font-extrabold tracking-widest text-indigo-400 uppercase bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                                        Instructor
+                                    </span>
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Active" />
+                                </div>
+
+                                <div>
+                                    <h4 className="text-sm font-extrabold text-white tracking-tight">{TEACHER_SOCIAL.name}</h4>
+                                    <p className="text-[10px] text-slate-400 font-medium mt-0.5">{TEACHER_SOCIAL.role}</p>
+                                </div>
+
+                                {/* Minimalist Professional Action Links */}
+                                <div className="grid grid-cols-3 gap-1.5 pt-1">
+                                    <a
+                                        href={TEACHER_SOCIAL.whatsapp}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.06] hover:bg-emerald-500/20 hover:border-emerald-500/40 border border-white/10 rounded-xl transition-all group/btn"
+                                        title="WhatsApp Direct"
+                                    >
+                                        <MessageCircle className="w-4 h-4 text-emerald-400 mb-1 group-hover/btn:scale-110 transition-transform" />
+                                        <span className="text-[9px] font-semibold text-slate-300 group-hover/btn:text-white">WhatsApp</span>
+                                    </a>
+
+                                    <a
+                                        href={TEACHER_SOCIAL.facebook}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.06] hover:bg-blue-500/20 hover:border-blue-500/40 border border-white/10 rounded-xl transition-all group/btn"
+                                        title="Facebook Profile"
+                                    >
+                                        <Globe className="w-4 h-4 text-blue-400 mb-1 group-hover/btn:scale-110 transition-transform" />
+                                        <span className="text-[9px] font-semibold text-slate-300 group-hover/btn:text-white">Facebook</span>
+                                    </a>
+
+                                    <a
+                                        href={TEACHER_SOCIAL.youtube}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.06] hover:bg-rose-500/20 hover:border-rose-500/40 border border-white/10 rounded-xl transition-all group/btn"
+                                        title="YouTube Channel"
+                                    >
+                                        <Video className="w-4 h-4 text-rose-400 mb-1 group-hover/btn:scale-110 transition-transform" />
+                                        <span className="text-[9px] font-semibold text-slate-300 group-hover/btn:text-white">YouTube</span>
+                                    </a>
+                                </div>
                             </div>
                         </div>
 
                         <div className="pt-3 border-t border-slate-100 space-y-3">
                             <div className="flex items-center space-x-3 px-2">
-                                <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center font-extrabold text-indigo-600 text-sm shadow-sm shrink-0">
+                                <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center font-extrabold text-indigo-600 text-xs shadow-sm shrink-0">
                                     {userProfile.full_name.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="overflow-hidden">
@@ -716,7 +735,7 @@ function DashboardContent() {
 
                             <button
                                 onClick={handleLogout}
-                                className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-50 transition"
+                                className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50/80 transition"
                             >
                                 <LogOut className="w-4 h-4" />
                                 <span>Sign Out</span>
@@ -727,9 +746,9 @@ function DashboardContent() {
 
                 {/* 2. MAIN WORKSPACE */}
                 <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-                    <header className="h-20 bg-white/70 backdrop-blur-md border-b border-slate-200/80 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-30">
+                    <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/80 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-30 shadow-xs">
                         <div className="flex items-center gap-3 flex-1 max-w-md">
-                            <div className="w-9 h-9 rounded-xl overflow-hidden bg-slate-900 border border-slate-200 shadow-sm flex md:hidden items-center justify-center shrink-0 p-1">
+                            <div className="w-9 h-9 rounded-xl overflow-hidden bg-slate-900 border border-slate-800 shadow-sm flex md:hidden items-center justify-center shrink-0 p-1">
                                 <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
                             </div>
                             <div className="relative flex-1">
@@ -739,7 +758,7 @@ function DashboardContent() {
                                     placeholder="Search topic or chapter..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full bg-[#F4F6FA] border border-transparent focus:border-slate-300 rounded-2xl pl-10 pr-9 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none transition"
+                                    className="w-full bg-slate-100/80 border border-transparent focus:border-slate-300 rounded-xl pl-10 pr-9 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none transition"
                                 />
                                 {searchQuery && (
                                     <button
@@ -753,12 +772,12 @@ function DashboardContent() {
                         </div>
 
                         <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200/60 rounded-full text-amber-700 text-xs font-bold">
+                            <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200/60 rounded-full text-amber-700 text-xs font-bold shadow-xs">
                                 <Flame className="w-4 h-4 text-amber-500" />
                                 <span>Streak Active</span>
                             </div>
 
-                            <div className="p-2.5 rounded-2xl bg-slate-100 text-slate-600 relative">
+                            <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 relative hover:bg-slate-200/60 transition cursor-pointer">
                                 <Bell className="w-4 h-4" />
                                 {notice && <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 animate-ping" />}
                             </div>
@@ -790,14 +809,14 @@ function DashboardContent() {
                                     </div>
                                     <button
                                         onClick={() => setSearchQuery("")}
-                                        className="text-xs font-bold text-slate-500 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl transition"
+                                        className="text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl transition shadow-xs"
                                     >
                                         Clear Search
                                     </button>
                                 </div>
 
                                 {!hasSearchResults ? (
-                                    <div className="bg-white rounded-3xl p-16 text-center border border-slate-200 shadow-sm space-y-4">
+                                    <div className="bg-white rounded-3xl p-16 text-center border border-slate-200/80 shadow-sm space-y-4">
                                         <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
                                             <SearchX className="w-8 h-8" />
                                         </div>
@@ -832,7 +851,7 @@ function DashboardContent() {
                                                             <div
                                                                 key={vid.id}
                                                                 id={`lecture-card-${vid.id}`}
-                                                                className={`bg-white rounded-3xl overflow-hidden border transition-all duration-200 shadow-sm flex flex-col justify-between ${isWatched ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-200"
+                                                                className={`bg-white rounded-2xl overflow-hidden border transition-all duration-200 shadow-xs flex flex-col justify-between ${isWatched ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-200/80"
                                                                     }`}
                                                             >
                                                                 <div>
@@ -859,8 +878,8 @@ function DashboardContent() {
                                                                             </span>
                                                                             <span
                                                                                 className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
-                                                                                        ? "bg-[#C9B6FD]/30 text-indigo-800"
-                                                                                        : "bg-[#FFE3B3]/50 text-amber-900"
+                                                                                        ? "bg-indigo-50 text-indigo-700"
+                                                                                        : "bg-amber-50 text-amber-800"
                                                                                     }`}
                                                                             >
                                                                                 {vid.subject}
@@ -880,7 +899,7 @@ function DashboardContent() {
                                                                             toggleWatchStatus(vid.id);
                                                                             recordLecturePlayback(vid.id);
                                                                         }}
-                                                                        className={`w-full py-2.5 rounded-2xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
+                                                                        className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
                                                                                 ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
                                                                                 : "bg-slate-900 text-white hover:bg-slate-800"
                                                                             }`}
@@ -908,14 +927,14 @@ function DashboardContent() {
                                                         return (
                                                             <div
                                                                 key={mat.id}
-                                                                className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between space-y-4"
+                                                                className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-4"
                                                             >
                                                                 <div className="space-y-3">
                                                                     <div className="flex items-center justify-between">
                                                                         <span
                                                                             className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
-                                                                                    ? "bg-[#C9B6FD]/30 text-indigo-800"
-                                                                                    : "bg-[#FFE3B3]/50 text-amber-900"
+                                                                                    ? "bg-indigo-50 text-indigo-700"
+                                                                                    : "bg-amber-50 text-amber-800"
                                                                                 }`}
                                                                         >
                                                                             {mat.subject}
@@ -924,7 +943,7 @@ function DashboardContent() {
                                                                     </div>
 
                                                                     <div className="flex items-start space-x-3">
-                                                                        <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
+                                                                        <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
                                                                             PDF
                                                                         </div>
                                                                         <div>
@@ -939,7 +958,7 @@ function DashboardContent() {
                                                                             setPreviewPdfUrl(drivePreviewLink);
                                                                             setPreviewPdfTitle(mat.title);
                                                                         }}
-                                                                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-2xl text-center transition flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-600/20"
+                                                                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-sm shadow-indigo-600/20"
                                                                     >
                                                                         <Eye className="w-3.5 h-3.5" />
                                                                         <span>Preview</span>
@@ -949,7 +968,7 @@ function DashboardContent() {
                                                                         href={rawFileUrl}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
-                                                                        className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl transition border border-slate-200"
+                                                                        className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition border border-slate-200/80"
                                                                         title="Open in new tab / Download"
                                                                     >
                                                                         <ExternalLink className="w-3.5 h-3.5" />
@@ -973,7 +992,7 @@ function DashboardContent() {
                                 <div className="space-y-4">
                                     <h2 className="text-lg font-bold text-slate-900 tracking-tight">My progress</h2>
 
-                                    <div className="bg-[#1E1E2D] rounded-[32px] p-6 sm:p-8 text-white shadow-xl shadow-slate-900/10 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6">
+                                    <div className="bg-[#1E1E2D] rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-slate-900/10 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6">
                                         <div className="space-y-4 max-w-sm">
                                             <p className="text-xs text-slate-400 font-medium">
                                                 Hi, {userProfile.full_name}!
@@ -983,7 +1002,7 @@ function DashboardContent() {
                                             </h3>
                                             <button
                                                 onClick={() => setActiveNav("lectures")}
-                                                className="px-5 py-2.5 bg-white text-slate-950 rounded-2xl text-xs font-extrabold flex items-center space-x-2 hover:bg-slate-100 transition shadow-lg"
+                                                className="px-5 py-2.5 bg-white text-slate-950 rounded-xl text-xs font-extrabold flex items-center space-x-2 hover:bg-slate-100 transition shadow-lg"
                                             >
                                                 <span>SEE ALL LECTURES</span>
                                                 <ExternalLink className="w-3.5 h-3.5" />
@@ -991,7 +1010,7 @@ function DashboardContent() {
                                         </div>
 
                                         <div className="flex items-center gap-4 overflow-x-auto pb-2 lg:pb-0">
-                                            <div className="w-48 sm:w-52 bg-[#C9B6FD] text-slate-950 rounded-[28px] p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
+                                            <div className="w-48 sm:w-52 bg-[#C9B6FD] text-slate-950 rounded-2xl p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
                                                 <div className="flex items-center justify-between text-xs font-bold text-slate-800">
                                                     <span>01</span>
                                                     <span>PHYSICS</span>
@@ -1026,7 +1045,7 @@ function DashboardContent() {
                                                 </div>
                                             </div>
 
-                                            <div className="w-48 sm:w-52 bg-[#FFE3B3] text-slate-950 rounded-[28px] p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
+                                            <div className="w-48 sm:w-52 bg-[#FFE3B3] text-slate-950 rounded-2xl p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
                                                 <div className="flex items-center justify-between text-xs font-bold text-slate-800">
                                                     <span>02</span>
                                                     <span>CHEMISTRY</span>
@@ -1061,7 +1080,7 @@ function DashboardContent() {
                                                 </div>
                                             </div>
 
-                                            <div className="w-48 sm:w-52 bg-[#E1FC5B] text-slate-950 rounded-[28px] p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
+                                            <div className="w-48 sm:w-52 bg-[#E1FC5B] text-slate-950 rounded-2xl p-5 shrink-0 flex flex-col justify-between h-48 shadow-md">
                                                 <div className="flex items-center justify-between text-xs font-bold text-slate-800">
                                                     <span>03</span>
                                                     <span>OVERALL</span>
@@ -1086,7 +1105,7 @@ function DashboardContent() {
 
                                 {/* CONTINUE WATCHING & RESUME BANNER */}
                                 {activeResumeLecture && (
-                                    <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-[32px] p-6 text-white border border-indigo-500/20 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                                    <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 text-white border border-indigo-500/20 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
                                         <div className="flex items-center space-x-4">
                                             <div className="w-12 h-12 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center shrink-0 shadow-inner">
                                                 <Play className="w-5 h-5 text-indigo-400 fill-indigo-400" />
@@ -1109,7 +1128,7 @@ function DashboardContent() {
 
                                         <button
                                             onClick={() => handleResumeLecture(activeResumeLecture.id)}
-                                            className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition shadow-lg shadow-indigo-600/30 flex items-center gap-2 shrink-0 w-full sm:w-auto justify-center"
+                                            className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition shadow-lg shadow-indigo-600/30 flex items-center gap-2 shrink-0 w-full sm:w-auto justify-center"
                                         >
                                             <Play className="w-3.5 h-3.5 fill-white" />
                                             <span>Resume Class</span>
@@ -1123,17 +1142,17 @@ function DashboardContent() {
                                         <h3 className="text-base font-bold text-slate-900">Statistics</h3>
 
                                         <div className="grid grid-cols-3 gap-4">
-                                            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
+                                            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
                                                 <p className="text-2xl sm:text-3xl font-black text-slate-900">{completedCount}</p>
                                                 <p className="text-xs font-medium text-slate-400 mt-2">Lectures completed</p>
                                             </div>
 
-                                            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
+                                            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
                                                 <p className="text-2xl sm:text-3xl font-black text-slate-900">{chapterStats.length}</p>
                                                 <p className="text-xs font-medium text-slate-400 mt-2">Chapters in progress</p>
                                             </div>
 
-                                            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
+                                            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between">
                                                 <p className="text-2xl sm:text-3xl font-black text-slate-900">{completionPercentage}%</p>
                                                 <p className="text-xs font-medium text-slate-400 mt-2">Syllabus coverage</p>
                                             </div>
@@ -1156,13 +1175,13 @@ function DashboardContent() {
                                                     return (
                                                         <div
                                                             key={v.id}
-                                                            className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex items-center justify-between"
+                                                            className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between"
                                                         >
                                                             <div className="flex items-center space-x-3.5">
                                                                 <div
-                                                                    className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-xs ${v.subject === "PHYSICS"
-                                                                            ? "bg-[#C9B6FD]/30 text-indigo-700"
-                                                                            : "bg-[#FFE3B3]/40 text-amber-800"
+                                                                    className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs ${v.subject === "PHYSICS"
+                                                                            ? "bg-indigo-50 text-indigo-700"
+                                                                            : "bg-amber-50 text-amber-800"
                                                                         }`}
                                                                 >
                                                                     #{v.lecture_no}
@@ -1195,7 +1214,7 @@ function DashboardContent() {
                                     </div>
 
                                     <div className="lg:col-span-5 space-y-6">
-                                        <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-4">
+                                        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <h4 className="text-sm font-extrabold text-slate-900">{currentMonthTitle}</h4>
@@ -1265,9 +1284,9 @@ function DashboardContent() {
                                         </div>
 
                                         {tomorrowReminders.length > 0 && (
-                                            <div className="bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-300/60 rounded-3xl p-5 space-y-2 shadow-sm">
+                                            <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-300/60 rounded-2xl p-5 space-y-2 shadow-xs">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-extrabold uppercase text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                                    <span className="text-[10px] font-extrabold uppercase text-amber-800 bg-amber-100/80 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                                                         <Bell className="w-3 h-3 text-amber-600" />
                                                         <span>Reminder: Plan Due Tomorrow!</span>
                                                     </span>
@@ -1285,9 +1304,9 @@ function DashboardContent() {
                                         )}
 
                                         {todayReminders.length > 0 && (
-                                            <div className="bg-gradient-to-r from-indigo-500/15 to-violet-500/15 border border-indigo-300/60 rounded-3xl p-5 space-y-2 shadow-sm">
+                                            <div className="bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-300/60 rounded-2xl p-5 space-y-2 shadow-xs">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-extrabold uppercase text-indigo-800 bg-indigo-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                                    <span className="text-[10px] font-extrabold uppercase text-indigo-800 bg-indigo-100/80 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                                                         <Clock className="w-3 h-3 text-indigo-600" />
                                                         <span>Today&apos;s Scheduled Goals</span>
                                                     </span>
@@ -1304,7 +1323,7 @@ function DashboardContent() {
                                             </div>
                                         )}
 
-                                        <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-3">
+                                        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-3">
                                             <div className="flex items-center justify-between">
                                                 <h4 className="text-sm font-extrabold text-slate-900">Upcoming Schedule</h4>
                                                 {notice && (
@@ -1350,14 +1369,14 @@ function DashboardContent() {
                                         <p className="text-xs text-slate-400">Stream recorded classes, take personal notes, and mark completed lectures.</p>
                                     </div>
 
-                                    <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-slate-200">
+                                    <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200/80 shadow-xs">
                                         {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
                                             <button
                                                 key={subj}
                                                 onClick={() => setSelectedSubject(subj)}
-                                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${selectedSubject === subj
-                                                        ? "bg-slate-900 text-white shadow-sm"
-                                                        : "text-slate-500 hover:text-slate-900"
+                                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${selectedSubject === subj
+                                                        ? "bg-slate-900 text-white shadow-xs"
+                                                        : "text-slate-600 hover:text-slate-900"
                                                     }`}
                                             >
                                                 {subj === "ALL" ? "All Subjects" : subj === "PHYSICS" ? "Physics" : "Chemistry"}
@@ -1367,7 +1386,7 @@ function DashboardContent() {
                                 </div>
 
                                 {filteredVideos.length === 0 ? (
-                                    <div className="bg-white rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-200">
+                                    <div className="bg-white rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-200/80">
                                         No video lectures match your filter.
                                     </div>
                                 ) : (
@@ -1382,7 +1401,7 @@ function DashboardContent() {
                                                 <div
                                                     key={vid.id}
                                                     id={`lecture-card-${vid.id}`}
-                                                    className={`bg-white rounded-3xl overflow-hidden border transition-all duration-200 shadow-sm flex flex-col justify-between ${isWatched ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-200"
+                                                    className={`bg-white rounded-2xl overflow-hidden border transition-all duration-200 shadow-xs flex flex-col justify-between ${isWatched ? "border-emerald-300 ring-2 ring-emerald-100" : "border-slate-200/80"
                                                         }`}
                                                 >
                                                     <div>
@@ -1409,8 +1428,8 @@ function DashboardContent() {
                                                                 </span>
                                                                 <span
                                                                     className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
-                                                                            ? "bg-[#C9B6FD]/30 text-indigo-800"
-                                                                            : "bg-[#FFE3B3]/50 text-amber-900"
+                                                                            ? "bg-indigo-50 text-indigo-700"
+                                                                            : "bg-amber-50 text-amber-800"
                                                                         }`}
                                                                 >
                                                                     {vid.subject}
@@ -1425,10 +1444,10 @@ function DashboardContent() {
                                                     </div>
 
                                                     <div className="p-5 pt-0 space-y-3">
-                                                        <div className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
+                                                        <div className="border border-slate-200/60 rounded-xl overflow-hidden bg-slate-50/50">
                                                             <button
                                                                 onClick={() => setOpenNotesId(isNotesOpen ? null : vid.id)}
-                                                                className="w-full px-3.5 py-2 flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-slate-100/60 transition"
+                                                                className="w-full px-3.5 py-2 flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-slate-100/80 transition"
                                                             >
                                                                 <div className="flex items-center gap-1.5">
                                                                     <FileEdit className="w-3.5 h-3.5 text-indigo-600" />
@@ -1446,13 +1465,13 @@ function DashboardContent() {
                                                             </button>
 
                                                             {isNotesOpen && (
-                                                                <div className="p-3 bg-white border-t border-slate-100 space-y-2.5 animate-in fade-in duration-100">
+                                                                <div className="p-3 bg-white border-t border-slate-200/60 space-y-2.5 animate-in fade-in duration-100">
                                                                     <textarea
                                                                         rows={4}
                                                                         placeholder="Jot down key formulas, tips, or timestamps here..."
                                                                         value={lectureNotes[vid.id] || ""}
                                                                         onChange={(e) => handleNoteChange(vid.id, e.target.value)}
-                                                                        className="w-full bg-[#F4F6FA] border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 resize-none font-sans"
+                                                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 resize-none font-sans"
                                                                     />
 
                                                                     <div className="flex items-center justify-between">
@@ -1484,7 +1503,7 @@ function DashboardContent() {
                                                                 toggleWatchStatus(vid.id);
                                                                 recordLecturePlayback(vid.id);
                                                             }}
-                                                            className={`w-full py-2.5 rounded-2xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
+                                                            className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
                                                                     ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
                                                                     : "bg-slate-900 text-white hover:bg-slate-800"
                                                                 }`}
@@ -1509,14 +1528,14 @@ function DashboardContent() {
                                         <p className="text-xs text-slate-400">Download lecture notes and practice problem sets.</p>
                                     </div>
 
-                                    <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-slate-200">
+                                    <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200/80 shadow-xs">
                                         {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
                                             <button
                                                 key={subj}
                                                 onClick={() => setSelectedSubject(subj)}
-                                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${selectedSubject === subj
-                                                        ? "bg-slate-900 text-white shadow-sm"
-                                                        : "text-slate-500 hover:text-slate-900"
+                                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${selectedSubject === subj
+                                                        ? "bg-slate-900 text-white shadow-xs"
+                                                        : "text-slate-600 hover:text-slate-900"
                                                     }`}
                                             >
                                                 {subj === "ALL" ? "All" : subj === "PHYSICS" ? "Physics" : "Chemistry"}
@@ -1526,7 +1545,7 @@ function DashboardContent() {
                                 </div>
 
                                 {filteredMaterials.length === 0 ? (
-                                    <div className="bg-white rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-200">
+                                    <div className="bg-white rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-200/80">
                                         No study sheets found.
                                     </div>
                                 ) : (
@@ -1538,14 +1557,14 @@ function DashboardContent() {
                                             return (
                                                 <div
                                                     key={mat.id}
-                                                    className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between space-y-4"
+                                                    className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-4"
                                                 >
                                                     <div className="space-y-3">
                                                         <div className="flex items-center justify-between">
                                                             <span
                                                                 className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
-                                                                        ? "bg-[#C9B6FD]/30 text-indigo-800"
-                                                                        : "bg-[#FFE3B3]/50 text-amber-900"
+                                                                        ? "bg-indigo-50 text-indigo-700"
+                                                                        : "bg-amber-50 text-amber-800"
                                                                     }`}
                                                             >
                                                                 {mat.subject}
@@ -1554,7 +1573,7 @@ function DashboardContent() {
                                                         </div>
 
                                                         <div className="flex items-start space-x-3">
-                                                            <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
+                                                            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
                                                                 PDF
                                                             </div>
                                                             <div>
@@ -1569,7 +1588,7 @@ function DashboardContent() {
                                                                 setPreviewPdfUrl(drivePreviewLink);
                                                                 setPreviewPdfTitle(mat.title);
                                                             }}
-                                                            className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-2xl text-center transition flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-600/20"
+                                                            className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-sm shadow-indigo-600/20"
                                                         >
                                                             <Eye className="w-3.5 h-3.5" />
                                                             <span>Preview</span>
@@ -1579,7 +1598,7 @@ function DashboardContent() {
                                                             href={rawFileUrl}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl transition border border-slate-200"
+                                                            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition border border-slate-200/80"
                                                             title="Open in new tab / Download"
                                                         >
                                                             <ExternalLink className="w-3.5 h-3.5" />
@@ -1595,9 +1614,9 @@ function DashboardContent() {
 
                         {/* VIEW: INTEGRATED AI TUTOR (FULL PAGE) */}
                         {!isSearchActive && activeNav === "ai" && (
-                            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[640px]">
-                                <div className="p-5 bg-slate-50 border-b border-slate-200 flex items-center space-x-3">
-                                    <div className="w-9 h-9 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow">
+                            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col h-[640px]">
+                                <div className="p-5 bg-slate-50 border-b border-slate-200/80 flex items-center space-x-3">
+                                    <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow">
                                         ✨
                                     </div>
                                     <div>
@@ -1632,18 +1651,18 @@ function DashboardContent() {
                                     <div ref={chatEndRef} />
                                 </div>
 
-                                <form onSubmit={handleSendChat} className="p-4 bg-slate-50 border-t border-slate-200 flex items-center gap-2">
+                                <form onSubmit={handleSendChat} className="p-4 bg-slate-50 border-t border-slate-200/80 flex items-center gap-2">
                                     <input
                                         type="text"
                                         placeholder="Ask any question (e.g., Explain Ohm's law or Archimedes principle)..."
                                         value={chatInput}
                                         onChange={(e) => setChatInput(e.target.value)}
-                                        className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-slate-400"
+                                        className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-slate-400"
                                     />
                                     <button
                                         type="submit"
                                         disabled={chatLoading || !chatInput.trim()}
-                                        className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold px-5 py-3 rounded-2xl text-xs transition shadow-md"
+                                        className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold px-5 py-3 rounded-xl text-xs transition shadow-md"
                                     >
                                         Send
                                     </button>
@@ -1653,7 +1672,7 @@ function DashboardContent() {
                     </main>
 
                     {/* DEVELOPER CREDIT FOOTER */}
-                    <footer className="w-full py-4 px-6 text-center border-t border-slate-200/80 bg-white/70 backdrop-blur-sm mt-auto">
+                    <footer className="w-full py-4 px-6 text-center border-t border-slate-200/80 bg-white/80 backdrop-blur-sm mt-auto">
                         <p className="text-xs text-slate-500 font-medium tracking-wide">
                             © {currentYear} AZS: The Catalyst • Developed with ❤️ by{" "}
                             <a
@@ -1918,10 +1937,11 @@ function DashboardContent() {
 }
 
 export default function StudentDashboardPage() {
+    (hidden)
     return (
         <Suspense
             fallback={
-                <div className="min-h-0 min-h-screen bg-[#F4F6FA] flex flex-col items-center justify-center space-y-3">
+                <div className="min-h-0 min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center space-y-3">
                     <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                     <p className="text-xs font-bold text-slate-600 tracking-wide">Loading AZS Workspace...</p>
                 </div>

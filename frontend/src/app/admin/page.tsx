@@ -806,7 +806,6 @@ export default function AdminPage() {
                                                 <th className="py-4 px-5">Student Information</th>
                                                 <th className="py-4 px-5">Institution & Class</th>
                                                 <th className="py-4 px-5">Batch ID</th>
-                                                <th className="py-4 px-5">Lecture Coverage</th>
                                                 <th className="py-4 px-5">Subscription Status</th>
                                                 <th className="py-4 px-5">Days Left</th>
                                                 <th className="py-4 px-5 text-right">Fee & Access Actions</th>
@@ -815,9 +814,6 @@ export default function AdminPage() {
                                         <tbody className="divide-y divide-slate-800/60 font-sans">
                                             {filteredStudents.map((student, index) => {
                                                 const isPaid = student.is_approved && student.days_left > 0;
-                                                const totalLecs = lectures.length;
-                                                const completedEstimate = isPaid ? Math.min(totalLecs, Math.max(1, Math.round(totalLecs * 0.4))) : 0;
-                                                const progressPercent = totalLecs > 0 ? Math.round((completedEstimate / totalLecs) * 100) : 0;
 
                                                 return (
                                                     <tr key={student.id} className="hover:bg-slate-800/40 transition-colors">
@@ -834,20 +830,6 @@ export default function AdminPage() {
                                                             <span className="px-2.5 py-1 bg-slate-900 border border-slate-700/80 rounded-lg text-[11px] font-mono font-bold text-indigo-300">
                                                                 {student.batch_no || "General"}
                                                             </span>
-                                                        </td>
-                                                        <td className="py-4 px-5">
-                                                            <div className="space-y-1.5 min-w-[130px]">
-                                                                <div className="flex items-center justify-between text-[10px] text-slate-400">
-                                                                    <span>{completedEstimate}/{totalLecs} Classes</span>
-                                                                    <span className="font-mono text-indigo-400 font-bold">{progressPercent}%</span>
-                                                                </div>
-                                                                <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                                                                    <div
-                                                                        className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-300"
-                                                                        style={{ width: `${progressPercent}%` }}
-                                                                    />
-                                                                </div>
-                                                            </div>
                                                         </td>
                                                         <td className="py-4 px-5">
                                                             {isPaid ? (

@@ -1,873 +1,1531 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, FormEvent, Suspense } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-    LayoutDashboard,
+    ShieldCheck,
+    RefreshCw,
+    LogOut,
+    Loader2,
+    Trash2,
+    Upload,
+    Link as LinkIcon,
+    Eye,
+    EyeOff,
+    ExternalLink,
     Users,
+    Layers,
+    CheckCircle2,
+    XCircle,
+    Search,
+    Edit2,
+    X,
+    BookOpen,
+    ArrowUp,
+    ArrowDown,
+    ListOrdered,
+    Sparkles,
     Video,
     FileText,
-    LogOut,
-    Plus,
-    Trash2,
-    ExternalLink,
-    ShieldAlert,
-    CheckCircle2,
-    Atom,
-    FlaskConical,
-    X,
-    Search,
-    Bell,
-    Sparkles,
-    BookOpen,
-    Calendar,
-    Layers,
-    Settings,
-    ChevronRight,
-    Filter,
+    GraduationCap,
 } from "lucide-react";
-import axios from "axios";
 
-const BACKEND_URL = (
-    process.env.NEXT_PUBLIC_API_URL || "https://edutrack-backend-qjxg.onrender.com"
-).replace(/\/$/, "");
-
-const api = axios.create({
-    baseURL: BACKEND_URL,
-});
-
-api.interceptors.request.use((config) => {
-    if (typeof window !== "undefined") {
-        const token = localStorage.getItem("token") || localStorage.getItem("access_token");
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-    }
-    return config;
-});
-
-interface UserProfile {
+interface Student {
     id: string;
     full_name: string;
     email: string;
-    batch_no?: string;
-    grade_class?: string;
-    role?: string;
     school?: string;
+    grade_class?: string;
+    batch_no?: string;
+    is_approved: boolean;
+    subscription_end_date?: string;
+    days_left: number;
 }
 
-interface VideoLecture {
+interface LectureItem {
     id: string;
     lecture_no: number;
-    topic: string;
-    title?: string;
-    chapter: string;
+    title: string;
     subject: string;
-    youtube_url: string;
-    video_url?: string;
+    chapter: string;
+    video_url: string;
+    is_published?: boolean;
 }
 
-interface Material {
+interface MaterialItem {
     id: string;
     title: string;
-    chapter: string;
     subject: string;
-    pdf_url?: string;
-    file_url?: string;
+    chapter: string;
+    file_url: string;
+    is_published?: boolean;
 }
 
-interface Notice {
-    id: string;
-    content: string;
-    created_at: string;
-}
+const BACKEND_URL = "https://edutrack-backend-qjxg.onrender.com";
 
-function AdminContent() {
+export default function AdminPage() {
     const router = useRouter();
-    const [mounted, setMounted] = useState(false);
-    const [activeTab, setActiveTab] = useState<"overview" | "lectures" | "materials" | "students" | "notices">("overview");
-
-    const [adminName, setAdminName] = useState("Admin");
-    const [videos, setVideos] = useState<VideoLecture[]>([]);
-    const [materials, setMaterials] = useState<Material[]>([]);
-    const [students, setStudents] = useState<UserProfile[]>([]);
-    const [notices, setNotices] = useState<Notice[]>([]);
+    const [activeTab, setActiveTab] = useState<"students" | "video" | "sheet">("students");
+    const [selectedBatch, setSelectedBatch] = useState<string>("ALL");
+    const [searchStudentQuery, setSearchStudentQuery] = useState("");
+    const [students, setStudents] = useState<Student[]>([]);
+    const [lectures, setLectures] = useState<LectureItem[]>([]);
+    const [materials, setMaterials] = useState<MaterialItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [actionLoadingId, setActionLoadingId] = useState<string | number | null>(null);
+    const [currentYear, setCurrentYear] = useState<number>(2026);
 
-    // Search & Filtering States
-    const [searchQuery, setSearchQuery] = useState("");
-    const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>("ALL");
-    const [selectedBatchFilter, setSelectedBatchFilter] = useState<string>("ALL");
+    const [filterVideoSubject, setFilterVideoSubject] = useState<string>("ALL");
+    const [filterVideoChapter, setFilterVideoChapter] = useState<string>("ALL");
+    const [reordering, setReordering] = useState(false);
 
-    // Form States for Video Upload
-    const [videoSubject, setVideoSubject] = useState<"PHYSICS" | "CHEMISTRY">("PHYSICS");
-    const [videoChapter, setVideoChapter] = useState("");
-    const [videoLectureNo, setVideoLectureNo] = useState("1");
-    const [videoTopic, setVideoTopic] = useState("");
-    const [videoUrl, setVideoUrl] = useState("");
-    const [uploadingVideo, setUploadingVideo] = useState(false);
+    const [lectureForm, setLectureForm] = useState({
+        lecture_no: 1,
+        title: "",
+        topic: "",
+        chapter: "",
+        subject: "Physics",
+        video_url: "",
+    });
 
-    // Form States for Material Upload
-    const [materialSubject, setMaterialSubject] = useState<"PHYSICS" | "CHEMISTRY">("PHYSICS");
-    const [materialChapter, setMaterialChapter] = useState("");
-    const [materialTitle, setMaterialTitle] = useState("");
-    const [materialPdfUrl, setMaterialPdfUrl] = useState("");
-    const [uploadingMaterial, setUploadingMaterial] = useState(false);
+    const [uploadMode, setUploadMode] = useState<"file" | "link">("file");
+    const [sheetForm, setSheetForm] = useState({
+        title: "",
+        chapter: "",
+        subject: "Physics",
+        file_url: "",
+    });
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [submittingSheet, setSubmittingSheet] = useState(false);
 
-    // Form States for Notice
-    const [noticeContent, setNoticeContent] = useState("");
-    const [publishingNotice, setPublishingNotice] = useState(false);
+    const [editingLecture, setEditingLecture] = useState<LectureItem | null>(null);
+    const [editingMaterial, setEditingMaterial] = useState<MaterialItem | null>(null);
+    const [savingEdit, setSavingEdit] = useState(false);
+
+    const backendUrl = (process.env.NEXT_PUBLIC_API_URL || BACKEND_URL).replace(/\/$/, "");
+
+    const getToken = () => {
+        if (typeof window === "undefined") return "";
+        return localStorage.getItem("token") || localStorage.getItem("access_token") || "";
+    };
+
+    const fetchStudents = async () => {
+        setLoading(true);
+        const token = getToken();
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/students`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setStudents(Array.isArray(data) ? data : []);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchLectures = async () => {
+        const token = getToken();
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/lectures`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setLectures(Array.isArray(data) ? data : []);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const fetchMaterials = async () => {
+        const token = getToken();
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/materials`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setMaterials(Array.isArray(data) ? data : []);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
     useEffect(() => {
-        setMounted(true);
-        const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+        setCurrentYear(new Date().getFullYear());
+
+        const token = getToken();
         if (!token) {
-            router.replace("/login");
+            router.push("/login");
             return;
         }
 
         const role = (localStorage.getItem("user_role") || "").toUpperCase();
         const email = (localStorage.getItem("user_email") || "").toLowerCase();
-        const storedName = localStorage.getItem("user_name") || "Admin";
-        setAdminName(storedName);
 
         if (role !== "ADMIN" && email !== "rabbi@edutrack.com") {
             router.replace("/dashboard");
             return;
         }
 
-        fetchAllAdminData();
+        fetchStudents();
+        fetchLectures();
+        fetchMaterials();
     }, [router]);
 
-    const fetchAllAdminData = async () => {
-        try {
-            setLoading(true);
-            const [vRes, mRes, sRes, nRes] = await Promise.allSettled([
-                api.get("/api/v1/academic/videos"),
-                api.get("/api/v1/academic/materials"),
-                api.get("/api/v1/auth/users"),
-                api.get("/api/v1/academic/notice"),
-            ]);
+    const batchList = useMemo(() => {
+        const set = new Set<string>();
+        students.forEach((s) => {
+            if (s.batch_no && s.batch_no.trim()) {
+                set.add(s.batch_no.trim());
+            } else {
+                set.add("General");
+            }
+        });
+        return Array.from(set).sort();
+    }, [students]);
 
-            if (vRes.status === "fulfilled" && Array.isArray(vRes.value.data)) {
-                setVideos(vRes.value.data);
+    const uniqueChapters = useMemo(() => {
+        const set = new Set<string>();
+        lectures.forEach((l) => {
+            if (l.chapter && l.chapter.trim()) {
+                set.add(l.chapter.trim());
             }
-            if (mRes.status === "fulfilled" && Array.isArray(mRes.value.data)) {
-                setMaterials(mRes.value.data);
-            }
-            if (sRes.status === "fulfilled" && Array.isArray(sRes.value.data)) {
-                setStudents(sRes.value.data);
-            }
-            if (nRes.status === "fulfilled" && nRes.value.data) {
-                setNotices([nRes.value.data]);
+        });
+        return Array.from(set).sort();
+    }, [lectures]);
+
+    const sortedAndFilteredLectures = useMemo(() => {
+        return lectures
+            .filter((lec) => {
+                const matchSubj =
+                    filterVideoSubject === "ALL" ||
+                    lec.subject.toLowerCase() === filterVideoSubject.toLowerCase();
+                const matchChap =
+                    filterVideoChapter === "ALL" ||
+                    lec.chapter.toLowerCase() === filterVideoChapter.toLowerCase();
+                return matchSubj && matchChap;
+            })
+            .sort((a, b) => a.lecture_no - b.lecture_no);
+    }, [lectures, filterVideoSubject, filterVideoChapter]);
+
+    const filteredStudents = useMemo(() => {
+        return students.filter((s) => {
+            const b = (s.batch_no && s.batch_no.trim()) || "General";
+            const matchBatch = selectedBatch === "ALL" || b.toLowerCase() === selectedBatch.toLowerCase();
+
+            const q = searchStudentQuery.toLowerCase().trim();
+            const matchSearch =
+                !q ||
+                s.full_name.toLowerCase().includes(q) ||
+                s.email.toLowerCase().includes(q) ||
+                (s.school && s.school.toLowerCase().includes(q)) ||
+                (s.grade_class && s.grade_class.toLowerCase().includes(q));
+
+            return matchBatch && matchSearch;
+        });
+    }, [students, selectedBatch, searchStudentQuery]);
+
+    const totalPaidInView = useMemo(
+        () => filteredStudents.filter((s) => s.is_approved && s.days_left > 0).length,
+        [filteredStudents]
+    );
+    const totalUnpaidInView = filteredStudents.length - totalPaidInView;
+
+    const handleMarkPaid = async (studentId: string) => {
+        setActionLoadingId(studentId);
+        const token = getToken();
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/students/${studentId}/approve-and-pay`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) fetchStudents();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
+
+    const handleMarkUnpaid = async (studentId: string) => {
+        if (!confirm("Are you sure you want to mark this student as Unpaid? Access will be revoked.")) return;
+        setActionLoadingId(studentId);
+        const token = getToken();
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/students/${studentId}/revoke-access`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) fetchStudents();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
+
+    const handleDeleteStudent = async (studentId: string, email: string) => {
+        if (!confirm(`Are you sure you want to permanently delete student "${email}"?`)) return;
+        setActionLoadingId(studentId);
+        const token = getToken();
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/students/${studentId}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) fetchStudents();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
+
+    const handleCreateLecture = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const token = getToken();
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/lectures`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(lectureForm),
+            });
+            if (res.ok) {
+                alert("Video lecture published successfully!");
+                setLectureForm({
+                    lecture_no: lectureForm.lecture_no + 1,
+                    title: "",
+                    topic: "",
+                    chapter: "",
+                    subject: "Physics",
+                    video_url: "",
+                });
+                fetchLectures();
+            } else {
+                const d = await res.json();
+                alert(d.detail || "Failed to save lecture.");
             }
         } catch (err) {
-            console.error("Admin fetch error:", err);
-        } finally {
-            setLoading(false);
+            alert("Error saving lecture.");
         }
     };
 
-    const handleUploadVideo = async (e: FormEvent) => {
+    const handleUpdateLecture = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!videoChapter || !videoTopic || !videoUrl) return;
-
+        if (!editingLecture) return;
+        setSavingEdit(true);
+        const token = getToken();
         try {
-            setUploadingVideo(true);
-            await api.post("/api/v1/academic/videos", {
-                subject: videoSubject,
-                chapter: videoChapter.trim(),
-                lecture_no: parseInt(videoLectureNo) || 1,
-                topic: videoTopic.trim(),
-                youtube_url: videoUrl.trim(),
+            const res = await fetch(`${backendUrl}/api/v1/admin/lectures/${editingLecture.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(editingLecture),
             });
-
-            setVideoTopic("");
-            setVideoUrl("");
-            setVideoChapter("");
-            fetchAllAdminData();
-            alert("Video Lecture successfully published!");
-        } catch (err: any) {
-            alert(err.response?.data?.detail || "Failed to upload video lecture.");
+            if (res.ok) {
+                alert("Lecture details updated successfully!");
+                setEditingLecture(null);
+                fetchLectures();
+            } else {
+                const d = await res.json();
+                alert(d.detail || "Failed to update lecture.");
+            }
+        } catch (err) {
+            alert("Error updating lecture.");
         } finally {
-            setUploadingVideo(false);
+            setSavingEdit(false);
         }
     };
 
-    const handleDeleteVideo = async (id: string) => {
+    const handleSwapOrder = async (id1: string, id2: string) => {
+        setReordering(true);
+        const token = getToken();
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/lectures/swap-order`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ lecture_id_1: id1, lecture_id_2: id2 }),
+            });
+            if (res.ok) {
+                await fetchLectures();
+            } else {
+                const err = await res.json();
+                alert(err.detail || "Failed to reorder.");
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setReordering(false);
+        }
+    };
+
+    const handleNormalizeChapter = async () => {
+        if (filterVideoChapter === "ALL") {
+            alert("Please select a specific chapter to auto-renumber.");
+            return;
+        }
+        if (!confirm(`Auto-renumber all lectures in chapter "${filterVideoChapter}" from 1 to N?`)) return;
+
+        setReordering(true);
+        const token = getToken();
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/lectures/normalize-order`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    subject: filterVideoSubject === "ALL" ? "PHYSICS" : filterVideoSubject,
+                    chapter: filterVideoChapter,
+                }),
+            });
+            if (res.ok) {
+                alert("Chapter lectures sequentially renumbered!");
+                await fetchLectures();
+            }
+        } catch (err) {
+            alert("Failed to normalize sequence.");
+        } finally {
+            setReordering(false);
+        }
+    };
+
+    const handleToggleLecturePublish = async (id: string) => {
+        const token = getToken();
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/lectures/${id}/toggle-publish`, {
+                method: "PATCH",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) fetchLectures();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleDeleteLecture = async (id: string) => {
         if (!confirm("Are you sure you want to delete this lecture?")) return;
+        setActionLoadingId(id);
+        const token = getToken();
         try {
-            await api.delete(`/api/v1/academic/videos/${id}`);
-            setVideos(videos.filter((v) => v.id !== id));
-        } catch {
-            alert("Failed to delete lecture.");
+            const res = await fetch(`${backendUrl}/api/v1/admin/lectures/${id}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) fetchLectures();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setActionLoadingId(null);
         }
     };
 
-    const handleUploadMaterial = async (e: FormEvent) => {
+    const handleSubmitSheet = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!materialChapter || !materialTitle || !materialPdfUrl) return;
+        const token = getToken();
+        setSubmittingSheet(true);
 
         try {
-            setUploadingMaterial(true);
-            await api.post("/api/v1/academic/materials", {
-                subject: materialSubject,
-                chapter: materialChapter.trim(),
-                title: materialTitle.trim(),
-                pdf_url: materialPdfUrl.trim(),
-            });
+            if (uploadMode === "file") {
+                if (!selectedFile) {
+                    alert("Please select a PDF file from your computer.");
+                    setSubmittingSheet(false);
+                    return;
+                }
 
-            setMaterialTitle("");
-            setMaterialPdfUrl("");
-            setMaterialChapter("");
-            fetchAllAdminData();
-            alert("Study Material successfully published!");
-        } catch (err: any) {
-            alert(err.response?.data?.detail || "Failed to upload study material.");
+                const formData = new FormData();
+                formData.append("title", sheetForm.title);
+                formData.append("chapter", sheetForm.chapter);
+                formData.append("subject", sheetForm.subject);
+                formData.append("file", selectedFile);
+
+                const res = await fetch(`${backendUrl}/api/v1/academic/materials/upload`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                    body: formData,
+                });
+
+                if (res.ok) {
+                    alert("PDF uploaded successfully from PC!");
+                    setSheetForm({ title: "", chapter: "", subject: "Physics", file_url: "" });
+                    setSelectedFile(null);
+                    fetchMaterials();
+                } else {
+                    const errData = await res.json();
+                    alert(errData.detail || "Failed to upload PDF.");
+                }
+            } else {
+                if (!sheetForm.file_url) {
+                    alert("Please enter a valid document/Drive URL.");
+                    setSubmittingSheet(false);
+                    return;
+                }
+
+                const res = await fetch(`${backendUrl}/api/v1/admin/materials`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(sheetForm),
+                });
+
+                if (res.ok) {
+                    alert("Material link saved successfully!");
+                    setSheetForm({ title: "", chapter: "", subject: "Physics", file_url: "" });
+                    fetchMaterials();
+                } else {
+                    const errData = await res.json();
+                    alert(errData.detail || "Failed to save link.");
+                }
+            }
+        } catch (err) {
+            alert("Network error processing material.");
         } finally {
-            setUploadingMaterial(false);
+            setSubmittingSheet(false);
+        }
+    };
+
+    const handleUpdateMaterial = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingMaterial) return;
+        setSavingEdit(true);
+        const token = getToken();
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/materials/${editingMaterial.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(editingMaterial),
+            });
+            if (res.ok) {
+                alert("Material sheet updated successfully!");
+                setEditingMaterial(null);
+                fetchMaterials();
+            } else {
+                const d = await res.json();
+                alert(d.detail || "Failed to update material.");
+            }
+        } catch (err) {
+            alert("Error updating material.");
+        } finally {
+            setSavingEdit(false);
+        }
+    };
+
+    const handleToggleMaterialPublish = async (id: string) => {
+        const token = getToken();
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/admin/materials/${id}/toggle-publish`, {
+                method: "PATCH",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) fetchMaterials();
+        } catch (err) {
+            console.error(err);
         }
     };
 
     const handleDeleteMaterial = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this material?")) return;
+        if (!confirm("Are you sure you want to delete this PDF material?")) return;
+        setActionLoadingId(id);
+        const token = getToken();
         try {
-            await api.delete(`/api/v1/academic/materials/${id}`);
-            setMaterials(materials.filter((m) => m.id !== id));
-        } catch {
-            alert("Failed to delete material.");
-        }
-    };
-
-    const handlePublishNotice = async (e: FormEvent) => {
-        e.preventDefault();
-        if (!noticeContent.trim()) return;
-
-        try {
-            setPublishingNotice(true);
-            await api.post("/api/v1/academic/notice", {
-                content: noticeContent.trim(),
+            const res = await fetch(`${backendUrl}/api/v1/admin/materials/${id}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
             });
-            setNoticeContent("");
-            fetchAllAdminData();
-            alert("Live notice successfully updated!");
-        } catch (err: any) {
-            alert(err.response?.data?.detail || "Failed to publish notice.");
+            if (res.ok) fetchMaterials();
+        } catch (err) {
+            console.error(err);
         } finally {
-            setPublishingNotice(false);
+            setActionLoadingId(null);
         }
     };
 
-    const handleLogout = () => {
-        localStorage.clear();
-        router.replace("/login");
-    };
-
-    const filteredVideos = useMemo(() => {
-        return videos.filter((v) => {
-            const matchSubj = selectedSubjectFilter === "ALL" || v.subject === selectedSubjectFilter;
-            const query = searchQuery.toLowerCase();
-            const matchSearch =
-                !query ||
-                (v.topic && v.topic.toLowerCase().includes(query)) ||
-                (v.title && v.title.toLowerCase().includes(query)) ||
-                (v.chapter && v.chapter.toLowerCase().includes(query));
-            return matchSubj && matchSearch;
-        });
-    }, [videos, selectedSubjectFilter, searchQuery]);
-
-    const filteredMaterials = useMemo(() => {
-        return materials.filter((m) => {
-            const matchSubj = selectedSubjectFilter === "ALL" || m.subject === selectedSubjectFilter;
-            const query = searchQuery.toLowerCase();
-            const matchSearch =
-                !query ||
-                (m.title && m.title.toLowerCase().includes(query)) ||
-                (m.chapter && m.chapter.toLowerCase().includes(query));
-            return matchSubj && matchSearch;
-        });
-    }, [materials, selectedSubjectFilter, searchQuery]);
-
-    const filteredStudents = useMemo(() => {
-        return students.filter((st) => {
-            const matchBatch = selectedBatchFilter === "ALL" || st.batch_no === selectedBatchFilter;
-            const query = searchQuery.toLowerCase();
-            const matchSearch =
-                !query ||
-                (st.full_name && st.full_name.toLowerCase().includes(query)) ||
-                (st.email && st.email.toLowerCase().includes(query)) ||
-                (st.school && st.school.toLowerCase().includes(query));
-            return matchBatch && matchSearch;
-        });
-    }, [students, selectedBatchFilter, searchQuery]);
-
-    if (!mounted) return null;
+    const totalStudentsCount = students.length;
+    const totalActivePaidCount = useMemo(() => students.filter(s => s.is_approved && s.days_left > 0).length, [students]);
 
     return (
-        <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col font-sans antialiased">
-            <div className="flex-1 flex min-w-0">
-
-                {/* ADMIN SIDEBAR */}
-                <aside className="w-72 bg-[#0B101D] border-r border-slate-800/80 p-6 flex flex-col justify-between shrink-0 hidden md:flex shadow-2xl">
-                    <div className="space-y-8">
-                        <div className="flex items-center space-x-3 px-1">
-                            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-black text-white text-sm shadow-[0_0_15px_rgba(99,102,241,0.4)]">
-                                AZS
-                            </div>
-                            <div>
-                                <span className="font-extrabold text-sm tracking-tight text-white block leading-tight">AZS Admin</span>
-                                <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-400 block">
-                                    Command Center
-                                </span>
-                            </div>
+        <div className="min-h-screen bg-[#070b19] text-slate-100 flex flex-col font-sans antialiased selection:bg-indigo-600 selection:text-white">
+            <header className="border-b border-slate-800/80 bg-[#0c1227]/90 backdrop-blur-md sticky top-0 z-30 shadow-lg shadow-black/20">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
+                    <div className="flex items-center space-x-3.5">
+                        <div className="w-10 h-10 rounded-2xl overflow-hidden bg-slate-900 border border-slate-700/80 shadow-lg flex items-center justify-center shrink-0 p-1">
+                            <img
+                                src="/logo.png"
+                                alt="AZS Logo"
+                                className="w-full h-full object-contain"
+                                onError={(e) => {
+                                    (e.target as HTMLElement).style.display = 'none';
+                                }}
+                            />
                         </div>
-
-                        <nav className="space-y-1.5">
-                            <button
-                                onClick={() => { setActiveTab("overview"); setSearchQuery(""); }}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "overview"
-                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                                        : "text-slate-400 hover:text-white hover:bg-slate-900/80"
-                                    }`}
-                            >
-                                <LayoutDashboard className="w-4 h-4" />
-                                <span>Admin Overview</span>
-                            </button>
-
-                            <button
-                                onClick={() => { setActiveTab("lectures"); setSearchQuery(""); }}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "lectures"
-                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                                        : "text-slate-400 hover:text-white hover:bg-slate-900/80"
-                                    }`}
-                            >
-                                <Video className="w-4 h-4" />
-                                <span>Manage Lectures</span>
-                                <span className="ml-auto text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md font-mono">
-                                    {videos.length}
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-extrabold text-lg text-white tracking-tight">AZS</span>
+                                <span className="text-[10px] text-indigo-300 font-mono px-2 py-0.5 bg-indigo-500/15 rounded-full border border-indigo-500/30 uppercase tracking-widest font-bold">
+                                    Admin Console
                                 </span>
-                            </button>
-
-                            <button
-                                onClick={() => { setActiveTab("materials"); setSearchQuery(""); }}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "materials"
-                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                                        : "text-slate-400 hover:text-white hover:bg-slate-900/80"
-                                    }`}
-                            >
-                                <FileText className="w-4 h-4" />
-                                <span>Study Sheets (PDF)</span>
-                                <span className="ml-auto text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md font-mono">
-                                    {materials.length}
-                                </span>
-                            </button>
-
-                            <button
-                                onClick={() => { setActiveTab("students"); setSearchQuery(""); }}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "students"
-                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                                        : "text-slate-400 hover:text-white hover:bg-slate-900/80"
-                                    }`}
-                            >
-                                <Users className="w-4 h-4" />
-                                <span>Student Directory</span>
-                                <span className="ml-auto text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md font-mono">
-                                    {students.length}
-                                </span>
-                            </button>
-
-                            <button
-                                onClick={() => { setActiveTab("notices"); setSearchQuery(""); }}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "notices"
-                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                                        : "text-slate-400 hover:text-white hover:bg-slate-900/80"
-                                    }`}
-                            >
-                                <Bell className="w-4 h-4" />
-                                <span>Live Notices</span>
-                            </button>
-                        </nav>
+                            </div>
+                            <span className="text-xs text-slate-400 font-medium">The Catalyst Instructor Hub</span>
+                        </div>
                     </div>
 
-                    <div className="pt-6 border-t border-slate-800/80 space-y-3">
-                        <div className="flex items-center space-x-3 px-2">
-                            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center font-extrabold text-indigo-400 text-xs shadow-sm shrink-0">
-                                {adminName.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="overflow-hidden">
-                                <p className="text-xs font-bold text-white truncate">{adminName}</p>
-                                <p className="text-[10px] text-slate-400 font-medium truncate">System Administrator</p>
-                            </div>
+                    <div className="flex items-center space-x-1.5 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800/90 shadow-inner">
+                        <button
+                            onClick={() => setActiveTab("students")}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${activeTab === "students"
+                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                }`}
+                        >
+                            <Users className="w-3.5 h-3.5" />
+                            <span>Batch & Fees</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("video")}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${activeTab === "video"
+                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                }`}
+                        >
+                            <Video className="w-3.5 h-3.5" />
+                            <span>Lectures</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("sheet")}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${activeTab === "sheet"
+                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                }`}
+                        >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Materials</span>
+                        </button>
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                        <div className="hidden md:flex flex-col text-right">
+                            <span className="text-xs font-bold text-slate-200">rabbi@edutrack.com</span>
+                            <span className="text-[10px] text-emerald-400 font-mono flex items-center justify-end gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                Active Session
+                            </span>
                         </div>
 
                         <button
-                            onClick={handleLogout}
-                            className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-500/10 transition"
+                            onClick={() => {
+                                localStorage.clear();
+                                router.push("/login");
+                            }}
+                            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/10 transition-all shadow-sm"
+                            title="Sign Out"
                         >
                             <LogOut className="w-4 h-4" />
-                            <span>Sign Out</span>
                         </button>
                     </div>
-                </aside>
+                </div>
+            </header>
 
-                {/* ADMIN MAIN CONTENT */}
-                <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-                    <header className="h-20 bg-[#090D16]/80 backdrop-blur-md border-b border-slate-800/80 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-30 shadow-sm">
-                        <div className="flex items-center gap-3 flex-1 max-w-md">
-                            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center font-black text-white text-xs shadow md:hidden">
-                                AZS
+            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-[#0f172a]/90 border border-slate-800 rounded-3xl p-5 shadow-lg shadow-black/20 flex items-center justify-between">
+                        <div>
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Students</p>
+                            <p className="text-2xl font-black text-white mt-1">{totalStudentsCount}</p>
+                            <p className="text-[10px] text-slate-500 mt-1">Across all active batches</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold">
+                            <GraduationCap className="w-6 h-6" />
+                        </div>
+                    </div>
+
+                    <div className="bg-[#0f172a]/90 border border-slate-800 rounded-3xl p-5 shadow-lg shadow-black/20 flex items-center justify-between">
+                        <div>
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Paid Pass</p>
+                            <p className="text-2xl font-black text-emerald-400 mt-1">{totalActivePaidCount}</p>
+                            <p className="text-[10px] text-slate-500 mt-1">{totalStudentsCount - totalActivePaidCount} pending renewal</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold">
+                            <CheckCircle2 className="w-6 h-6" />
+                        </div>
+                    </div>
+
+                    <div className="bg-[#0f172a]/90 border border-slate-800 rounded-3xl p-5 shadow-lg shadow-black/20 flex items-center justify-between">
+                        <div>
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Recorded Lectures</p>
+                            <p className="text-2xl font-black text-white mt-1">{lectures.length}</p>
+                            <p className="text-[10px] text-slate-500 mt-1">In curriculum syllabus</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 font-bold">
+                            <Video className="w-6 h-6" />
+                        </div>
+                    </div>
+
+                    <div className="bg-[#0f172a]/90 border border-slate-800 rounded-3xl p-5 shadow-lg shadow-black/20 flex items-center justify-between">
+                        <div>
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Handouts & Sheets</p>
+                            <p className="text-2xl font-black text-white mt-1">{materials.length}</p>
+                            <p className="text-[10px] text-slate-500 mt-1">PDF notes & formula sets</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 font-bold">
+                            <FileText className="w-6 h-6" />
+                        </div>
+                    </div>
+                </div>
+
+                {activeTab === "students" && (
+                    <div className="space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <h1 className="text-2xl font-black text-white flex items-center gap-2.5">
+                                    <Layers className="w-6 h-6 text-indigo-400" />
+                                    <span>Batch Registry & Access Control</span>
+                                </h1>
+                                <p className="text-slate-400 text-xs mt-1">
+                                    Instant batch segregation, real-time student search, and access control.
+                                </p>
                             </div>
-                            <div className="relative flex-1">
+
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 px-3.5 py-1.5 rounded-2xl text-xs font-mono shadow-sm">
+                                    <span className="text-emerald-400 font-bold">{totalPaidInView} Paid</span>
+                                    <span className="text-slate-700">|</span>
+                                    <span className="text-amber-400 font-bold">{totalUnpaidInView} Due</span>
+                                </div>
+                                <button
+                                    onClick={fetchStudents}
+                                    className="flex items-center space-x-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded-xl transition shadow-sm border border-slate-700"
+                                >
+                                    <RefreshCw className="w-3.5 h-3.5" />
+                                    <span>Refresh</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#0c1227] p-3 rounded-2xl border border-slate-800/80 shadow-md">
+                            <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                                <button
+                                    onClick={() => setSelectedBatch("ALL")}
+                                    className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all ${selectedBatch === "ALL"
+                                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                                        : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                        }`}
+                                >
+                                    <Users className="w-3.5 h-3.5" />
+                                    <span>All Batches</span>
+                                    <span className="px-1.5 py-0.5 bg-slate-950/60 rounded-full text-[10px] text-slate-300 font-mono">
+                                        {students.length}
+                                    </span>
+                                </button>
+
+                                {batchList.map((batchName) => {
+                                    const count = students.filter(
+                                        (s) => ((s.batch_no && s.batch_no.trim()) || "General").toLowerCase() === batchName.toLowerCase()
+                                    ).length;
+
+                                    return (
+                                        <button
+                                            key={batchName}
+                                            onClick={() => setSelectedBatch(batchName)}
+                                            className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all shrink-0 ${selectedBatch.toLowerCase() === batchName.toLowerCase()
+                                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                                                : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                                }`}
+                                        >
+                                            <span>{batchName}</span>
+                                            <span className="px-1.5 py-0.5 bg-slate-950/60 rounded-full text-[10px] text-slate-300 font-mono">
+                                                {count}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="relative min-w-[280px]">
                                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                                 <input
                                     type="text"
-                                    placeholder="Search records..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full bg-[#131826] border border-slate-800 focus:border-indigo-500 rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition"
+                                    placeholder="Search by student name, email or school..."
+                                    value={searchStudentQuery}
+                                    onChange={(e) => setSearchStudentQuery(e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 placeholder-slate-500 shadow-inner"
                                 />
-                                {searchQuery && (
-                                    <button
-                                        onClick={() => setSearchQuery("")}
-                                        className="absolute right-3 top-3 text-slate-400 hover:text-white"
-                                    >
-                                        <X className="w-3.5 h-3.5" />
-                                    </button>
-                                )}
                             </div>
                         </div>
 
-                        <button
-                            onClick={handleLogout}
-                            className="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition flex md:hidden items-center gap-1.5"
-                        >
-                            <LogOut className="w-3.5 h-3.5" />
-                            <span>Logout</span>
-                        </button>
-                    </header>
-
-                    <main className="p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8 flex-1 pb-24">
-
-                        {/* TAB: OVERVIEW */}
-                        {activeTab === "overview" && (
-                            <div className="space-y-8">
-                                <div>
-                                    <h2 className="text-xl font-black text-white tracking-tight">Admin Overview</h2>
-                                    <p className="text-xs text-slate-400">Platform statistics, content distribution, and activity telemetry.</p>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                    <div className="bg-[#0B101D] rounded-3xl p-6 border border-slate-800 shadow-xl flex flex-col justify-between space-y-4">
-                                        <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold">
-                                            <Video className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-3xl font-black text-white">{videos.length}</p>
-                                            <p className="text-xs text-slate-400 font-medium mt-1">Total Video Lectures</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-[#0B101D] rounded-3xl p-6 border border-slate-800 shadow-xl flex flex-col justify-between space-y-4">
-                                        <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 font-bold">
-                                            <FileText className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-3xl font-black text-white">{materials.length}</p>
-                                            <p className="text-xs text-slate-400 font-medium mt-1">Study Sheets & Handouts</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-[#0B101D] rounded-3xl p-6 border border-slate-800 shadow-xl flex flex-col justify-between space-y-4">
-                                        <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold">
-                                            <Users className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-3xl font-black text-white">{students.length}</p>
-                                            <p className="text-xs text-slate-400 font-medium mt-1">Registered Students</p>
-                                        </div>
-                                    </div>
-                                </div>
+                        {loading ? (
+                            <div className="py-24 flex flex-col items-center justify-center text-slate-400 space-y-3">
+                                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                                <p className="text-xs font-medium">Loading batch records...</p>
                             </div>
-                        )}
+                        ) : filteredStudents.length === 0 ? (
+                            <div className="bg-[#0f172a] border border-slate-800 rounded-3xl p-16 text-center text-slate-400 text-xs space-y-2">
+                                <p className="font-bold text-sm text-slate-300">No students found matching your criteria</p>
+                                <p>Try clearing your search query or selecting a different batch filter.</p>
+                            </div>
+                        ) : (
+                            <div className="bg-[#0f172a]/95 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-xs">
+                                        <thead className="bg-slate-900/90 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-800">
+                                            <tr>
+                                                <th className="py-4 px-5">#</th>
+                                                <th className="py-4 px-5">Student Information</th>
+                                                <th className="py-4 px-5">Institution & Class</th>
+                                                <th className="py-4 px-5">Batch ID</th>
+                                                <th className="py-4 px-5">Lecture Coverage</th>
+                                                <th className="py-4 px-5">Subscription Status</th>
+                                                <th className="py-4 px-5">Days Left</th>
+                                                <th className="py-4 px-5 text-right">Fee & Access Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-800/60 font-sans">
+                                            {filteredStudents.map((student, index) => {
+                                                const isPaid = student.is_approved && student.days_left > 0;
+                                                const totalLecs = lectures.length;
+                                                const completedEstimate = isPaid ? Math.min(totalLecs, Math.max(1, Math.round(totalLecs * 0.4))) : 0;
+                                                const progressPercent = totalLecs > 0 ? Math.round((completedEstimate / totalLecs) * 100) : 0;
 
-                        {/* TAB: MANAGE LECTURES */}
-                        {activeTab === "lectures" && (
-                            <div className="space-y-8">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div>
-                                        <h2 className="text-xl font-black text-white tracking-tight">Upload & Manage Lectures</h2>
-                                        <p className="text-xs text-slate-400">Add chapter-wise video lectures for Physics and Chemistry.</p>
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5 bg-[#0B101D] p-1 rounded-xl border border-slate-800 shadow-sm">
-                                        {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
-                                            <button
-                                                key={subj}
-                                                onClick={() => setSelectedSubjectFilter(subj)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${selectedSubjectFilter === subj
-                                                        ? "bg-indigo-600 text-white shadow-md"
-                                                        : "text-slate-400 hover:text-white"
-                                                    }`}
-                                            >
-                                                {subj === "ALL" ? "All Subjects" : subj}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <form onSubmit={handleUploadVideo} className="bg-[#0B101D] rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-5">
-                                    <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Publish New Lecture</h3>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-300">Subject</label>
-                                            <select
-                                                value={videoSubject}
-                                                onChange={(e) => setVideoSubject(e.target.value as "PHYSICS" | "CHEMISTRY")}
-                                                className="w-full bg-[#131826] border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
-                                            >
-                                                <option value="PHYSICS">PHYSICS</option>
-                                                <option value="CHEMISTRY">CHEMISTRY</option>
-                                            </select>
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-300">Chapter Name</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                placeholder="e.g. Reflection of Light"
-                                                value={videoChapter}
-                                                onChange={(e) => setVideoChapter(e.target.value)}
-                                                className="w-full bg-[#131826] border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                                            />
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-300">Lecture No.</label>
-                                            <input
-                                                type="number"
-                                                required
-                                                value={videoLectureNo}
-                                                onChange={(e) => setVideoLectureNo(e.target.value)}
-                                                className="w-full bg-[#131826] border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-300">Topic Title</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                placeholder="e.g. Snell's Law & Refractive Index"
-                                                value={videoTopic}
-                                                onChange={(e) => setVideoTopic(e.target.value)}
-                                                className="w-full bg-[#131826] border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                                            />
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-300">YouTube Embed / Watch URL</label>
-                                            <input
-                                                type="url"
-                                                required
-                                                placeholder="https://www.youtube.com/watch?v=..."
-                                                value={videoUrl}
-                                                onChange={(e) => setVideoUrl(e.target.value)}
-                                                className="w-full bg-[#131826] border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        type="submit"
-                                        disabled={uploadingVideo}
-                                        className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/30 flex items-center gap-2"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                        <span>{uploadingVideo ? "Publishing..." : "Publish Lecture"}</span>
-                                    </button>
-                                </form>
-
-                                <div className="space-y-4">
-                                    <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Uploaded Lectures ({filteredVideos.length})</h3>
-                                    <div className="bg-[#0B101D] rounded-3xl border border-slate-800 overflow-hidden shadow-xl">
-                                        <div className="divide-y divide-slate-800">
-                                            {filteredVideos.length === 0 ? (
-                                                <div className="p-8 text-center text-xs text-slate-400">No lectures found.</div>
-                                            ) : (
-                                                filteredVideos.map((vid) => (
-                                                    <div key={vid.id} className="p-4 sm:p-5 flex items-center justify-between gap-4">
-                                                        <div className="space-y-1 overflow-hidden">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">
-                                                                    Lecture #{vid.lecture_no}
-                                                                </span>
-                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${vid.subject === "PHYSICS" ? "bg-indigo-500/10 text-indigo-300" : "bg-amber-500/10 text-amber-300"}`}>
-                                                                    {vid.subject}
-                                                                </span>
-                                                                <span className="text-[10px] text-slate-400 truncate">{vid.chapter}</span>
+                                                return (
+                                                    <tr key={student.id} className="hover:bg-slate-800/40 transition-colors">
+                                                        <td className="py-4 px-5 font-mono text-slate-500">{index + 1}</td>
+                                                        <td className="py-4 px-5">
+                                                            <div className="font-bold text-white text-[13px]">{student.full_name}</div>
+                                                            <div className="text-[11px] text-slate-400 font-mono mt-0.5">{student.email}</div>
+                                                        </td>
+                                                        <td className="py-4 px-5 text-slate-300">
+                                                            <div className="font-medium">{student.school || "N/A"}</div>
+                                                            <div className="text-[10px] text-slate-500 font-medium">{student.grade_class || "Unassigned"}</div>
+                                                        </td>
+                                                        <td className="py-4 px-5">
+                                                            <span className="px-2.5 py-1 bg-slate-900 border border-slate-700/80 rounded-lg text-[11px] font-mono font-bold text-indigo-300">
+                                                                {student.batch_no || "General"}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-4 px-5">
+                                                            <div className="space-y-1.5 min-w-[130px]">
+                                                                <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                                                    <span>{completedEstimate}/{totalLecs} Classes</span>
+                                                                    <span className="font-mono text-indigo-400 font-bold">{progressPercent}%</span>
+                                                                </div>
+                                                                <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-300"
+                                                                        style={{ width: `${progressPercent}%` }}
+                                                                    />
+                                                                </div>
                                                             </div>
-                                                            <h4 className="text-xs sm:text-sm font-extrabold text-white truncate">{vid.topic || vid.title}</h4>
-                                                        </div>
-
-                                                        <button
-                                                            onClick={() => handleDeleteVideo(vid.id)}
-                                                            className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition border border-rose-500/20 shrink-0"
-                                                            title="Delete Lecture"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* TAB: STUDY MATERIALS (PDF) */}
-                        {activeTab === "materials" && (
-                            <div className="space-y-8">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div>
-                                        <h2 className="text-xl font-black text-white tracking-tight">Upload Study Sheets (PDF)</h2>
-                                        <p className="text-xs text-slate-400">Add downloadable PDF handouts and notes for chapters.</p>
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5 bg-[#0B101D] p-1 rounded-xl border border-slate-800 shadow-sm">
-                                        {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
-                                            <button
-                                                key={subj}
-                                                onClick={() => setSelectedSubjectFilter(subj)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${selectedSubjectFilter === subj
-                                                        ? "bg-indigo-600 text-white shadow-md"
-                                                        : "text-slate-400 hover:text-white"
-                                                    }`}
-                                            >
-                                                {subj === "ALL" ? "All Subjects" : subj}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <form onSubmit={handleUploadMaterial} className="bg-[#0B101D] rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-5">
-                                    <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Publish New PDF Sheet</h3>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-300">Subject</label>
-                                            <select
-                                                value={materialSubject}
-                                                onChange={(e) => setMaterialSubject(e.target.value as "PHYSICS" | "CHEMISTRY")}
-                                                className="w-full bg-[#131826] border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
-                                            >
-                                                <option value="PHYSICS">PHYSICS</option>
-                                                <option value="CHEMISTRY">CHEMISTRY</option>
-                                            </select>
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-300">Chapter Name</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                placeholder="e.g. Reflection of Light"
-                                                value={materialChapter}
-                                                onChange={(e) => setMaterialChapter(e.target.value)}
-                                                className="w-full bg-[#131826] border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-300">Document Title</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                placeholder="e.g. Chapter 01 Handout & Formula Sheet"
-                                                value={materialTitle}
-                                                onChange={(e) => setMaterialTitle(e.target.value)}
-                                                className="w-full bg-[#131826] border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                                            />
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-300">Google Drive / PDF URL</label>
-                                            <input
-                                                type="url"
-                                                required
-                                                placeholder="https://drive.google.com/file/d/..."
-                                                value={materialPdfUrl}
-                                                onChange={(e) => setMaterialPdfUrl(e.target.value)}
-                                                className="w-full bg-[#131826] border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        type="submit"
-                                        disabled={uploadingMaterial}
-                                        className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/30 flex items-center gap-2"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                        <span>{uploadingMaterial ? "Publishing..." : "Publish PDF Sheet"}</span>
-                                    </button>
-                                </form>
-
-                                <div className="space-y-4">
-                                    <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Uploaded Sheets ({filteredMaterials.length})</h3>
-                                    <div className="bg-[#0B101D] rounded-3xl border border-slate-800 overflow-hidden shadow-xl">
-                                        <div className="divide-y divide-slate-800">
-                                            {filteredMaterials.length === 0 ? (
-                                                <div className="p-8 text-center text-xs text-slate-400">No study materials found.</div>
-                                            ) : (
-                                                filteredMaterials.map((mat) => (
-                                                    <div key={mat.id} className="p-4 sm:p-5 flex items-center justify-between gap-4">
-                                                        <div className="space-y-1 overflow-hidden">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${mat.subject === "PHYSICS" ? "bg-indigo-500/10 text-indigo-300" : "bg-amber-500/10 text-amber-300"}`}>
-                                                                    {mat.subject}
+                                                        </td>
+                                                        <td className="py-4 px-5">
+                                                            {isPaid ? (
+                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-sm">
+                                                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                                                    <span>Active Paid</span>
                                                                 </span>
-                                                                <span className="text-[10px] text-slate-400 truncate">{mat.chapter}</span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 border border-amber-500/30 text-amber-400 shadow-sm">
+                                                                    <XCircle className="w-3.5 h-3.5" />
+                                                                    <span>Payment Due</span>
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-4 px-5 font-mono text-xs">
+                                                            {isPaid ? (
+                                                                <span className="text-emerald-400 font-bold">{student.days_left} Days</span>
+                                                            ) : (
+                                                                <span className="text-rose-400 font-bold">0 Days</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-4 px-5 text-right">
+                                                            <div className="flex items-center justify-end space-x-2">
+                                                                {!isPaid ? (
+                                                                    <button
+                                                                        onClick={() => handleMarkPaid(student.id)}
+                                                                        disabled={actionLoadingId === student.id}
+                                                                        className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1"
+                                                                        title="Mark as Paid and grant 30-day access"
+                                                                    >
+                                                                        {actionLoadingId === student.id ? (
+                                                                            <Loader2 className="w-3 h-3 animate-spin mx-auto" />
+                                                                        ) : (
+                                                                            <span>Mark as Paid</span>
+                                                                        )}
+                                                                    </button>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => handleMarkUnpaid(student.id)}
+                                                                        disabled={actionLoadingId === student.id}
+                                                                        className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/10 border border-amber-500/20 text-amber-300 hover:bg-amber-500/20 transition-all flex items-center gap-1"
+                                                                        title="Revoke active access and mark unpaid"
+                                                                    >
+                                                                        <span>Mark as Unpaid</span>
+                                                                    </button>
+                                                                )}
+
+                                                                <button
+                                                                    onClick={() => handleDeleteStudent(student.id, student.email)}
+                                                                    disabled={actionLoadingId === student.id}
+                                                                    className="p-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-600 hover:text-white transition-all"
+                                                                    title="Permanently delete account"
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </button>
                                                             </div>
-                                                            <h4 className="text-xs sm:text-sm font-extrabold text-white truncate">{mat.title}</h4>
-                                                        </div>
-
-                                                        <button
-                                                            onClick={() => handleDeleteMaterial(mat.id)}
-                                                            className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition border border-rose-500/20 shrink-0"
-                                                            title="Delete Material"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         )}
+                    </div>
+                )}
 
-                        {/* TAB: STUDENT DIRECTORY */}
-                        {activeTab === "students" && (
-                            <div className="space-y-8">
-                                <div>
-                                    <h2 className="text-xl font-black text-white tracking-tight">Student Directory</h2>
-                                    <p className="text-xs text-slate-400">View registered students and batch information.</p>
-                                </div>
-
-                                <div className="bg-[#0B101D] rounded-3xl border border-slate-800 overflow-hidden shadow-xl">
-                                    <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-                                        <h3 className="text-sm font-extrabold text-white">Registered Accounts ({filteredStudents.length})</h3>
-                                    </div>
-
-                                    <div className="divide-y divide-slate-800">
-                                        {filteredStudents.length === 0 ? (
-                                            <div className="p-8 text-center text-xs text-slate-400">No student records found.</div>
-                                        ) : (
-                                            filteredStudents.map((st) => (
-                                                <div key={st.id || st.email} className="p-4 sm:p-5 flex items-center justify-between gap-4">
-                                                    <div className="flex items-center space-x-3.5">
-                                                        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center font-bold text-indigo-400 text-xs shrink-0">
-                                                            {(st.full_name || "S").charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <div className="overflow-hidden">
-                                                            <h4 className="text-xs sm:text-sm font-extrabold text-white truncate">{st.full_name || "Student"}</h4>
-                                                            <p className="text-[11px] text-slate-400 truncate">{st.email}</p>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] font-mono bg-slate-900 border border-slate-800 text-slate-300 px-2.5 py-1 rounded-xl">
-                                                            {st.batch_no || "General Batch"}
-                                                        </span>
-                                                        <span className="text-[10px] font-bold uppercase bg-indigo-500/10 text-indigo-300 px-2.5 py-1 rounded-xl">
-                                                            {st.role || "STUDENT"}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
+                {activeTab === "video" && (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                        <div className="lg:col-span-5 bg-[#0f172a] border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+                            <div>
+                                <h2 className="text-lg font-black text-white">Publish Video Lecture</h2>
+                                <p className="text-xs text-slate-400 mt-0.5">Upload a new recorded class to the syllabus</p>
                             </div>
-                        )}
 
-                        {/* TAB: LIVE NOTICES */}
-                        {activeTab === "notices" && (
-                            <div className="space-y-8">
-                                <div>
-                                    <h2 className="text-xl font-black text-white tracking-tight">Broadcast Live Notice</h2>
-                                    <p className="text-xs text-slate-400">Publish or update the live notification ticker on student dashboards.</p>
-                                </div>
-
-                                <form onSubmit={handlePublishNotice} className="bg-[#0B101D] rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-5">
-                                    <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Update Announcement Ticker</h3>
-
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-300">Notice Text</label>
-                                        <textarea
-                                            rows={3}
+                            <form onSubmit={handleCreateLecture} className="space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 block mb-1">Lecture Number</label>
+                                        <input
+                                            type="number"
                                             required
-                                            placeholder="e.g. Physics Live Exam on Sunday at 8:00 PM!"
-                                            value={noticeContent}
-                                            onChange={(e) => setNoticeContent(e.target.value)}
-                                            className="w-full bg-[#131826] border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none font-sans"
+                                            value={lectureForm.lecture_no}
+                                            onChange={(e) => setLectureForm({ ...lectureForm, lecture_no: Number(e.target.value) })}
+                                            className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
                                         />
                                     </div>
-
-                                    <button
-                                        type="submit"
-                                        disabled={publishingNotice}
-                                        className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/30 flex items-center gap-2"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                        <span>{publishingNotice ? "Broadcasting..." : "Publish Live Notice"}</span>
-                                    </button>
-                                </form>
-
-                                <div className="space-y-4">
-                                    <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Current Broadcast Status</h3>
-                                    <div className="bg-[#0B101D] rounded-3xl p-6 border border-slate-800 shadow-xl space-y-3">
-                                        {notices.length === 0 ? (
-                                            <p className="text-xs text-slate-400">No active notice broadcasted right now.</p>
-                                        ) : (
-                                            notices.map((n, idx) => (
-                                                <div key={idx} className="p-4 rounded-2xl bg-[#131826] border border-slate-800 flex items-center justify-between">
-                                                    <p className="text-xs font-bold text-white">{n.content}</p>
-                                                    <span className="text-[10px] text-emerald-400 font-mono">Active</span>
-                                                </div>
-                                            ))
-                                        )}
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 block mb-1">Subject</label>
+                                        <select
+                                            value={lectureForm.subject}
+                                            onChange={(e) => setLectureForm({ ...lectureForm, subject: e.target.value })}
+                                            className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                        >
+                                            <option value="Physics">Physics</option>
+                                            <option value="Chemistry">Chemistry</option>
+                                            <option value="Higher Math">Higher Math</option>
+                                        </select>
                                     </div>
                                 </div>
+
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 block mb-1">Chapter Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. আলোর প্রতিফলন"
+                                        value={lectureForm.chapter}
+                                        onChange={(e) => setLectureForm({ ...lectureForm, chapter: e.target.value })}
+                                        className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 block mb-1">Lecture Title / Topic</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. Lecture 01 - Basics"
+                                        value={lectureForm.title}
+                                        onChange={(e) => setLectureForm({ ...lectureForm, title: e.target.value, topic: e.target.value })}
+                                        className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 block mb-1">YouTube URL</label>
+                                    <input
+                                        type="url"
+                                        required
+                                        placeholder="https://www.youtube.com/watch?v=..."
+                                        value={lectureForm.video_url}
+                                        onChange={(e) => setLectureForm({ ...lectureForm, video_url: e.target.value })}
+                                        className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-600/30"
+                                >
+                                    Publish to Syllabus
+                                </button>
+                            </form>
+                        </div>
+
+                        <div className="lg:col-span-7 bg-[#0f172a] border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                                <div>
+                                    <h2 className="text-lg font-black text-white flex items-center gap-2">
+                                        <ListOrdered className="w-5 h-5 text-indigo-400" />
+                                        <span>Sequence & Chapter Manager</span>
+                                    </h2>
+                                    <p className="text-xs text-slate-400">Order lectures using Up/Down arrows or auto-renumber sequentially</p>
+                                </div>
+                                <button onClick={fetchLectures} className="text-xs font-semibold text-slate-400 hover:text-white flex items-center space-x-1">
+                                    <RefreshCw className="w-3.5 h-3.5" />
+                                    <span>Refresh</span>
+                                </button>
                             </div>
-                        )}
 
-                    </main>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-900/90 p-3 rounded-2xl border border-slate-800">
+                                <div>
+                                    <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Subject</label>
+                                    <select
+                                        value={filterVideoSubject}
+                                        onChange={(e) => setFilterVideoSubject(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white"
+                                    >
+                                        <option value="ALL">All Subjects</option>
+                                        <option value="Physics">Physics</option>
+                                        <option value="Chemistry">Chemistry</option>
+                                        <option value="Higher Math">Higher Math</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Chapter</label>
+                                    <select
+                                        value={filterVideoChapter}
+                                        onChange={(e) => setFilterVideoChapter(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white"
+                                    >
+                                        <option value="ALL">All Chapters ({uniqueChapters.length})</option>
+                                        {uniqueChapters.map((ch) => (
+                                            <option key={ch} value={ch}>
+                                                {ch}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="flex items-end">
+                                    <button
+                                        onClick={handleNormalizeChapter}
+                                        disabled={filterVideoChapter === "ALL" || reordering}
+                                        className="w-full py-1.5 px-3 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition disabled:opacity-40"
+                                        title="Auto-renumber lectures in selected chapter 1, 2, 3..."
+                                    >
+                                        <Sparkles className="w-3.5 h-3.5" />
+                                        <span>Auto-Renumber (1..N)</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {sortedAndFilteredLectures.length === 0 ? (
+                                <p className="text-xs text-slate-400 py-10 text-center">No video lectures found in this filter.</p>
+                            ) : (
+                                <div className="space-y-2.5 max-h-[550px] overflow-y-auto pr-1">
+                                    {sortedAndFilteredLectures.map((lec, idx) => {
+                                        const isFirst = idx === 0;
+                                        const isLast = idx === sortedAndFilteredLectures.length - 1;
+
+                                        return (
+                                            <div
+                                                key={lec.id}
+                                                className="bg-slate-800/60 hover:bg-slate-800/90 border border-slate-700/60 rounded-2xl p-3.5 flex items-center justify-between transition-all"
+                                            >
+                                                <div className="flex items-center space-x-3">
+                                                    <div className="flex flex-col space-y-1">
+                                                        <button
+                                                            onClick={() => handleSwapOrder(lec.id, sortedAndFilteredLectures[idx - 1].id)}
+                                                            disabled={isFirst || reordering}
+                                                            className="p-1.5 rounded-lg bg-slate-700/60 hover:bg-indigo-600 text-slate-300 disabled:opacity-20 transition"
+                                                            title="Move Up"
+                                                        >
+                                                            <ArrowUp className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleSwapOrder(lec.id, sortedAndFilteredLectures[idx + 1].id)}
+                                                            disabled={isLast || reordering}
+                                                            className="p-1.5 rounded-lg bg-slate-700/60 hover:bg-indigo-600 text-slate-300 disabled:opacity-20 transition"
+                                                            title="Move Down"
+                                                        >
+                                                            <ArrowDown className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+
+                                                    <div>
+                                                        <div className="flex items-center space-x-2 mb-1">
+                                                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                                                #{lec.lecture_no}
+                                                            </span>
+                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-700 text-slate-300">
+                                                                {lec.subject}
+                                                            </span>
+                                                            {lec.is_published === false && (
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                                                    Hidden
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <h4 className="text-xs font-bold text-white leading-tight">{lec.title}</h4>
+                                                        <p className="text-[11px] text-slate-400 mt-0.5">{lec.chapter}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center space-x-2">
+                                                    <button
+                                                        onClick={() => setEditingLecture(lec)}
+                                                        className="p-2 rounded-xl bg-slate-700/70 text-slate-300 hover:text-indigo-400 transition"
+                                                        title="Edit details"
+                                                    >
+                                                        <Edit2 className="w-3.5 h-3.5" />
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleToggleLecturePublish(lec.id)}
+                                                        className={`p-2 rounded-xl text-xs font-semibold border transition-all ${lec.is_published === false
+                                                            ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                                                            : "bg-slate-700/70 border-slate-600 text-slate-300 hover:text-white"
+                                                            }`}
+                                                        title={lec.is_published === false ? "Publish" : "Unpublish"}
+                                                    >
+                                                        {lec.is_published === false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                    </button>
+
+                                                    <a
+                                                        href={lec.video_url}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="p-2 rounded-xl bg-slate-700/70 text-slate-300 hover:text-white transition"
+                                                        title="Watch video"
+                                                    >
+                                                        <ExternalLink className="w-4 h-4" />
+                                                    </a>
+
+                                                    <button
+                                                        onClick={() => handleDeleteLecture(lec.id)}
+                                                        disabled={actionLoadingId === lec.id}
+                                                        className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-600 hover:text-white transition"
+                                                        title="Delete permanently"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === "sheet" && (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                        <div className="lg:col-span-5 bg-[#0f172a] border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+                            <div>
+                                <h2 className="text-lg font-black text-white">Upload Lecture Sheet</h2>
+                                <p className="text-xs text-slate-400 mt-0.5">Upload local PDF files or attach Google Drive documents</p>
+                            </div>
+
+                            <div className="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-800">
+                                <button
+                                    type="button"
+                                    onClick={() => setUploadMode("file")}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5 transition-all ${uploadMode === "file" ? "bg-indigo-600 text-white shadow" : "text-slate-400 hover:text-white"
+                                        }`}
+                                >
+                                    <Upload className="w-3.5 h-3.5" />
+                                    <span>Upload from PC</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setUploadMode("link")}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5 transition-all ${uploadMode === "link" ? "bg-indigo-600 text-white shadow" : "text-slate-400 hover:text-white"
+                                        }`}
+                                >
+                                    <LinkIcon className="w-3.5 h-3.5" />
+                                    <span>Google Drive Link</span>
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleSubmitSheet} className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 block mb-1">Subject</label>
+                                    <select
+                                        value={sheetForm.subject}
+                                        onChange={(e) => setSheetForm({ ...sheetForm, subject: e.target.value })}
+                                        className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                    >
+                                        <option value="Physics">Physics</option>
+                                        <option value="Chemistry">Chemistry</option>
+                                        <option value="Higher Math">Higher Math</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 block mb-1">Chapter Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. আলোর প্রতিফলন"
+                                        value={sheetForm.chapter}
+                                        onChange={(e) => setSheetForm({ ...sheetForm, chapter: e.target.value })}
+                                        className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 block mb-1">Material Title</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. CQ Solution Sheet 01"
+                                        value={sheetForm.title}
+                                        onChange={(e) => setSheetForm({ ...sheetForm, title: e.target.value })}
+                                        className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+
+                                {uploadMode === "file" ? (
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 block mb-1">Select PDF File</label>
+                                        <input
+                                            type="file"
+                                            accept=".pdf,application/pdf"
+                                            required
+                                            onChange={(e) => {
+                                                if (e.target.files && e.target.files[0]) {
+                                                    setSelectedFile(e.target.files[0]);
+                                                }
+                                            }}
+                                            className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 block mb-1">Document / Drive URL</label>
+                                        <input
+                                            type="url"
+                                            required
+                                            placeholder="https://drive.google.com/file/d/..."
+                                            value={sheetForm.file_url}
+                                            onChange={(e) => setSheetForm({ ...sheetForm, file_url: e.target.value })}
+                                            className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                        />
+                                    </div>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    disabled={submittingSheet}
+                                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2"
+                                >
+                                    {submittingSheet ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <span>Uploading Document...</span>
+                                        </>
+                                    ) : (
+                                        <span>{uploadMode === "file" ? "Upload PDF File" : "Save Drive Link"}</span>
+                                    )}
+                                </button>
+                            </form>
+                        </div>
+
+                        <div className="lg:col-span-7 bg-[#0f172a] border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                                <h2 className="text-lg font-black text-white">Uploaded Sheets ({materials.length})</h2>
+                                <button onClick={fetchMaterials} className="text-xs font-semibold text-slate-400 hover:text-white flex items-center space-x-1">
+                                    <RefreshCw className="w-3.5 h-3.5" />
+                                    <span>Refresh</span>
+                                </button>
+                            </div>
+
+                            {materials.length === 0 ? (
+                                <p className="text-xs text-slate-400 py-10 text-center">No PDF sheets uploaded yet.</p>
+                            ) : (
+                                <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
+                                    {materials.map((mat) => (
+                                        <div key={mat.id} className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 flex items-center justify-between">
+                                            <div>
+                                                <div className="flex items-center space-x-2 mb-1">
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                                        {mat.subject}
+                                                    </span>
+                                                    {mat.is_published === false && (
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                                            Hidden
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <h4 className="text-sm font-bold text-white">{mat.title}</h4>
+                                                <p className="text-xs text-slate-400 mt-0.5">{mat.chapter}</p>
+                                            </div>
+
+                                            <div className="flex items-center space-x-2">
+                                                <button
+                                                    onClick={() => setEditingMaterial(mat)}
+                                                    className="p-2 rounded-xl bg-slate-700/70 border border-slate-600 text-slate-300 hover:text-indigo-400 transition"
+                                                    title="Edit sheet details"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
+                                                </button>
+
+                                                <button
+                                                    onClick={() => handleToggleMaterialPublish(mat.id)}
+                                                    className={`p-2 rounded-xl text-xs font-semibold border transition-all ${mat.is_published === false
+                                                        ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                                                        : "bg-slate-700/70 border-slate-600 text-slate-300 hover:text-white"
+                                                        }`}
+                                                    title={mat.is_published === false ? "Publish" : "Unpublish"}
+                                                >
+                                                    {mat.is_published === false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </button>
+
+                                                <a
+                                                    href={mat.file_url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="p-2 rounded-xl bg-slate-700/70 text-slate-300 hover:text-white transition"
+                                                    title="Open PDF"
+                                                >
+                                                    <ExternalLink className="w-4 h-4" />
+                                                </a>
+
+                                                <button
+                                                    onClick={() => handleDeleteMaterial(mat.id)}
+                                                    disabled={actionLoadingId === mat.id}
+                                                    className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-600 hover:text-white transition"
+                                                    title="Delete permanently"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </main>
+
+            <footer className="w-full py-4 px-6 text-center border-t border-slate-800/80 bg-[#0c1227]/90 backdrop-blur-sm mt-auto">
+                <p className="text-xs text-slate-400 font-medium tracking-wide">
+                    © {currentYear} AZS: The Catalyst • Designed & Built with precision by{" "}
+                    <a
+                        href="https://www.linkedin.com/in/sajedul-islam-data/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold text-indigo-400 hover:text-indigo-300 hover:underline transition-colors inline-flex items-center gap-1"
+                    >
+                        Mir Mohammad Sajedul Islam
+                        <ExternalLink className="w-3 h-3 inline" />
+                    </a>
+                </p>
+            </footer>
+
+            {editingLecture && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-[#0f172a] border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <h3 className="text-base font-bold text-white flex items-center gap-2">
+                                <Edit2 className="w-4 h-4 text-indigo-400" />
+                                <span>Edit Video Lecture</span>
+                            </h3>
+                            <button
+                                onClick={() => setEditingLecture(null)}
+                                className="text-slate-400 hover:text-white p-1 rounded-lg"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateLecture} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 block mb-1">Lecture Number</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        value={editingLecture.lecture_no}
+                                        onChange={(e) => setEditingLecture({ ...editingLecture, lecture_no: Number(e.target.value) })}
+                                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 block mb-1">Subject</label>
+                                    <select
+                                        value={editingLecture.subject}
+                                        onChange={(e) => setEditingLecture({ ...editingLecture, subject: e.target.value })}
+                                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                    >
+                                        <option value="Physics">Physics</option>
+                                        <option value="Chemistry">Chemistry</option>
+                                        <option value="Higher Math">Higher Math</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 block mb-1">Chapter</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={editingLecture.chapter}
+                                    onChange={(e) => setEditingLecture({ ...editingLecture, chapter: e.target.value })}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 block mb-1">Topic / Title</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={editingLecture.title}
+                                    onChange={(e) => setEditingLecture({ ...editingLecture, title: e.target.value })}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 block mb-1">YouTube URL</label>
+                                <input
+                                    type="url"
+                                    required
+                                    value={editingLecture.video_url}
+                                    onChange={(e) => setEditingLecture({ ...editingLecture, video_url: e.target.value })}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end space-x-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingLecture(null)}
+                                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={savingEdit}
+                                    className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30"
+                                >
+                                    {savingEdit ? "Saving..." : "Save Changes"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-            </div>
+            )}
+
+            {editingMaterial && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-[#0f172a] border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <h3 className="text-base font-bold text-white flex items-center gap-2">
+                                <BookOpen className="w-4 h-4 text-indigo-400" />
+                                <span>Edit Study Material Sheet</span>
+                            </h3>
+                            <button
+                                onClick={() => setEditingMaterial(null)}
+                                className="text-slate-400 hover:text-white p-1 rounded-lg"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateMaterial} className="space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 block mb-1">Subject</label>
+                                <select
+                                    value={editingMaterial.subject}
+                                    onChange={(e) => setEditingMaterial({ ...editingMaterial, subject: e.target.value })}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                >
+                                    <option value="Physics">Physics</option>
+                                    <option value="Chemistry">Chemistry</option>
+                                    <option value="Higher Math">Higher Math</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 block mb-1">Chapter</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={editingMaterial.chapter}
+                                    onChange={(e) => setEditingMaterial({ ...editingMaterial, chapter: e.target.value })}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 block mb-1">Material Title</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={editingMaterial.title}
+                                    onChange={(e) => setEditingMaterial({ ...editingMaterial, title: e.target.value })}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 block mb-1">PDF File / Google Drive URL</label>
+                                <input
+                                    type="url"
+                                    required
+                                    value={editingMaterial.file_url}
+                                    onChange={(e) => setEditingMaterial({ ...editingMaterial, file_url: e.target.value })}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end space-x-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingMaterial(null)}
+                                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={savingEdit}
+                                    className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30"
+                                >
+                                    {savingEdit ? "Saving..." : "Save Changes"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
-    );
-}
-
-export default function AdminPage() {
-    return (
-        <Suspense
-            fallback={
-                <div className="min-h-screen bg-[#090D16] flex flex-col items-center justify-center space-y-3">
-                    <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
-                    <p className="text-xs font-bold text-slate-400 tracking-wide font-mono">INITIALIZING ADMIN CONSOLE...</p>
-                </div>
-            }
-        >
-            <AdminContent />
-        </Suspense>
     );
 }

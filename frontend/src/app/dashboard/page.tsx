@@ -30,6 +30,8 @@ import {
     ChevronDown,
     ChevronUp,
     Eye,
+    MessageSquare,
+    Send,
 } from "lucide-react";
 import axios from "axios";
 
@@ -141,6 +143,9 @@ function DashboardContent() {
     const [activeNav, setActiveNav] = useState<"dashboard" | "lectures" | "materials" | "ai">("dashboard");
     const [mounted, setMounted] = useState(false);
     const [currentYear, setCurrentYear] = useState(2026);
+
+    // Floating AI Chat States
+    const [isFloatingChatOpen, setIsFloatingChatOpen] = useState(false);
 
     const [userProfile, setUserProfile] = useState<UserProfile>({
         id: "",
@@ -276,7 +281,7 @@ function DashboardContent() {
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [chatMessages]);
+    }, [chatMessages, isFloatingChatOpen]);
 
     const fetchUserData = async () => {
         try {
@@ -561,7 +566,7 @@ function DashboardContent() {
     if (!mounted) return null;
 
     return (
-        <div className="min-h-screen bg-[#F4F6FA] text-slate-800 flex flex-col font-sans antialiased">
+        <div className="min-h-screen bg-[#F4F6FA] text-slate-800 flex flex-col font-sans antialiased relative">
             <div className="flex-1 flex min-w-0">
                 {/* 1. LEFT SIDEBAR */}
                 <aside className="w-64 bg-white border-r border-slate-200/80 p-6 flex flex-col justify-between shrink-0 hidden md:flex">
@@ -672,9 +677,12 @@ function DashboardContent() {
                 {/* 2. MAIN WORKSPACE */}
                 <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
                     <header className="h-20 bg-white/70 backdrop-blur-md border-b border-slate-200/80 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-30">
-                        <div className="flex-1 max-w-md">
-                            <div className="relative flex items-center">
-                                <Search className="w-4 h-4 text-slate-400 absolute left-3.5" />
+                        <div className="flex items-center gap-3 flex-1 max-w-md">
+                            <div className="w-9 h-9 rounded-xl overflow-hidden bg-slate-900 border border-slate-200 shadow-sm flex md:hidden items-center justify-center shrink-0 p-1">
+                                <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
+                            </div>
+                            <div className="relative flex-1">
+                                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                                 <input
                                     type="text"
                                     placeholder="Search topic or chapter..."
@@ -685,7 +693,7 @@ function DashboardContent() {
                                 {searchQuery && (
                                     <button
                                         onClick={() => setSearchQuery("")}
-                                        className="absolute right-3 text-slate-400 hover:text-slate-600"
+                                        className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
                                     >
                                         <X className="w-3.5 h-3.5" />
                                     </button>
@@ -715,7 +723,7 @@ function DashboardContent() {
                         </div>
                     )}
 
-                    <main className="p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8 flex-1">
+                    <main className="p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8 flex-1 pb-24 md:pb-10">
                         {/* SEARCH RESULTS VIEW */}
                         {isSearchActive && (
                             <div className="space-y-6">
@@ -1534,7 +1542,7 @@ function DashboardContent() {
                             </div>
                         )}
 
-                        {/* VIEW: INTEGRATED AI TUTOR */}
+                        {/* VIEW: INTEGRATED AI TUTOR (FULL PAGE) */}
                         {!isSearchActive && activeNav === "ai" && (
                             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[640px]">
                                 <div className="p-5 bg-slate-50 border-b border-slate-200 flex items-center space-x-3">
@@ -1609,6 +1617,122 @@ function DashboardContent() {
                         </p>
                     </footer>
                 </div>
+            </div>
+
+            {/* MOBILE BOTTOM NAVIGATION BAR */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2 flex md:hidden items-center justify-around z-40 shadow-lg">
+                <button
+                    onClick={() => { setActiveNav("dashboard"); setSearchQuery(""); }}
+                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "dashboard" ? "text-indigo-600" : "text-slate-500"}`}
+                >
+                    <LayoutDashboard className="w-5 h-5 mb-0.5" />
+                    <span>Home</span>
+                </button>
+                <button
+                    onClick={() => setActiveNav("lectures")}
+                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "lectures" ? "text-indigo-600" : "text-slate-500"}`}
+                >
+                    <PlayCircle className="w-5 h-5 mb-0.5" />
+                    <span>Lectures</span>
+                </button>
+                <button
+                    onClick={() => setActiveNav("materials")}
+                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "materials" ? "text-indigo-600" : "text-slate-500"}`}
+                >
+                    <FileText className="w-5 h-5 mb-0.5" />
+                    <span>Sheets</span>
+                </button>
+                <button
+                    onClick={() => setActiveNav("ai")}
+                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "ai" ? "text-indigo-600" : "text-slate-500"}`}
+                >
+                    <Bot className="w-5 h-5 mb-0.5 text-indigo-600" />
+                    <span>AI Tutor</span>
+                </button>
+                <button
+                    onClick={handleLogout}
+                    className="flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold text-rose-500"
+                >
+                    <LogOut className="w-5 h-5 mb-0.5" />
+                    <span>Logout</span>
+                </button>
+            </div>
+
+            {/* FLOATING AI CHAT BUTTON & POPUP WIDGET (RIGHT CORNER) */}
+            <div className="fixed bottom-20 md:bottom-6 right-5 z-50">
+                {!isFloatingChatOpen ? (
+                    <button
+                        onClick={() => setIsFloatingChatOpen(true)}
+                        className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 group relative border-2 border-white/20"
+                        title="Ask AI Tutor"
+                    >
+                        <Bot className="w-7 h-7 text-white animate-bounce" />
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
+                    </button>
+                ) : (
+                    <div className="bg-white border border-slate-200 rounded-3xl w-[90vw] sm:w-[380px] h-[500px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+                        <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
+                            <div className="flex items-center space-x-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-sm shadow">
+                                    ✨
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-extrabold">AZS AI Assistant</h4>
+                                    <p className="text-[10px] text-emerald-400 font-mono">Online • Physics & Chemistry</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsFloatingChatOpen(false)}
+                                className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-[#F4F6FA]/50">
+                            {chatMessages.map((m, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                                >
+                                    <div
+                                        className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
+                                                ? "bg-slate-900 text-white rounded-br-none font-medium"
+                                                : "bg-white text-slate-800 rounded-bl-none font-medium border border-slate-200/80 shadow-sm"
+                                            }`}
+                                    >
+                                        {m.content}
+                                    </div>
+                                </div>
+                            ))}
+                            {chatLoading && (
+                                <div className="flex justify-start">
+                                    <div className="bg-white text-slate-500 px-3 py-2 rounded-2xl text-[11px] border border-slate-200 animate-pulse shadow-sm">
+                                        AI is thinking...
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={chatEndRef} />
+                        </div>
+
+                        <form onSubmit={handleSendChat} className="p-3 bg-white border-t border-slate-200 flex items-center gap-2">
+                            <input
+                                type="text"
+                                placeholder="Ask your doubt..."
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                className="flex-1 bg-[#F4F6FA] border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                            />
+                            <button
+                                type="submit"
+                                disabled={chatLoading || !chatInput.trim()}
+                                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white p-2.5 rounded-xl transition shadow-md shadow-indigo-600/20"
+                            >
+                                <Send className="w-3.5 h-3.5" />
+                            </button>
+                        </form>
+                    </div>
+                )}
             </div>
 
             {/* 3. STUDY PLANNER MODAL */}
@@ -1746,7 +1870,7 @@ export default function StudentDashboardPage() {
     return (
         <Suspense
             fallback={
-                <div className="min-h-screen bg-[#F4F6FA] flex flex-col items-center justify-center space-y-3">
+                <div className="min-h-0 min-h-screen bg-[#F4F6FA] flex flex-col items-center justify-center space-y-3">
                     <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                     <p className="text-xs font-bold text-slate-600 tracking-wide">Loading AZS Workspace...</p>
                 </div>

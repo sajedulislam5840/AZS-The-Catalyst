@@ -1261,7 +1261,7 @@ export default function AdminPage() {
                                             <span>Uploading Document...</span>
                                         </>
                                     ) : (
-                                        <span>{uploadingMode === "file" ? "Upload PDF File" : "Save Drive Link"}</span>
+                                        <span>{uploadMode === "file" ? "Upload PDF File" : "Save Drive Link"}</span>
                                     )}
                                 </button>
                             </form>

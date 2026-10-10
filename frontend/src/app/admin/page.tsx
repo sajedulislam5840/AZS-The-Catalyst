@@ -48,6 +48,7 @@ interface UserProfile {
     batch_no?: string;
     grade_class?: string;
     role?: string;
+    school?: string;
 }
 
 interface VideoLecture {
@@ -58,6 +59,7 @@ interface VideoLecture {
     chapter: string;
     subject: string;
     youtube_url: string;
+    video_url?: string;
 }
 
 interface Material {
@@ -69,16 +71,27 @@ interface Material {
     file_url?: string;
 }
 
+interface Notice {
+    id: string;
+    content: string;
+    created_at: string;
+}
+
 function AdminContent() {
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
-    const [activeTab, setActiveTab] = useState<"overview" | "lectures" | "materials" | "students">("overview");
+    const [activeTab, setActiveTab] = useState<"overview" | "lectures" | "materials" | "students" | "notices">("overview");
 
     const [adminName, setAdminName] = useState("Admin");
     const [videos, setVideos] = useState<VideoLecture[]>([]);
     const [materials, setMaterials] = useState<Material[]>([]);
     const [students, setStudents] = useState<UserProfile[]>([]);
+    const [notices, setNotices] = useState<Notice[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Search & Filtering States inside Admin
+    const [searchQuery, setSearchQuery] = useState("");
+    const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>("ALL");
 
     // Form States for Video Upload
     const [videoSubject, setVideoSubject] = useState<"PHYSICS" | "CHEMISTRY">("PHYSICS");
@@ -94,6 +107,10 @@ function AdminContent() {
     const [materialTitle, setMaterialTitle] = useState("");
     const [materialPdfUrl, setMaterialPdfUrl] = useState("");
     const [uploadingMaterial, setUploadingMaterial] = useState(false);
+
+    // Form States for Notice
+    const [noticeContent, setNoticeContent] = useState("");
+    const [publishingNotice, setPublishingNotice] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -119,10 +136,11 @@ function AdminContent() {
     const fetchAllAdminData = async () => {
         try {
             setLoading(true);
-            const [vRes, mRes, sRes] = await Promise.allSettled([
+            const [vRes, mRes, sRes, nRes] = await Promise.allSettled([
                 api.get("/api/v1/academic/videos"),
                 api.get("/api/v1/academic/materials"),
                 api.get("/api/v1/auth/users"),
+                api.get("/api/v1/academic/notice"),
             ]);
 
             if (vRes.status === "fulfilled" && Array.isArray(vRes.value.data)) {
@@ -133,6 +151,9 @@ function AdminContent() {
             }
             if (sRes.status === "fulfilled" && Array.isArray(sRes.value.data)) {
                 setStudents(sRes.value.data);
+            }
+            if (nRes.status === "fulfilled" && nRes.value.data) {
+                setNotices([nRes.value.data]);
             }
         } catch (err) {
             console.error("Admin fetch error:", err);
@@ -209,6 +230,25 @@ function AdminContent() {
             setMaterials(materials.filter((m) => m.id !== id));
         } catch {
             alert("Failed to delete material.");
+        }
+    };
+
+    const handlePublishNotice = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!noticeContent.trim()) return;
+
+        try {
+            setPublishingNotice(true);
+            await api.post("/api/v1/academic/notice", {
+                content: noticeContent.trim(),
+            });
+            setNoticeContent("");
+            fetchAllAdminData();
+            alert("Live notice successfully updated!");
+        } catch (err: any) {
+            alert(err.response?.data?.detail || "Failed to publish notice.");
+        } finally {
+            setPublishingNotice(false);
         }
     };
 

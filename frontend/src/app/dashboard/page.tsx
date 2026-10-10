@@ -40,6 +40,8 @@ import {
     FolderOpen,
     ArrowLeft,
     Menu,
+    ShieldAlert,
+    Lock,
 } from "lucide-react";
 import axios from "axios";
 
@@ -77,6 +79,8 @@ interface UserProfile {
     grade_class?: string;
     batch_no?: string;
     role?: string;
+    days_left?: number;
+    is_approved?: boolean;
 }
 
 interface VideoLecture {
@@ -181,6 +185,8 @@ function DashboardContent() {
         grade_class: "",
         batch_no: "Registered Student",
         role: "STUDENT",
+        days_left: 30, // Default safe days left
+        is_approved: true,
     });
 
     const [videos, setVideos] = useState<VideoLecture[]>([]);
@@ -287,6 +293,8 @@ function DashboardContent() {
             grade_class: storedClass,
             school: storedSchool,
             role: role,
+            days_left: 30,
+            is_approved: true,
         });
 
         const storedWatched = localStorage.getItem("edutrack_watched_videos");
@@ -351,6 +359,8 @@ function DashboardContent() {
                     batch_no: res.data.batch_no || prev.batch_no,
                     grade_class: res.data.grade_class || prev.grade_class,
                     school: res.data.school || prev.school,
+                    days_left: res.data.days_left !== undefined ? res.data.days_left : prev.days_left,
+                    is_approved: res.data.is_approved !== undefined ? res.data.is_approved : prev.is_approved,
                 }));
                 if (res.data.full_name) localStorage.setItem("user_name", res.data.full_name);
                 if (res.data.batch_no) localStorage.setItem("batch_no", res.data.batch_no);
@@ -657,6 +667,11 @@ function DashboardContent() {
     const isSearchActive = normalizedQuery.length > 0;
     const hasSearchResults = filteredVideos.length > 0 || filteredMaterials.length > 0;
 
+    // --- SUBSCRIPTION STATUS CHECKS ---
+    const daysLeft = userProfile.days_left !== undefined ? userProfile.days_left : 30;
+    const isLocked = daysLeft <= 0 || userProfile.is_approved === false;
+    const isExpiringSoon = daysLeft > 0 && daysLeft <= 3;
+
     if (!mounted) return null;
 
     return (
@@ -695,7 +710,46 @@ function DashboardContent() {
                 </div>
             )}
 
-            <div className="flex-1 flex min-w-0">
+            <div className="flex-1 flex min-w-0 relative">
+
+                {/* SUBSCRIPTION EXPIRED / LOCKED FULLSCREEN OVERLAY */}
+                {isLocked && (
+                    <div className="absolute inset-0 bg-[#090D16]/95 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-6 text-center">
+                        <div className="max-w-md w-full bg-[#0B101D] border border-rose-500/40 rounded-3xl p-8 shadow-[0_0_50px_rgba(244,63,94,0.2)] space-y-6">
+                            <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
+                                <Lock className="w-8 h-8 animate-pulse" />
+                            </div>
+                            <div className="space-y-2">
+                                <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-3 py-1 bg-rose-500/10 text-rose-400 rounded-full border border-rose-500/30">
+                                    Access Restricted
+                                </span>
+                                <h2 className="text-xl font-black text-white">Subscription Expired</h2>
+                                <p className="text-xs text-slate-400 leading-relaxed">
+                                    Your 30-day coaching pass has expired or is awaiting fee verification. Please contact AZS Razon Sir or complete your payment to restore full access to video lectures and materials.
+                                </p>
+                            </div>
+
+                            <div className="pt-2 space-y-3">
+                                <a
+                                    href={TEACHER_SOCIAL.whatsapp}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30"
+                                >
+                                    <MessageCircle className="w-4 h-4" />
+                                    <span>Contact Sir on WhatsApp for Renewal</span>
+                                </a>
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition border border-slate-800"
+                                >
+                                    Sign Out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* 1. MOBILE SIDEBAR OVERLAY BACKDROP */}
                 {isMobileSidebarOpen && (
                     <div
@@ -704,7 +758,7 @@ function DashboardContent() {
                     />
                 )}
 
-                {/* 1. LEFT SIDEBAR (Cyber-Deck Theme) - Responsive: Hidden on mobile by default, slides out as drawer */}
+                {/* 1. LEFT SIDEBAR (Cyber-Deck Theme) */}
                 <aside className={`fixed md:static inset-y-0 left-0 z-50 w-72 bg-[#0B101D] border-r border-slate-800/80 p-6 flex flex-col justify-between shrink-0 shadow-2xl transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
                     }`}>
                     <div className="space-y-8">
@@ -938,6 +992,26 @@ function DashboardContent() {
                             </div>
                         </div>
                     </header>
+
+                    {/* SUBSCRIPTION EXPIRING SOON WARNING BANNER (3 Days Left Reminder) */}
+                    {isExpiringSoon && (
+                        <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 text-white px-6 py-3 flex items-center justify-between shadow-lg animate-pulse">
+                            <div className="flex items-center space-x-3">
+                                <ShieldAlert className="w-5 h-5 text-amber-200 shrink-0" />
+                                <p className="text-xs font-extrabold tracking-wide">
+                                    ⚠️ SUBSCRIPTION EXPIRING SOON: Your coaching pass expires in <span className="underline font-mono text-amber-200">{daysLeft} {daysLeft === 1 ? 'Day' : 'Days'}</span>! Please renew to avoid account lockout.
+                                </p>
+                            </div>
+                            <a
+                                href={TEACHER_SOCIAL.whatsapp}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 bg-black/40 hover:bg-black/60 text-amber-200 rounded-lg text-xs font-bold transition shrink-0 border border-white/20"
+                            >
+                                Renew Now
+                            </a>
+                        </div>
+                    )}
 
                     {notice && (
                         <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-6 py-2.5 flex items-center space-x-3 shadow-md">

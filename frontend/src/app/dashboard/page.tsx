@@ -948,7 +948,7 @@ function DashboardContent() {
                         </div>
                     )}
 
-                    <main className="p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8 flex-1 pb-28 md:pb-12">
+                    <main className="p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8 flex-1 pb-16 md:pb-12">
                         {/* SEARCH RESULTS VIEW */}
                         {isSearchActive && (
                             <div className="space-y-6">
@@ -1673,7 +1673,7 @@ function DashboardContent() {
                                                                             setPreviewPdfUrl(drivePreviewLink);
                                                                             setPreviewPdfTitle(mat.title);
                                                                         }}
-                                                                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-600/30"
+                                                                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-sm shadow-indigo-600/30"
                                                                     >
                                                                         <Eye className="w-3.5 h-3.5" />
                                                                         <span>Preview</span>
@@ -1752,7 +1752,7 @@ function DashboardContent() {
                                                                 setPreviewPdfUrl(drivePreviewLink);
                                                                 setPreviewPdfTitle(mat.title);
                                                             }}
-                                                            className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-600/30"
+                                                            className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-sm shadow-indigo-600/30"
                                                         >
                                                             <Eye className="w-3.5 h-3.5" />
                                                             <span>Preview</span>
@@ -1862,47 +1862,8 @@ function DashboardContent() {
                 </div>
             </div>
 
-            {/* MOBILE BOTTOM NAVIGATION BAR */}
-            <div className="fixed bottom-0 left-0 right-0 bg-[#0B101D] border-t border-slate-800 px-4 py-2.5 flex md:hidden items-center justify-around z-40 shadow-2xl">
-                <button
-                    onClick={() => { setActiveNav("dashboard"); setSelectedChapter(null); setSearchQuery(""); }}
-                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "dashboard" ? "text-indigo-400" : "text-slate-400"}`}
-                >
-                    <LayoutDashboard className="w-5 h-5 mb-0.5" />
-                    <span>Home</span>
-                </button>
-                <button
-                    onClick={() => { setActiveNav("lectures"); setSelectedChapter(null); }}
-                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "lectures" ? "text-indigo-400" : "text-slate-400"}`}
-                >
-                    <PlayCircle className="w-5 h-5 mb-0.5" />
-                    <span>Lectures</span>
-                </button>
-                <button
-                    onClick={() => { setActiveNav("materials"); setSelectedChapter(null); }}
-                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "materials" ? "text-indigo-400" : "text-slate-400"}`}
-                >
-                    <FileText className="w-5 h-5 mb-0.5" />
-                    <span>Sheets</span>
-                </button>
-                <button
-                    onClick={() => { setActiveNav("ai"); setSelectedChapter(null); }}
-                    className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "ai" ? "text-indigo-400" : "text-slate-400"}`}
-                >
-                    <Bot className="w-5 h-5 mb-0.5 text-indigo-400" />
-                    <span>AI Tutor</span>
-                </button>
-                <button
-                    onClick={handleLogout}
-                    className="flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold text-rose-400"
-                >
-                    <LogOut className="w-5 h-5 mb-0.5" />
-                    <span>Logout</span>
-                </button>
-            </div>
-
             {/* FLOATING AI CHAT BUTTON & POPUP WIDGET */}
-            <div className="fixed bottom-20 md:bottom-6 right-5 z-50">
+            <div className="fixed bottom-6 right-5 z-50">
                 {!isFloatingChatOpen ? (
                     <button
                         onClick={() => setIsFloatingChatOpen(true)}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, FormEvent, Suspense } from "react";
+import React, { useState, useEffect, useMemo, FormEvent, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import {
     LayoutDashboard,
@@ -20,6 +20,11 @@ import {
     Bell,
     Sparkles,
     BookOpen,
+    Calendar,
+    Layers,
+    Settings,
+    ChevronRight,
+    Filter,
 } from "lucide-react";
 import axios from "axios";
 
@@ -89,9 +94,10 @@ function AdminContent() {
     const [notices, setNotices] = useState<Notice[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Search & Filtering States inside Admin
+    // Search & Filtering States
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>("ALL");
+    const [selectedBatchFilter, setSelectedBatchFilter] = useState<string>("ALL");
 
     // Form States for Video Upload
     const [videoSubject, setVideoSubject] = useState<"PHYSICS" | "CHEMISTRY">("PHYSICS");
@@ -257,6 +263,44 @@ function AdminContent() {
         router.replace("/login");
     };
 
+    const filteredVideos = useMemo(() => {
+        return videos.filter((v) => {
+            const matchSubj = selectedSubjectFilter === "ALL" || v.subject === selectedSubjectFilter;
+            const query = searchQuery.toLowerCase();
+            const matchSearch =
+                !query ||
+                (v.topic && v.topic.toLowerCase().includes(query)) ||
+                (v.title && v.title.toLowerCase().includes(query)) ||
+                (v.chapter && v.chapter.toLowerCase().includes(query));
+            return matchSubj && matchSearch;
+        });
+    }, [videos, selectedSubjectFilter, searchQuery]);
+
+    const filteredMaterials = useMemo(() => {
+        return materials.filter((m) => {
+            const matchSubj = selectedSubjectFilter === "ALL" || m.subject === selectedSubjectFilter;
+            const query = searchQuery.toLowerCase();
+            const matchSearch =
+                !query ||
+                (m.title && m.title.toLowerCase().includes(query)) ||
+                (m.chapter && m.chapter.toLowerCase().includes(query));
+            return matchSubj && matchSearch;
+        });
+    }, [materials, selectedSubjectFilter, searchQuery]);
+
+    const filteredStudents = useMemo(() => {
+        return students.filter((st) => {
+            const matchBatch = selectedBatchFilter === "ALL" || st.batch_no === selectedBatchFilter;
+            const query = searchQuery.toLowerCase();
+            const matchSearch =
+                !query ||
+                (st.full_name && st.full_name.toLowerCase().includes(query)) ||
+                (st.email && st.email.toLowerCase().includes(query)) ||
+                (st.school && st.school.toLowerCase().includes(query));
+            return matchBatch && matchSearch;
+        });
+    }, [students, selectedBatchFilter, searchQuery]);
+
     if (!mounted) return null;
 
     return (
@@ -280,7 +324,7 @@ function AdminContent() {
 
                         <nav className="space-y-1.5">
                             <button
-                                onClick={() => setActiveTab("overview")}
+                                onClick={() => { setActiveTab("overview"); setSearchQuery(""); }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "overview"
                                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                                         : "text-slate-400 hover:text-white hover:bg-slate-900/80"
@@ -291,7 +335,7 @@ function AdminContent() {
                             </button>
 
                             <button
-                                onClick={() => setActiveTab("lectures")}
+                                onClick={() => { setActiveTab("lectures"); setSearchQuery(""); }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "lectures"
                                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                                         : "text-slate-400 hover:text-white hover:bg-slate-900/80"
@@ -305,7 +349,7 @@ function AdminContent() {
                             </button>
 
                             <button
-                                onClick={() => setActiveTab("materials")}
+                                onClick={() => { setActiveTab("materials"); setSearchQuery(""); }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "materials"
                                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                                         : "text-slate-400 hover:text-white hover:bg-slate-900/80"
@@ -319,7 +363,7 @@ function AdminContent() {
                             </button>
 
                             <button
-                                onClick={() => setActiveTab("students")}
+                                onClick={() => { setActiveTab("students"); setSearchQuery(""); }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "students"
                                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                                         : "text-slate-400 hover:text-white hover:bg-slate-900/80"
@@ -330,6 +374,17 @@ function AdminContent() {
                                 <span className="ml-auto text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md font-mono">
                                     {students.length}
                                 </span>
+                            </button>
+
+                            <button
+                                onClick={() => { setActiveTab("notices"); setSearchQuery(""); }}
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === "notices"
+                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                                        : "text-slate-400 hover:text-white hover:bg-slate-900/80"
+                                    }`}
+                            >
+                                <Bell className="w-4 h-4" />
+                                <span>Live Notices</span>
                             </button>
                         </nav>
                     </div>
@@ -358,13 +413,28 @@ function AdminContent() {
                 {/* ADMIN MAIN CONTENT */}
                 <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
                     <header className="h-20 bg-[#090D16]/80 backdrop-blur-md border-b border-slate-800/80 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-30 shadow-sm">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-1 max-w-md">
                             <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center font-black text-white text-xs shadow md:hidden">
                                 AZS
                             </div>
-                            <h1 className="text-sm sm:text-base font-extrabold text-white tracking-tight">
-                                AZS: The Catalyst — Administrator Console
-                            </h1>
+                            <div className="relative flex-1">
+                                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                                <input
+                                    type="text"
+                                    placeholder="Search records..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full bg-[#131826] border border-slate-800 focus:border-indigo-500 rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery("")}
+                                        className="absolute right-3 top-3 text-slate-400 hover:text-white"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         <button
@@ -383,7 +453,7 @@ function AdminContent() {
                             <div className="space-y-8">
                                 <div>
                                     <h2 className="text-xl font-black text-white tracking-tight">Admin Overview</h2>
-                                    <p className="text-xs text-slate-400">Platform statistics and content distribution.</p>
+                                    <p className="text-xs text-slate-400">Platform statistics, content distribution, and activity telemetry.</p>
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -423,9 +493,26 @@ function AdminContent() {
                         {/* TAB: MANAGE LECTURES */}
                         {activeTab === "lectures" && (
                             <div className="space-y-8">
-                                <div>
-                                    <h2 className="text-xl font-black text-white tracking-tight">Upload & Manage Lectures</h2>
-                                    <p className="text-xs text-slate-400">Add chapter-wise video lectures for Physics and Chemistry.</p>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
+                                        <h2 className="text-xl font-black text-white tracking-tight">Upload & Manage Lectures</h2>
+                                        <p className="text-xs text-slate-400">Add chapter-wise video lectures for Physics and Chemistry.</p>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 bg-[#0B101D] p-1 rounded-xl border border-slate-800 shadow-sm">
+                                        {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
+                                            <button
+                                                key={subj}
+                                                onClick={() => setSelectedSubjectFilter(subj)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${selectedSubjectFilter === subj
+                                                        ? "bg-indigo-600 text-white shadow-md"
+                                                        : "text-slate-400 hover:text-white"
+                                                    }`}
+                                            >
+                                                {subj === "ALL" ? "All Subjects" : subj}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 <form onSubmit={handleUploadVideo} className="bg-[#0B101D] rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-5">
@@ -505,33 +592,37 @@ function AdminContent() {
                                 </form>
 
                                 <div className="space-y-4">
-                                    <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Uploaded Lectures ({videos.length})</h3>
+                                    <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Uploaded Lectures ({filteredVideos.length})</h3>
                                     <div className="bg-[#0B101D] rounded-3xl border border-slate-800 overflow-hidden shadow-xl">
                                         <div className="divide-y divide-slate-800">
-                                            {videos.map((vid) => (
-                                                <div key={vid.id} className="p-4 sm:p-5 flex items-center justify-between gap-4">
-                                                    <div className="space-y-1 overflow-hidden">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">
-                                                                Lecture #{vid.lecture_no}
-                                                            </span>
-                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${vid.subject === "PHYSICS" ? "bg-indigo-500/10 text-indigo-300" : "bg-amber-500/10 text-amber-300"}`}>
-                                                                {vid.subject}
-                                                            </span>
-                                                            <span className="text-[10px] text-slate-400 truncate">{vid.chapter}</span>
+                                            {filteredVideos.length === 0 ? (
+                                                <div className="p-8 text-center text-xs text-slate-400">No lectures found.</div>
+                                            ) : (
+                                                filteredVideos.map((vid) => (
+                                                    <div key={vid.id} className="p-4 sm:p-5 flex items-center justify-between gap-4">
+                                                        <div className="space-y-1 overflow-hidden">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">
+                                                                    Lecture #{vid.lecture_no}
+                                                                </span>
+                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${vid.subject === "PHYSICS" ? "bg-indigo-500/10 text-indigo-300" : "bg-amber-500/10 text-amber-300"}`}>
+                                                                    {vid.subject}
+                                                                </span>
+                                                                <span className="text-[10px] text-slate-400 truncate">{vid.chapter}</span>
+                                                            </div>
+                                                            <h4 className="text-xs sm:text-sm font-extrabold text-white truncate">{vid.topic || vid.title}</h4>
                                                         </div>
-                                                        <h4 className="text-xs sm:text-sm font-extrabold text-white truncate">{vid.topic || vid.title}</h4>
-                                                    </div>
 
-                                                    <button
-                                                        onClick={() => handleDeleteVideo(vid.id)}
-                                                        className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition border border-rose-500/20 shrink-0"
-                                                        title="Delete Lecture"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            ))}
+                                                        <button
+                                                            onClick={() => handleDeleteVideo(vid.id)}
+                                                            className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition border border-rose-500/20 shrink-0"
+                                                            title="Delete Lecture"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ))
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -541,9 +632,26 @@ function AdminContent() {
                         {/* TAB: STUDY MATERIALS (PDF) */}
                         {activeTab === "materials" && (
                             <div className="space-y-8">
-                                <div>
-                                    <h2 className="text-xl font-black text-white tracking-tight">Upload Study Sheets (PDF)</h2>
-                                    <p className="text-xs text-slate-400">Add downloadable PDF handouts and notes for chapters.</p>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
+                                        <h2 className="text-xl font-black text-white tracking-tight">Upload Study Sheets (PDF)</h2>
+                                        <p className="text-xs text-slate-400">Add downloadable PDF handouts and notes for chapters.</p>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 bg-[#0B101D] p-1 rounded-xl border border-slate-800 shadow-sm">
+                                        {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
+                                            <button
+                                                key={subj}
+                                                onClick={() => setSelectedSubjectFilter(subj)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${selectedSubjectFilter === subj
+                                                        ? "bg-indigo-600 text-white shadow-md"
+                                                        : "text-slate-400 hover:text-white"
+                                                    }`}
+                                            >
+                                                {subj === "ALL" ? "All Subjects" : subj}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 <form onSubmit={handleUploadMaterial} className="bg-[#0B101D] rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-5">
@@ -612,30 +720,34 @@ function AdminContent() {
                                 </form>
 
                                 <div className="space-y-4">
-                                    <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Uploaded Sheets ({materials.length})</h3>
+                                    <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Uploaded Sheets ({filteredMaterials.length})</h3>
                                     <div className="bg-[#0B101D] rounded-3xl border border-slate-800 overflow-hidden shadow-xl">
                                         <div className="divide-y divide-slate-800">
-                                            {materials.map((mat) => (
-                                                <div key={mat.id} className="p-4 sm:p-5 flex items-center justify-between gap-4">
-                                                    <div className="space-y-1 overflow-hidden">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${mat.subject === "PHYSICS" ? "bg-indigo-500/10 text-indigo-300" : "bg-amber-500/10 text-amber-300"}`}>
-                                                                {mat.subject}
-                                                            </span>
-                                                            <span className="text-[10px] text-slate-400 truncate">{mat.chapter}</span>
+                                            {filteredMaterials.length === 0 ? (
+                                                <div className="p-8 text-center text-xs text-slate-400">No study materials found.</div>
+                                            ) : (
+                                                filteredMaterials.map((mat) => (
+                                                    <div key={mat.id} className="p-4 sm:p-5 flex items-center justify-between gap-4">
+                                                        <div className="space-y-1 overflow-hidden">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${mat.subject === "PHYSICS" ? "bg-indigo-500/10 text-indigo-300" : "bg-amber-500/10 text-amber-300"}`}>
+                                                                    {mat.subject}
+                                                                </span>
+                                                                <span className="text-[10px] text-slate-400 truncate">{mat.chapter}</span>
+                                                            </div>
+                                                            <h4 className="text-xs sm:text-sm font-extrabold text-white truncate">{mat.title}</h4>
                                                         </div>
-                                                        <h4 className="text-xs sm:text-sm font-extrabold text-white truncate">{mat.title}</h4>
-                                                    </div>
 
-                                                    <button
-                                                        onClick={() => handleDeleteMaterial(mat.id)}
-                                                        className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition border border-rose-500/20 shrink-0"
-                                                        title="Delete Material"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            ))}
+                                                        <button
+                                                            onClick={() => handleDeleteMaterial(mat.id)}
+                                                            className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition border border-rose-500/20 shrink-0"
+                                                            title="Delete Material"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ))
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -651,15 +763,15 @@ function AdminContent() {
                                 </div>
 
                                 <div className="bg-[#0B101D] rounded-3xl border border-slate-800 overflow-hidden shadow-xl">
-                                    <div className="p-5 border-b border-slate-800">
-                                        <h3 className="text-sm font-extrabold text-white">Registered Accounts ({students.length})</h3>
+                                    <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+                                        <h3 className="text-sm font-extrabold text-white">Registered Accounts ({filteredStudents.length})</h3>
                                     </div>
 
                                     <div className="divide-y divide-slate-800">
-                                        {students.length === 0 ? (
+                                        {filteredStudents.length === 0 ? (
                                             <div className="p-8 text-center text-xs text-slate-400">No student records found.</div>
                                         ) : (
-                                            students.map((st) => (
+                                            filteredStudents.map((st) => (
                                                 <div key={st.id || st.email} className="p-4 sm:p-5 flex items-center justify-between gap-4">
                                                     <div className="flex items-center space-x-3.5">
                                                         <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center font-bold text-indigo-400 text-xs shrink-0">
@@ -679,6 +791,57 @@ function AdminContent() {
                                                             {st.role || "STUDENT"}
                                                         </span>
                                                     </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: LIVE NOTICES */}
+                        {activeTab === "notices" && (
+                            <div className="space-y-8">
+                                <div>
+                                    <h2 className="text-xl font-black text-white tracking-tight">Broadcast Live Notice</h2>
+                                    <p className="text-xs text-slate-400">Publish or update the live notification ticker on student dashboards.</p>
+                                </div>
+
+                                <form onSubmit={handlePublishNotice} className="bg-[#0B101D] rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-5">
+                                    <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Update Announcement Ticker</h3>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-300">Notice Text</label>
+                                        <textarea
+                                            rows={3}
+                                            required
+                                            placeholder="e.g. Physics Live Exam on Sunday at 8:00 PM!"
+                                            value={noticeContent}
+                                            onChange={(e) => setNoticeContent(e.target.value)}
+                                            className="w-full bg-[#131826] border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none font-sans"
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={publishingNotice}
+                                        className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/30 flex items-center gap-2"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        <span>{publishingNotice ? "Broadcasting..." : "Publish Live Notice"}</span>
+                                    </button>
+                                </form>
+
+                                <div className="space-y-4">
+                                    <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Current Broadcast Status</h3>
+                                    <div className="bg-[#0B101D] rounded-3xl p-6 border border-slate-800 shadow-xl space-y-3">
+                                        {notices.length === 0 ? (
+                                            <p className="text-xs text-slate-400">No active notice broadcasted right now.</p>
+                                        ) : (
+                                            notices.map((n, idx) => (
+                                                <div key={idx} className="p-4 rounded-2xl bg-[#131826] border border-slate-800 flex items-center justify-between">
+                                                    <p className="text-xs font-bold text-white">{n.content}</p>
+                                                    <span className="text-[10px] text-emerald-400 font-mono">Active</span>
                                                 </div>
                                             ))
                                         )}

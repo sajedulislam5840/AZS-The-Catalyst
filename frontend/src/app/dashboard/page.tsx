@@ -39,6 +39,7 @@ import {
     FlaskConical,
     FolderOpen,
     ArrowLeft,
+    Menu,
 } from "lucide-react";
 import axios from "axios";
 
@@ -158,6 +159,9 @@ function DashboardContent() {
     const [activeNav, setActiveNav] = useState<"dashboard" | "lectures" | "materials" | "ai">("dashboard");
     const [mounted, setMounted] = useState(false);
     const [currentYear, setCurrentYear] = useState(2026);
+
+    // Mobile Sidebar Drawer State
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
     // Subject & Chapter View State
     const [selectedSubjectTab, setSelectedSubjectTab] = useState<"PHYSICS" | "CHEMISTRY">("PHYSICS");
@@ -692,26 +696,43 @@ function DashboardContent() {
             )}
 
             <div className="flex-1 flex min-w-0">
-                {/* 1. LEFT SIDEBAR (Cyber-Deck Theme) - Visible on all screens */}
-                <aside className="w-72 bg-[#0B101D] border-r border-slate-800/80 p-6 flex flex-col justify-between shrink-0 shadow-2xl">
+                {/* 1. MOBILE SIDEBAR OVERLAY BACKDROP */}
+                {isMobileSidebarOpen && (
+                    <div
+                        onClick={() => setIsMobileSidebarOpen(false)}
+                        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 md:hidden"
+                    />
+                )}
+
+                {/* 1. LEFT SIDEBAR (Cyber-Deck Theme) - Responsive: Hidden on mobile by default, slides out as drawer */}
+                <aside className={`fixed md:static inset-y-0 left-0 z-50 w-72 bg-[#0B101D] border-r border-slate-800/80 p-6 flex flex-col justify-between shrink-0 shadow-2xl transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+                    }`}>
                     <div className="space-y-8">
-                        <div className="flex items-center space-x-3 px-1">
-                            <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-900 border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)] flex items-center justify-center shrink-0 p-1.5">
-                                <img
-                                    src="/logo.png"
-                                    alt="AZS Logo"
-                                    className="w-full h-full object-contain"
-                                    onError={(e) => {
-                                        (e.target as HTMLElement).style.display = 'none';
-                                    }}
-                                />
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3 px-1">
+                                <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-900 border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)] flex items-center justify-center shrink-0 p-1.5">
+                                    <img
+                                        src="/logo.png"
+                                        alt="AZS Logo"
+                                        className="w-full h-full object-contain"
+                                        onError={(e) => {
+                                            (e.target as HTMLElement).style.display = 'none';
+                                        }}
+                                    />
+                                </div>
+                                <div>
+                                    <span className="font-extrabold text-sm tracking-tight text-white block leading-tight">AZS</span>
+                                    <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-400 block">
+                                        The Catalyst
+                                    </span>
+                                </div>
                             </div>
-                            <div>
-                                <span className="font-extrabold text-sm tracking-tight text-white block leading-tight">AZS</span>
-                                <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-400 block">
-                                    The Catalyst
-                                </span>
-                            </div>
+                            <button
+                                onClick={() => setIsMobileSidebarOpen(false)}
+                                className="md:hidden text-slate-400 hover:text-white p-1 rounded-xl bg-slate-900 border border-slate-800"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
 
                         <nav className="space-y-1.5">
@@ -720,6 +741,7 @@ function DashboardContent() {
                                     setActiveNav("dashboard");
                                     setSelectedChapter(null);
                                     setSearchQuery("");
+                                    setIsMobileSidebarOpen(false);
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "dashboard"
                                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
@@ -734,6 +756,7 @@ function DashboardContent() {
                                 onClick={() => {
                                     setActiveNav("lectures");
                                     setSelectedChapter(null);
+                                    setIsMobileSidebarOpen(false);
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "lectures"
                                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
@@ -751,6 +774,7 @@ function DashboardContent() {
                                 onClick={() => {
                                     setActiveNav("materials");
                                     setSelectedChapter(null);
+                                    setIsMobileSidebarOpen(false);
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "materials"
                                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
@@ -768,6 +792,7 @@ function DashboardContent() {
                                 onClick={() => {
                                     setActiveNav("ai");
                                     setSelectedChapter(null);
+                                    setIsMobileSidebarOpen(false);
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "ai"
                                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
@@ -866,11 +891,21 @@ function DashboardContent() {
 
                 {/* 2. MAIN WORKSPACE */}
                 <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-                    <header className="h-20 bg-[#090D16]/80 backdrop-blur-md border-b border-slate-800/80 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+                    <header className="h-20 bg-[#090D16]/80 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-10 flex items-center justify-between sticky top-0 z-30 shadow-sm gap-3">
                         <div className="flex items-center gap-3 flex-1 max-w-md">
-                            <div className="w-9 h-9 rounded-xl overflow-hidden bg-slate-900 border border-indigo-500/30 shadow-sm flex items-center justify-center shrink-0 p-1">
+                            {/* Mobile Hamburger Menu Toggle Button */}
+                            <button
+                                onClick={() => setIsMobileSidebarOpen(true)}
+                                className="p-2.5 rounded-xl bg-[#131826] border border-slate-800 text-slate-300 hover:text-white flex md:hidden items-center justify-center shrink-0 shadow-sm"
+                                title="Open Menu"
+                            >
+                                <Menu className="w-5 h-5" />
+                            </button>
+
+                            <div className="w-9 h-9 rounded-xl overflow-hidden bg-slate-900 border border-indigo-500/30 shadow-sm hidden sm:flex md:hidden items-center justify-center shrink-0 p-1">
                                 <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
                             </div>
+
                             <div className="relative flex-1">
                                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                                 <input
@@ -891,10 +926,10 @@ function DashboardContent() {
                             </div>
                         </div>
 
-                        <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-3 sm:space-x-4 shrink-0">
                             <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-400 text-xs font-bold shadow-sm">
                                 <Flame className="w-4 h-4 text-amber-500" />
-                                <span>Streak Active</span>
+                                <span className="hidden sm:inline">Streak Active</span>
                             </div>
 
                             <div className="p-2.5 rounded-xl bg-[#131826] text-slate-300 border border-slate-800 relative hover:bg-slate-800 transition cursor-pointer">
@@ -1800,10 +1835,9 @@ function DashboardContent() {
                         )}
                     </main>
 
-                    {/* DEVELOPER CREDIT FOOTER (Fully visible on both Mobile & Desktop) */}
+                    {/* DEVELOPER CREDIT FOOTER */}
                     <footer className="w-full py-6 px-6 text-center border-t border-slate-800/80 bg-[#090D16]/95 backdrop-blur-md mt-auto">
                         <div className="max-w-7xl mx-auto flex flex-col items-center justify-center space-y-2">
-                            {/* Academic Guide Profile on Mobile View inside Footer */}
                             <div className="flex md:hidden items-center justify-center space-x-2 text-xs text-slate-300 font-bold mb-1">
                                 <span className="text-indigo-400">Academic Guide:</span>
                                 <a href={TEACHER_SOCIAL.whatsapp} target="_blank" rel="noopener noreferrer" className="text-emerald-400 underline">

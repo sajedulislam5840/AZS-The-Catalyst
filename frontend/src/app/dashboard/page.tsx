@@ -37,7 +37,8 @@ import {
     Video,
     Atom,
     FlaskConical,
-    Zap,
+    FolderOpen,
+    ArrowLeft,
 } from "lucide-react";
 import axios from "axios";
 
@@ -158,6 +159,10 @@ function DashboardContent() {
     const [mounted, setMounted] = useState(false);
     const [currentYear, setCurrentYear] = useState(2026);
 
+    // Subject & Chapter View State
+    const [selectedSubjectTab, setSelectedSubjectTab] = useState<"PHYSICS" | "CHEMISTRY">("PHYSICS");
+    const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
+
     // Subject transition animation states
     const [activeTransition, setActiveTransition] = useState<"PHYSICS" | "CHEMISTRY" | null>(null);
 
@@ -180,7 +185,6 @@ function DashboardContent() {
     const [watchedVideos, setWatchedVideos] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [selectedSubject, setSelectedSubject] = useState<string>("ALL");
     const [searchQuery, setSearchQuery] = useState("");
     const [lastPlayedId, setLastPlayedId] = useState<string>("");
 
@@ -225,7 +229,9 @@ function DashboardContent() {
             const handlePopState = (e: PopStateEvent) => {
                 e.preventDefault();
                 window.history.pushState(null, "", window.location.href);
-                if (activeNav !== "dashboard") {
+                if (selectedChapter) {
+                    setSelectedChapter(null);
+                } else if (activeNav !== "dashboard") {
                     setActiveNav("dashboard");
                     setSearchQuery("");
                 }
@@ -235,7 +241,7 @@ function DashboardContent() {
                 window.removeEventListener("popstate", handlePopState);
             };
         }
-    }, [activeNav]);
+    }, [activeNav, selectedChapter]);
 
     useEffect(() => {
         const now = new Date();
@@ -393,12 +399,50 @@ function DashboardContent() {
 
     const handleSubjectTransition = (subject: "PHYSICS" | "CHEMISTRY") => {
         setActiveTransition(subject);
-        setSelectedSubject(subject);
+        setSelectedSubjectTab(subject);
+        setSelectedChapter(null);
         setActiveNav("lectures");
         setTimeout(() => {
             setActiveTransition(null);
         }, 600);
     };
+
+    // --- CHAPTER-WISE GROUPING LOGIC FOR BACKEND DATA ---
+    const chaptersBySubject = useMemo(() => {
+        const physicsMap: Record<string, VideoLecture[]> = {};
+        const chemistryMap: Record<string, VideoLecture[]> = {};
+
+        videos.forEach((vid) => {
+            const subj = (vid.subject || "PHYSICS").toUpperCase();
+            const chName = vid.chapter ? vid.chapter.trim() : "General Chapter";
+            if (subj === "CHEMISTRY") {
+                if (!chemistryMap[chName]) chemistryMap[chName] = [];
+                chemistryMap[chName].push(vid);
+            } else {
+                if (!physicsMap[chName]) physicsMap[chName] = [];
+                physicsMap[chName].push(vid);
+            }
+        });
+
+        return {
+            PHYSICS: physicsMap,
+            CHEMISTRY: chemistryMap,
+        };
+    }, [videos]);
+
+    const currentSubjectChapters = useMemo(() => {
+        return chaptersBySubject[selectedSubjectTab] || {};
+    }, [chaptersBySubject, selectedSubjectTab]);
+
+    const materialsByChapter = useMemo(() => {
+        const map: Record<string, Material[]> = {};
+        materials.forEach((mat) => {
+            const chName = mat.chapter ? mat.chapter.trim() : "General Chapter";
+            if (!map[chName]) map[chName] = [];
+            map[chName].push(mat);
+        });
+        return map;
+    }, [materials]);
 
     const toggleWatchStatus = (id: string) => {
         const updated = watchedVideos.includes(id)
@@ -416,6 +460,11 @@ function DashboardContent() {
     const handleResumeLecture = (targetId?: string) => {
         const idToOpen = targetId || lastPlayedId || (videos.length > 0 ? videos[0].id : "");
         if (!idToOpen) return;
+        const targetVideo = videos.find(v => v.id === idToOpen);
+        if (targetVideo) {
+            setSelectedSubjectTab(targetVideo.subject === "CHEMISTRY" ? "CHEMISTRY" : "PHYSICS");
+            setSelectedChapter(targetVideo.chapter || null);
+        }
         setActiveNav("lectures");
         recordLecturePlayback(idToOpen);
         setTimeout(() => {
@@ -580,30 +629,26 @@ function DashboardContent() {
 
     const filteredVideos = useMemo(() => {
         return videos.filter((v) => {
-            const s = (v.subject || "").toUpperCase();
-            const matchSubj = selectedSubject === "ALL" || s === selectedSubject;
             const topicStr = (v.topic || v.title || "").toLowerCase();
             const matchSearch =
                 !normalizedQuery ||
                 topicStr.includes(normalizedQuery) ||
                 (v.chapter && v.chapter.toLowerCase().includes(normalizedQuery)) ||
-                s.toLowerCase().includes(normalizedQuery);
-            return matchSubj && matchSearch;
+                (v.subject && v.subject.toLowerCase().includes(normalizedQuery));
+            return matchSearch;
         });
-    }, [videos, selectedSubject, normalizedQuery]);
+    }, [videos, normalizedQuery]);
 
     const filteredMaterials = useMemo(() => {
         return materials.filter((m) => {
-            const s = (m.subject || "").toUpperCase();
-            const matchSubj = selectedSubject === "ALL" || s === selectedSubject;
             const matchSearch =
                 !normalizedQuery ||
                 (m.title && m.title.toLowerCase().includes(normalizedQuery)) ||
                 (m.chapter && m.chapter.toLowerCase().includes(normalizedQuery)) ||
-                s.toLowerCase().includes(normalizedQuery);
-            return matchSubj && matchSearch;
+                (m.subject && m.subject.toLowerCase().includes(normalizedQuery));
+            return matchSearch;
         });
-    }, [materials, selectedSubject, normalizedQuery]);
+    }, [materials, normalizedQuery]);
 
     const isSearchActive = normalizedQuery.length > 0;
     const hasSearchResults = filteredVideos.length > 0 || filteredMaterials.length > 0;
@@ -673,6 +718,7 @@ function DashboardContent() {
                             <button
                                 onClick={() => {
                                     setActiveNav("dashboard");
+                                    setSelectedChapter(null);
                                     setSearchQuery("");
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "dashboard"
@@ -687,7 +733,7 @@ function DashboardContent() {
                             <button
                                 onClick={() => {
                                     setActiveNav("lectures");
-                                    setSelectedSubject("ALL");
+                                    setSelectedChapter(null);
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "lectures"
                                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
@@ -704,7 +750,7 @@ function DashboardContent() {
                             <button
                                 onClick={() => {
                                     setActiveNav("materials");
-                                    setSelectedSubject("ALL");
+                                    setSelectedChapter(null);
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "materials"
                                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
@@ -719,7 +765,10 @@ function DashboardContent() {
                             </button>
 
                             <button
-                                onClick={() => setActiveNav("ai")}
+                                onClick={() => {
+                                    setActiveNav("ai");
+                                    setSelectedChapter(null);
+                                }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "ai"
                                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                                         : "text-slate-400 hover:text-white hover:bg-slate-900/80"
@@ -1029,7 +1078,7 @@ function DashboardContent() {
                                                                             setPreviewPdfUrl(drivePreviewLink);
                                                                             setPreviewPdfTitle(mat.title);
                                                                         }}
-                                                                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-600/30"
+                                                                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-sm shadow-indigo-600/30"
                                                                     >
                                                                         <Eye className="w-3.5 h-3.5" />
                                                                         <span>Preview</span>
@@ -1059,7 +1108,6 @@ function DashboardContent() {
                         {/* VIEW: DASHBOARD OVERVIEW (EXPLORATION DECK) */}
                         {!isSearchActive && activeNav === "dashboard" && (
                             <>
-                                {/* CYBER-DECK HERO & SUBJECT EXPLORATION CARDS */}
                                 <div className="space-y-6">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                         <div>
@@ -1073,9 +1121,8 @@ function DashboardContent() {
                                         </div>
                                     </div>
 
-                                    {/* IMMERSIVE SUBJECT EXPLORATION LAUNCHPAD (CLEANED UP) */}
+                                    {/* IMMERSIVE SUBJECT EXPLORATION LAUNCHPAD */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {/* PHYSICS ENGINE CARD */}
                                         <div
                                             onClick={() => handleSubjectTransition("PHYSICS")}
                                             className="group relative bg-gradient-to-br from-[#101626] via-[#0B101D] to-[#131b2e] rounded-3xl p-8 border border-indigo-500/30 hover:border-indigo-400 shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between h-52"
@@ -1098,12 +1145,11 @@ function DashboardContent() {
                                                     <ExternalLink className="w-3.5 h-3.5" />
                                                 </span>
                                                 <span className="text-xs font-mono text-slate-400">
-                                                    {videos.filter(v => v.subject === "PHYSICS").length} Lectures
+                                                    {Object.keys(chaptersBySubject.PHYSICS).length} Chapters
                                                 </span>
                                             </div>
                                         </div>
 
-                                        {/* CHEMISTRY SYNTHESIS HUB CARD */}
                                         <div
                                             onClick={() => handleSubjectTransition("CHEMISTRY")}
                                             className="group relative bg-gradient-to-br from-[#1A130F] via-[#0B101D] to-[#261A13] rounded-3xl p-8 border border-amber-500/30 hover:border-amber-400 shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between h-52"
@@ -1126,7 +1172,7 @@ function DashboardContent() {
                                                     <ExternalLink className="w-3.5 h-3.5" />
                                                 </span>
                                                 <span className="text-xs font-mono text-slate-400">
-                                                    {videos.filter(v => v.subject === "CHEMISTRY").length} Lectures
+                                                    {Object.keys(chaptersBySubject.CHEMISTRY).length} Chapters
                                                 </span>
                                             </div>
                                         </div>
@@ -1166,7 +1212,7 @@ function DashboardContent() {
                                     </div>
                                 )}
 
-                                {/* STATISTICS & INTERACTIVE STUDY PLANNER CALENDAR */}
+                                {/* STATISTICS & CALENDAR */}
                                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                                     <div className="lg:col-span-7 space-y-6">
                                         <h3 className="text-base font-bold text-white">Telemetry & Progress</h3>
@@ -1192,7 +1238,7 @@ function DashboardContent() {
                                             <div className="flex items-center justify-between">
                                                 <h3 className="text-base font-bold text-white">Recommended Lectures</h3>
                                                 <button
-                                                    onClick={() => setActiveNav("lectures")}
+                                                    onClick={() => { setActiveNav("lectures"); setSelectedChapter(null); }}
                                                     className="text-xs font-bold text-indigo-400 hover:underline"
                                                 >
                                                     View all
@@ -1312,275 +1358,330 @@ function DashboardContent() {
                                                 })}
                                             </div>
                                         </div>
-
-                                        {tomorrowReminders.length > 0 && (
-                                            <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl p-5 space-y-2 shadow-lg">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-extrabold uppercase text-amber-300 bg-amber-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                                                        <Bell className="w-3 h-3 text-amber-400" />
-                                                        <span>Reminder: Plan Due Tomorrow!</span>
-                                                    </span>
-                                                    <span className="text-[10px] text-slate-400 font-mono">{tomorrowKey}</span>
-                                                </div>
-                                                <div className="space-y-1.5 pt-1">
-                                                    {tomorrowReminders.map((p) => (
-                                                        <div key={p.id} className="text-xs font-bold text-slate-200 flex items-center justify-between">
-                                                            <span>• {p.title}</span>
-                                                            {p.time && <span className="text-[10px] text-slate-400 font-normal">{p.time}</span>}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {todayReminders.length > 0 && (
-                                            <div className="bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-500/30 rounded-2xl p-5 space-y-2 shadow-lg">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-extrabold uppercase text-indigo-300 bg-indigo-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                                                        <Clock className="w-3 h-3 text-indigo-400" />
-                                                        <span>Today&apos;s Scheduled Goals</span>
-                                                    </span>
-                                                    <span className="text-[10px] text-slate-400 font-mono">{todayKey}</span>
-                                                </div>
-                                                <div className="space-y-1.5 pt-1">
-                                                    {todayReminders.map((p) => (
-                                                        <div key={p.id} className="text-xs font-bold text-slate-200 flex items-center justify-between">
-                                                            <span>• {p.title}</span>
-                                                            {p.time && <span className="text-[10px] text-slate-400 font-normal">{p.time}</span>}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        <div className="bg-[#0B101D] rounded-3xl p-6 border border-slate-800 shadow-lg space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <h4 className="text-sm font-extrabold text-white">Upcoming Schedule</h4>
-                                                {notice && (
-                                                    <span className="text-[10px] font-bold uppercase text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
-                                                        Live Alert
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            {notice ? (
-                                                <div className="bg-[#131826] text-white p-4 rounded-2xl flex items-center space-x-3.5 border border-slate-800">
-                                                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black text-sm shrink-0 border border-amber-500/30">
-                                                        🗓️
-                                                    </div>
-                                                    <div className="overflow-hidden">
-                                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Instructor Notice</p>
-                                                        <p className="text-xs font-bold leading-tight truncate text-slate-200">
-                                                            {notice.content}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="py-6 px-4 rounded-2xl bg-slate-900/50 border border-dashed border-slate-800 text-center space-y-1">
-                                                    <CalendarCheck className="w-6 h-6 text-slate-600 mx-auto" />
-                                                    <p className="text-xs font-bold text-slate-400">No Upcoming Events</p>
-                                                    <p className="text-[11px] text-slate-500">
-                                                        There are currently no live sessions or notices scheduled.
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
                                     </div>
                                 </div>
                             </>
                         )}
 
-                        {/* VIEW: VIDEO LECTURES GRID */}
+                        {/* VIEW: CHAPTER-WISE VIDEO LECTURES & MATERIALS (THE CORE UPGRADE) */}
                         {!isSearchActive && activeNav === "lectures" && (
                             <div className="space-y-6">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div>
-                                        <h2 className="text-xl font-extrabold text-white">Video Lectures Vault</h2>
-                                        <p className="text-xs text-slate-400">Stream recorded classes, take personal notes, and mark completed lectures.</p>
+                                        <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+                                            {selectedChapter && (
+                                                <button
+                                                    onClick={() => setSelectedChapter(null)}
+                                                    className="p-1.5 rounded-lg bg-[#131826] hover:bg-slate-800 text-slate-300 transition border border-slate-800 mr-2"
+                                                    title="Back to Chapters"
+                                                >
+                                                    <ArrowLeft className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                            <span>
+                                                {selectedChapter ? `Chapter: ${selectedChapter}` : "Video Lectures Vault"}
+                                            </span>
+                                        </h2>
+                                        <p className="text-xs text-slate-400 mt-0.5">
+                                            {selectedChapter
+                                                ? "Select a lecture below to start streaming or take personal notes."
+                                                : "Select a chapter below to view categorized lectures."}
+                                        </p>
                                     </div>
 
-                                    <div className="flex items-center gap-1.5 bg-[#0B101D] p-1 rounded-xl border border-slate-800 shadow-sm">
-                                        {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
+                                    {!selectedChapter && (
+                                        <div className="flex items-center gap-1.5 bg-[#0B101D] p-1 rounded-xl border border-slate-800 shadow-sm">
                                             <button
-                                                key={subj}
-                                                onClick={() => setSelectedSubject(subj)}
-                                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${selectedSubject === subj
+                                                onClick={() => setSelectedSubjectTab("PHYSICS")}
+                                                className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${selectedSubjectTab === "PHYSICS"
                                                         ? "bg-indigo-600 text-white shadow-md"
                                                         : "text-slate-400 hover:text-white"
                                                     }`}
                                             >
-                                                {subj === "ALL" ? "All Subjects" : subj === "PHYSICS" ? "Physics" : "Chemistry"}
+                                                <Atom className="w-3.5 h-3.5" />
+                                                <span>Physics Chapters</span>
                                             </button>
-                                        ))}
-                                    </div>
+                                            <button
+                                                onClick={() => setSelectedSubjectTab("CHEMISTRY")}
+                                                className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${selectedSubjectTab === "CHEMISTRY"
+                                                        ? "bg-amber-600 text-white shadow-md"
+                                                        : "text-slate-400 hover:text-white"
+                                                    }`}
+                                            >
+                                                <FlaskConical className="w-3.5 h-3.5" />
+                                                <span>Chemistry Chapters</span>
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
-                                {filteredVideos.length === 0 ? (
-                                    <div className="bg-[#0B101D] rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-800">
-                                        No video lectures match your filter.
-                                    </div>
-                                ) : (
-                                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {filteredVideos.map((vid) => {
-                                            const embedUrl = getYouTubeEmbedUrl(vid.youtube_url || vid.video_url || "");
-                                            const isWatched = watchedVideos.includes(vid.id);
-                                            const isNotesOpen = openNotesId === vid.id;
-                                            const hasNotes = Boolean(lectureNotes[vid.id]?.trim());
+                                {/* VIEW A: SHOW CHAPTER CARDS (IF NO CHAPTER SELECTED) */}
+                                {!selectedChapter && (
+                                    <div>
+                                        {Object.keys(currentSubjectChapters).length === 0 ? (
+                                            <div className="bg-[#0B101D] rounded-3xl p-16 text-center text-slate-400 text-xs border border-slate-800 space-y-3">
+                                                <FolderOpen className="w-10 h-10 text-slate-600 mx-auto" />
+                                                <p className="font-bold text-slate-300">No chapters found for {selectedSubjectTab}.</p>
+                                                <p className="text-slate-500">Lectures uploaded by admin will automatically appear categorized here.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                {Object.entries(currentSubjectChapters).map(([chName, chVideos]) => {
+                                                    const chMaterials = materialsByChapter[chName] || [];
+                                                    const completedInCh = chVideos.filter(v => watchedVideos.includes(v.id)).length;
+                                                    const chProgress = chVideos.length > 0 ? Math.round((completedInCh / chVideos.length) * 100) : 0;
 
-                                            return (
-                                                <div
-                                                    key={vid.id}
-                                                    id={`lecture-card-${vid.id}`}
-                                                    className={`bg-[#0B101D] rounded-2xl overflow-hidden border transition-all duration-200 shadow-lg flex flex-col justify-between ${isWatched ? "border-emerald-500/40 ring-2 ring-emerald-500/10" : "border-slate-800"
-                                                        }`}
-                                                >
-                                                    <div>
-                                                        <div className="aspect-video w-full bg-slate-950 relative">
-                                                            {embedUrl ? (
-                                                                <iframe
-                                                                    src={embedUrl}
-                                                                    title={vid.topic || vid.title || "Lecture"}
-                                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                                    allowFullScreen
-                                                                    className="w-full h-full border-none"
-                                                                />
-                                                            ) : (
-                                                                <div className="h-full flex items-center justify-center text-xs text-slate-500">
-                                                                    Invalid Video Link
+                                                    return (
+                                                        <div
+                                                            key={chName}
+                                                            onClick={() => setSelectedChapter(chName)}
+                                                            className="group bg-[#0B101D] hover:bg-[#101626] rounded-3xl p-6 border border-slate-800 hover:border-indigo-500/50 shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-6 relative overflow-hidden"
+                                                        >
+                                                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-all" />
+
+                                                            <div className="space-y-3 relative z-10">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-xs shadow-inner">
+                                                                        📁
+                                                                    </div>
+                                                                    <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-2.5 py-1 rounded-full border border-slate-800">
+                                                                        {chVideos.length} Lectures | {chMaterials.length} PDFs
+                                                                    </span>
                                                                 </div>
-                                                            )}
-                                                        </div>
 
-                                                        <div className="p-5 space-y-2">
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-900 text-slate-300 border border-slate-800">
-                                                                    Lecture #{vid.lecture_no}
-                                                                </span>
-                                                                <span
-                                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
-                                                                            ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
-                                                                            : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
-                                                                        }`}
-                                                                >
-                                                                    {vid.subject}
-                                                                </span>
+                                                                <div>
+                                                                    <h3 className="text-base font-extrabold text-white group-hover:text-indigo-300 transition-colors leading-snug">
+                                                                        {chName}
+                                                                    </h3>
+                                                                    <p className="text-[11px] text-slate-400 uppercase font-semibold mt-1">
+                                                                        {selectedSubjectTab} Chapter
+                                                                    </p>
+                                                                </div>
                                                             </div>
 
-                                                            <h3 className="font-extrabold text-sm text-white line-clamp-2">
-                                                                {vid.topic || vid.title}
-                                                            </h3>
-                                                            <p className="text-xs text-slate-400">{vid.chapter}</p>
+                                                            <div className="space-y-3 relative z-10 pt-4 border-t border-slate-800/80">
+                                                                <div className="flex items-center justify-between text-xs text-slate-400">
+                                                                    <span>Progress</span>
+                                                                    <span className="font-mono text-slate-200">{completedInCh}/{chVideos.length} Done ({chProgress}%)</span>
+                                                                </div>
+                                                                <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                                                                    <div className="bg-indigo-500 h-full rounded-full transition-all" style={{ width: `${chProgress}%` }} />
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                    </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
-                                                    <div className="p-5 pt-0 space-y-3">
-                                                        <div className="border border-slate-800 rounded-xl overflow-hidden bg-[#131826]/50">
-                                                            <button
-                                                                onClick={() => setOpenNotesId(isNotesOpen ? null : vid.id)}
-                                                                className="w-full px-3.5 py-2 flex items-center justify-between text-xs font-bold text-slate-300 hover:bg-slate-800/60 transition"
-                                                            >
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <FileEdit className="w-3.5 h-3.5 text-indigo-400" />
-                                                                    <span>My Lecture Notes</span>
-                                                                    {hasNotes && (
-                                                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex items-center gap-1 text-[11px] text-slate-400">
-                                                                    {saveStatus[vid.id] && (
-                                                                        <span className="text-emerald-400 font-semibold text-[10px]">Saved!</span>
-                                                                    )}
-                                                                    {isNotesOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                                                                </div>
-                                                            </button>
+                                {/* VIEW B: SHOW VIDEOS INSIDE SELECTED CHAPTER */}
+                                {selectedChapter && (
+                                    <div className="space-y-8 animate-in fade-in duration-200">
+                                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {(currentSubjectChapters[selectedChapter] || []).map((vid) => {
+                                                const embedUrl = getYouTubeEmbedUrl(vid.youtube_url || vid.video_url || "");
+                                                const isWatched = watchedVideos.includes(vid.id);
+                                                const isNotesOpen = openNotesId === vid.id;
+                                                const hasNotes = Boolean(lectureNotes[vid.id]?.trim());
 
-                                                            {isNotesOpen && (
-                                                                <div className="p-3 bg-[#0B101D] border-t border-slate-800 space-y-2.5 animate-in fade-in duration-100">
-                                                                    <textarea
-                                                                        rows={4}
-                                                                        placeholder="Jot down key formulas, tips, or timestamps here..."
-                                                                        value={lectureNotes[vid.id] || ""}
-                                                                        onChange={(e) => handleNoteChange(vid.id, e.target.value)}
-                                                                        className="w-full bg-[#131826] border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none font-sans"
+                                                return (
+                                                    <div
+                                                        key={vid.id}
+                                                        id={`lecture-card-${vid.id}`}
+                                                        className={`bg-[#0B101D] rounded-2xl overflow-hidden border transition-all duration-200 shadow-lg flex flex-col justify-between ${isWatched ? "border-emerald-500/40 ring-2 ring-emerald-500/10" : "border-slate-800"
+                                                            }`}
+                                                    >
+                                                        <div>
+                                                            <div className="aspect-video w-full bg-slate-950 relative">
+                                                                {embedUrl ? (
+                                                                    <iframe
+                                                                        src={embedUrl}
+                                                                        title={vid.topic || vid.title || "Lecture"}
+                                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                        allowFullScreen
+                                                                        className="w-full h-full border-none"
                                                                     />
+                                                                ) : (
+                                                                    <div className="h-full flex items-center justify-center text-xs text-slate-500">
+                                                                        Invalid Video Link
+                                                                    </div>
+                                                                )}
+                                                            </div>
 
-                                                                    <div className="flex items-center justify-between">
-                                                                        <button
-                                                                            onClick={() => handleAddTimestampTag(vid.id)}
-                                                                            className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
-                                                                        >
-                                                                            <Clock className="w-3 h-3" />
-                                                                            <span>+ Add Timestamp</span>
-                                                                        </button>
+                                                            <div className="p-5 space-y-2">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-900 text-slate-300 border border-slate-800">
+                                                                        Lecture #{vid.lecture_no}
+                                                                    </span>
+                                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                                                                        {vid.subject}
+                                                                    </span>
+                                                                </div>
 
+                                                                <h3 className="font-extrabold text-sm text-white line-clamp-2">
+                                                                    {vid.topic || vid.title}
+                                                                </h3>
+                                                                <p className="text-xs text-slate-400">{vid.chapter}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="p-5 pt-0 space-y-3">
+                                                            <div className="border border-slate-800 rounded-xl overflow-hidden bg-[#131826]/50">
+                                                                <button
+                                                                    onClick={() => setOpenNotesId(isNotesOpen ? null : vid.id)}
+                                                                    className="w-full px-3.5 py-2 flex items-center justify-between text-xs font-bold text-slate-300 hover:bg-slate-800/60 transition"
+                                                                >
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <FileEdit className="w-3.5 h-3.5 text-indigo-400" />
+                                                                        <span>My Lecture Notes</span>
                                                                         {hasNotes && (
-                                                                            <button
-                                                                                onClick={() => handleExportNotes(vid)}
-                                                                                className="text-[11px] font-bold text-slate-300 hover:text-white flex items-center gap-1"
-                                                                                title="Download as TXT file"
-                                                                            >
-                                                                                <Download className="w-3.5 h-3.5" />
-                                                                                <span>Export</span>
-                                                                            </button>
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
                                                                         )}
                                                                     </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
+                                                                    <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                                                                        {saveStatus[vid.id] && (
+                                                                            <span className="text-emerald-400 font-semibold text-[10px]">Saved!</span>
+                                                                        )}
+                                                                        {isNotesOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                                                    </div>
+                                                                </button>
 
-                                                        <button
-                                                            onClick={() => {
-                                                                toggleWatchStatus(vid.id);
-                                                                recordLecturePlayback(vid.id);
-                                                            }}
-                                                            className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
-                                                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                                                                    : "bg-indigo-600 text-white hover:bg-indigo-500"
-                                                                }`}
-                                                        >
-                                                            <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
-                                                        </button>
+                                                                {isNotesOpen && (
+                                                                    <div className="p-3 bg-[#0B101D] border-t border-slate-800 space-y-2.5 animate-in fade-in duration-100">
+                                                                        <textarea
+                                                                            rows={4}
+                                                                            placeholder="Jot down key formulas, tips, or timestamps here..."
+                                                                            value={lectureNotes[vid.id] || ""}
+                                                                            onChange={(e) => handleNoteChange(vid.id, e.target.value)}
+                                                                            className="w-full bg-[#131826] border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none font-sans"
+                                                                        />
+
+                                                                        <div className="flex items-center justify-between">
+                                                                            <button
+                                                                                onClick={() => handleAddTimestampTag(vid.id)}
+                                                                                className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                                                                            >
+                                                                                <Clock className="w-3 h-3" />
+                                                                                <span>+ Add Timestamp</span>
+                                                                            </button>
+
+                                                                            {hasNotes && (
+                                                                                <button
+                                                                                    onClick={() => handleExportNotes(vid)}
+                                                                                    className="text-[11px] font-bold text-slate-300 hover:text-white flex items-center gap-1"
+                                                                                    title="Download as TXT file"
+                                                                                >
+                                                                                    <Download className="w-3.5 h-3.5" />
+                                                                                    <span>Export</span>
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <button
+                                                                onClick={() => {
+                                                                    toggleWatchStatus(vid.id);
+                                                                    recordLecturePlayback(vid.id);
+                                                                }}
+                                                                className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
+                                                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                                                                        : "bg-indigo-600 text-white hover:bg-indigo-500"
+                                                                    }`}
+                                                            >
+                                                                <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
+                                                            </button>
+                                                        </div>
                                                     </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* CHAPTER-WISE STUDY SHEETS / PDF MATERIALS */}
+                                        {(materialsByChapter[selectedChapter] || []).length > 0 && (
+                                            <div className="space-y-4 pt-6 border-t border-slate-800">
+                                                <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">
+                                                    Study Sheets & Handouts for {selectedChapter}
+                                                </h3>
+                                                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                    {(materialsByChapter[selectedChapter] || []).map((mat) => {
+                                                        const rawFileUrl = mat.pdf_url || mat.file_url || "";
+                                                        const drivePreviewLink = getDrivePreviewUrl(rawFileUrl);
+
+                                                        return (
+                                                            <div
+                                                                key={mat.id}
+                                                                className="bg-[#0B101D] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between space-y-4"
+                                                            >
+                                                                <div className="space-y-3">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                                                                            {mat.subject}
+                                                                        </span>
+                                                                        <span className="text-[11px] text-slate-400 font-medium">{mat.chapter}</span>
+                                                                    </div>
+
+                                                                    <div className="flex items-start space-x-3">
+                                                                        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-xs shrink-0">
+                                                                            PDF
+                                                                        </div>
+                                                                        <div>
+                                                                            <h4 className="font-extrabold text-sm text-white leading-snug">{mat.title}</h4>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex items-center gap-2">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setPreviewPdfUrl(drivePreviewLink);
+                                                                            setPreviewPdfTitle(mat.title);
+                                                                        }}
+                                                                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl text-center transition flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-600/30"
+                                                                    >
+                                                                        <Eye className="w-3.5 h-3.5" />
+                                                                        <span>Preview</span>
+                                                                    </button>
+
+                                                                    <a
+                                                                        href={rawFileUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="p-2.5 bg-[#131826] hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800"
+                                                                        title="Open in new tab / Download"
+                                                                    >
+                                                                        <ExternalLink className="w-3.5 h-3.5" />
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
-                                            );
-                                        })}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {/* VIEW: STUDY MATERIALS (PDF) */}
+                        {/* VIEW: STUDY MATERIALS (PDF TAB DIRECT) */}
                         {!isSearchActive && activeNav === "materials" && (
                             <div className="space-y-6">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div>
-                                        <h2 className="text-xl font-extrabold text-white">Study Materials & Handouts</h2>
-                                        <p className="text-xs text-slate-400">Download lecture notes and practice problem sets.</p>
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5 bg-[#0B101D] p-1 rounded-xl border border-slate-800 shadow-sm">
-                                        {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
-                                            <button
-                                                key={subj}
-                                                onClick={() => setSelectedSubject(subj)}
-                                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${selectedSubject === subj
-                                                        ? "bg-indigo-600 text-white shadow-md"
-                                                        : "text-slate-400 hover:text-white"
-                                                    }`}
-                                            >
-                                                {subj === "ALL" ? "All" : subj === "PHYSICS" ? "Physics" : "Chemistry"}
-                                            </button>
-                                        ))}
-                                    </div>
+                                <div>
+                                    <h2 className="text-xl font-extrabold text-white">Study Materials & Handouts</h2>
+                                    <p className="text-xs text-slate-400">All downloadable PDFs and problem sheets categorized by chapters.</p>
                                 </div>
 
-                                {filteredMaterials.length === 0 ? (
+                                {materials.length === 0 ? (
                                     <div className="bg-[#0B101D] rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-800">
-                                        No study sheets found.
+                                        No study sheets uploaded yet.
                                     </div>
                                 ) : (
                                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {filteredMaterials.map((mat) => {
+                                        {materials.map((mat) => {
                                             const rawFileUrl = mat.pdf_url || mat.file_url || "";
                                             const drivePreviewLink = getDrivePreviewUrl(rawFileUrl);
 
@@ -1722,28 +1823,28 @@ function DashboardContent() {
             {/* MOBILE BOTTOM NAVIGATION BAR */}
             <div className="fixed bottom-0 left-0 right-0 bg-[#0B101D] border-t border-slate-800 px-4 py-2 flex md:hidden items-center justify-around z-40 shadow-2xl">
                 <button
-                    onClick={() => { setActiveNav("dashboard"); setSearchQuery(""); }}
+                    onClick={() => { setActiveNav("dashboard"); setSelectedChapter(null); setSearchQuery(""); }}
                     className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "dashboard" ? "text-indigo-400" : "text-slate-400"}`}
                 >
                     <LayoutDashboard className="w-5 h-5 mb-0.5" />
                     <span>Home</span>
                 </button>
                 <button
-                    onClick={() => { setActiveNav("lectures"); setSelectedSubject("ALL"); }}
+                    onClick={() => { setActiveNav("lectures"); setSelectedChapter(null); }}
                     className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "lectures" ? "text-indigo-400" : "text-slate-400"}`}
                 >
                     <PlayCircle className="w-5 h-5 mb-0.5" />
                     <span>Lectures</span>
                 </button>
                 <button
-                    onClick={() => { setActiveNav("materials"); setSelectedSubject("ALL"); }}
+                    onClick={() => { setActiveNav("materials"); setSelectedChapter(null); }}
                     className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "materials" ? "text-indigo-400" : "text-slate-400"}`}
                 >
                     <FileText className="w-5 h-5 mb-0.5" />
                     <span>Sheets</span>
                 </button>
                 <button
-                    onClick={() => setActiveNav("ai")}
+                    onClick={() => { setActiveNav("ai"); setSelectedChapter(null); }}
                     className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "ai" ? "text-indigo-400" : "text-slate-400"}`}
                 >
                     <Bot className="w-5 h-5 mb-0.5 text-indigo-400" />
@@ -1758,7 +1859,7 @@ function DashboardContent() {
                 </button>
             </div>
 
-            {/* FLOATING AI CHAT BUTTON & POPUP WIDGET (RIGHT CORNER) */}
+            {/* FLOATING AI CHAT BUTTON & POPUP WIDGET */}
             <div className="fixed bottom-20 md:bottom-6 right-5 z-50">
                 {!isFloatingChatOpen ? (
                     <button

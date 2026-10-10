@@ -692,8 +692,8 @@ function DashboardContent() {
             )}
 
             <div className="flex-1 flex min-w-0">
-                {/* 1. LEFT SIDEBAR (Cyber-Deck Theme) */}
-                <aside className="w-72 bg-[#0B101D] border-r border-slate-800/80 p-6 flex flex-col justify-between shrink-0 hidden md:flex shadow-2xl">
+                {/* 1. LEFT SIDEBAR (Cyber-Deck Theme) - Visible on all screens */}
+                <aside className="w-72 bg-[#0B101D] border-r border-slate-800/80 p-6 flex flex-col justify-between shrink-0 shadow-2xl">
                     <div className="space-y-8">
                         <div className="flex items-center space-x-3 px-1">
                             <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-900 border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)] flex items-center justify-center shrink-0 p-1.5">
@@ -722,8 +722,8 @@ function DashboardContent() {
                                     setSearchQuery("");
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "dashboard"
-                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                                        : "text-slate-400 hover:text-white hover:bg-slate-900/80"
+                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                                    : "text-slate-400 hover:text-white hover:bg-slate-900/80"
                                     }`}
                             >
                                 <LayoutDashboard className="w-4 h-4" />
@@ -736,8 +736,8 @@ function DashboardContent() {
                                     setSelectedChapter(null);
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "lectures"
-                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                                        : "text-slate-400 hover:text-white hover:bg-slate-900/80"
+                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                                    : "text-slate-400 hover:text-white hover:bg-slate-900/80"
                                     }`}
                             >
                                 <PlayCircle className="w-4 h-4" />
@@ -753,8 +753,8 @@ function DashboardContent() {
                                     setSelectedChapter(null);
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "materials"
-                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                                        : "text-slate-400 hover:text-white hover:bg-slate-900/80"
+                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                                    : "text-slate-400 hover:text-white hover:bg-slate-900/80"
                                     }`}
                             >
                                 <FileText className="w-4 h-4" />
@@ -770,8 +770,8 @@ function DashboardContent() {
                                     setSelectedChapter(null);
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "ai"
-                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                                        : "text-slate-400 hover:text-white hover:bg-slate-900/80"
+                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                                    : "text-slate-400 hover:text-white hover:bg-slate-900/80"
                                     }`}
                             >
                                 <Bot className="w-4 h-4 text-indigo-400" />
@@ -868,7 +868,7 @@ function DashboardContent() {
                 <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
                     <header className="h-20 bg-[#090D16]/80 backdrop-blur-md border-b border-slate-800/80 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-30 shadow-sm">
                         <div className="flex items-center gap-3 flex-1 max-w-md">
-                            <div className="w-9 h-9 rounded-xl overflow-hidden bg-slate-900 border border-indigo-500/30 shadow-sm flex md:hidden items-center justify-center shrink-0 p-1">
+                            <div className="w-9 h-9 rounded-xl overflow-hidden bg-slate-900 border border-indigo-500/30 shadow-sm flex items-center justify-center shrink-0 p-1">
                                 <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
                             </div>
                             <div className="relative flex-1">
@@ -913,7 +913,7 @@ function DashboardContent() {
                         </div>
                     )}
 
-                    <main className="p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8 flex-1 pb-24 md:pb-10">
+                    <main className="p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8 flex-1 pb-28 md:pb-12">
                         {/* SEARCH RESULTS VIEW */}
                         {isSearchActive && (
                             <div className="space-y-6">
@@ -998,8 +998,8 @@ function DashboardContent() {
                                                                             </span>
                                                                             <span
                                                                                 className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
-                                                                                        ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
-                                                                                        : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
+                                                                                    ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+                                                                                    : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
                                                                                     }`}
                                                                             >
                                                                                 {vid.subject}
@@ -1020,8 +1020,8 @@ function DashboardContent() {
                                                                             recordLecturePlayback(vid.id);
                                                                         }}
                                                                         className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
-                                                                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                                                                                : "bg-indigo-600 text-white hover:bg-indigo-500"
+                                                                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                                                                            : "bg-indigo-600 text-white hover:bg-indigo-500"
                                                                             }`}
                                                                     >
                                                                         <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
@@ -1053,8 +1053,8 @@ function DashboardContent() {
                                                                     <div className="flex items-center justify-between">
                                                                         <span
                                                                             className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
-                                                                                    ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
-                                                                                    : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
+                                                                                ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+                                                                                : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
                                                                                 }`}
                                                                         >
                                                                             {mat.subject}
@@ -1256,8 +1256,8 @@ function DashboardContent() {
                                                             <div className="flex items-center space-x-3.5">
                                                                 <div
                                                                     className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs ${v.subject === "PHYSICS"
-                                                                            ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
-                                                                            : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                                                        ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                                                                        : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                                                                         }`}
                                                                 >
                                                                     #{v.lecture_no}
@@ -1276,8 +1276,8 @@ function DashboardContent() {
                                                                     recordLecturePlayback(v.id);
                                                                 }}
                                                                 className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition ${isDone
-                                                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                                                                        : "bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800"
+                                                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                                                    : "bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800"
                                                                     }`}
                                                             >
                                                                 {isDone ? "✓ Done" : "Mark Watched"}
@@ -1341,8 +1341,8 @@ function DashboardContent() {
                                                             <button
                                                                 onClick={() => setSelectedDateForPlan(dateKey)}
                                                                 className={`w-7 h-7 flex items-center justify-center rounded-xl transition relative ${isToday
-                                                                        ? "bg-indigo-600 text-white font-bold shadow-md"
-                                                                        : "text-slate-300 hover:bg-slate-800"
+                                                                    ? "bg-indigo-600 text-white font-bold shadow-md"
+                                                                    : "text-slate-300 hover:bg-slate-800"
                                                                     }`}
                                                             >
                                                                 <span>{dayNum}</span>
@@ -1363,7 +1363,7 @@ function DashboardContent() {
                             </>
                         )}
 
-                        {/* VIEW: CHAPTER-WISE VIDEO LECTURES & MATERIALS (THE CORE UPGRADE) */}
+                        {/* VIEW: CHAPTER-WISE VIDEO LECTURES & MATERIALS */}
                         {!isSearchActive && activeNav === "lectures" && (
                             <div className="space-y-6">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1394,8 +1394,8 @@ function DashboardContent() {
                                             <button
                                                 onClick={() => setSelectedSubjectTab("PHYSICS")}
                                                 className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${selectedSubjectTab === "PHYSICS"
-                                                        ? "bg-indigo-600 text-white shadow-md"
-                                                        : "text-slate-400 hover:text-white"
+                                                    ? "bg-indigo-600 text-white shadow-md"
+                                                    : "text-slate-400 hover:text-white"
                                                     }`}
                                             >
                                                 <Atom className="w-3.5 h-3.5" />
@@ -1404,8 +1404,8 @@ function DashboardContent() {
                                             <button
                                                 onClick={() => setSelectedSubjectTab("CHEMISTRY")}
                                                 className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${selectedSubjectTab === "CHEMISTRY"
-                                                        ? "bg-amber-600 text-white shadow-md"
-                                                        : "text-slate-400 hover:text-white"
+                                                    ? "bg-amber-600 text-white shadow-md"
+                                                    : "text-slate-400 hover:text-white"
                                                     }`}
                                             >
                                                 <FlaskConical className="w-3.5 h-3.5" />
@@ -1415,7 +1415,6 @@ function DashboardContent() {
                                     )}
                                 </div>
 
-                                {/* VIEW A: SHOW CHAPTER CARDS (IF NO CHAPTER SELECTED) */}
                                 {!selectedChapter && (
                                     <div>
                                         {Object.keys(currentSubjectChapters).length === 0 ? (
@@ -1476,7 +1475,6 @@ function DashboardContent() {
                                     </div>
                                 )}
 
-                                {/* VIEW B: SHOW VIDEOS INSIDE SELECTED CHAPTER */}
                                 {selectedChapter && (
                                     <div className="space-y-8 animate-in fade-in duration-200">
                                         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1588,8 +1586,8 @@ function DashboardContent() {
                                                                     recordLecturePlayback(vid.id);
                                                                 }}
                                                                 className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
-                                                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                                                                        : "bg-indigo-600 text-white hover:bg-indigo-500"
+                                                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                                                                    : "bg-indigo-600 text-white hover:bg-indigo-500"
                                                                     }`}
                                                             >
                                                                 <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
@@ -1629,7 +1627,7 @@ function DashboardContent() {
                                                                             PDF
                                                                         </div>
                                                                         <div>
-                                                                            <h4 className="font-extrabold text-sm text-white leading-snug">{mat.title}</h4>
+                                                                            <h3 className="font-extrabold text-sm text-white leading-snug">{mat.title}</h3>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -1694,8 +1692,8 @@ function DashboardContent() {
                                                         <div className="flex items-center justify-between">
                                                             <span
                                                                 className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
-                                                                        ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
-                                                                        : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
+                                                                    ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+                                                                    : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
                                                                     }`}
                                                             >
                                                                 {mat.subject}
@@ -1764,8 +1762,8 @@ function DashboardContent() {
                                         >
                                             <div
                                                 className={`max-w-[80%] px-4 py-3 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
-                                                        ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-md"
-                                                        : "bg-[#131826] text-slate-200 rounded-bl-none font-medium border border-slate-800"
+                                                    ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-md"
+                                                    : "bg-[#131826] text-slate-200 rounded-bl-none font-medium border border-slate-800"
                                                     }`}
                                             >
                                                 {m.content}
@@ -1802,26 +1800,36 @@ function DashboardContent() {
                         )}
                     </main>
 
-                    {/* DEVELOPER CREDIT FOOTER */}
-                    <footer className="w-full py-4 px-6 text-center border-t border-slate-800/80 bg-[#090D16]/80 backdrop-blur-sm mt-auto">
-                        <p className="text-xs text-slate-400 font-medium tracking-wide">
-                            © {currentYear} AZS: The Catalyst • Developed with ❤️ by{" "}
-                            <a
-                                href="https://www.linkedin.com/in/sajedul-islam-data/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-bold text-indigo-400 hover:text-indigo-300 hover:underline transition-colors inline-flex items-center gap-1"
-                            >
-                                Mir Mohammad Sajedul Islam
-                                <ExternalLink className="w-3 h-3 inline" />
-                            </a>
-                        </p>
+                    {/* DEVELOPER CREDIT FOOTER (Fully visible on both Mobile & Desktop) */}
+                    <footer className="w-full py-6 px-6 text-center border-t border-slate-800/80 bg-[#090D16]/95 backdrop-blur-md mt-auto">
+                        <div className="max-w-7xl mx-auto flex flex-col items-center justify-center space-y-2">
+                            {/* Academic Guide Profile on Mobile View inside Footer */}
+                            <div className="flex md:hidden items-center justify-center space-x-2 text-xs text-slate-300 font-bold mb-1">
+                                <span className="text-indigo-400">Academic Guide:</span>
+                                <a href={TEACHER_SOCIAL.whatsapp} target="_blank" rel="noopener noreferrer" className="text-emerald-400 underline">
+                                    {TEACHER_SOCIAL.name}
+                                </a>
+                            </div>
+
+                            <p className="text-xs text-slate-400 font-medium tracking-wide">
+                                © {currentYear} AZS: The Catalyst • Developed with ❤️ by{" "}
+                                <a
+                                    href="https://www.linkedin.com/in/sajedul-islam-data/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-bold text-indigo-400 hover:text-indigo-300 hover:underline transition-colors inline-flex items-center gap-1"
+                                >
+                                    Mir Mohammad Sajedul Islam
+                                    <ExternalLink className="w-3 h-3 inline" />
+                                </a>
+                            </p>
+                        </div>
                     </footer>
                 </div>
             </div>
 
             {/* MOBILE BOTTOM NAVIGATION BAR */}
-            <div className="fixed bottom-0 left-0 right-0 bg-[#0B101D] border-t border-slate-800 px-4 py-2 flex md:hidden items-center justify-around z-40 shadow-2xl">
+            <div className="fixed bottom-0 left-0 right-0 bg-[#0B101D] border-t border-slate-800 px-4 py-2.5 flex md:hidden items-center justify-around z-40 shadow-2xl">
                 <button
                     onClick={() => { setActiveNav("dashboard"); setSelectedChapter(null); setSearchQuery(""); }}
                     className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "dashboard" ? "text-indigo-400" : "text-slate-400"}`}
@@ -1898,8 +1906,8 @@ function DashboardContent() {
                                 >
                                     <div
                                         className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
-                                                ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-md"
-                                                : "bg-[#131826] text-slate-200 rounded-bl-none font-medium border border-slate-800"
+                                            ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-md"
+                                            : "bg-[#131826] text-slate-200 rounded-bl-none font-medium border border-slate-800"
                                             }`}
                                     >
                                         {m.content}

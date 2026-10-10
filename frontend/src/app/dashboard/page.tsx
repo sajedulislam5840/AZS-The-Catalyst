@@ -37,14 +37,13 @@ import {
     Video,
     Atom,
     FlaskConical,
-    ShieldAlert,
     Zap,
 } from "lucide-react";
 import axios from "axios";
 
+// --- Professional Teacher Social Config ---
 const TEACHER_SOCIAL = {
     name: "AZS RAZON SIR",
-    role: "Lead Physics & Chemistry Instructor",
     whatsapp: "https://wa.me/8801916201426",
     facebook: "https://www.facebook.com/razon.sikdar.1",
     youtube: "https://www.youtube.com/@AZSChemistry",
@@ -159,28 +158,19 @@ function DashboardContent() {
     const [mounted, setMounted] = useState(false);
     const [currentYear, setCurrentYear] = useState(2026);
 
-    // Subject-specific micro-animation / loading state without text
-    const [isTransitioning, setIsTransitioning] = useState(false);
-    const [transitionSubject, setTransitionSubject] = useState<"PHYSICS" | "CHEMISTRY" | null>(null);
+    // Subject transition animation states
+    const [activeTransition, setActiveTransition] = useState<"PHYSICS" | "CHEMISTRY" | null>(null);
 
-    const triggerSubjectTransition = (subj: "PHYSICS" | "CHEMISTRY", callback: () => void) => {
-        setTransitionSubject(subj);
-        setIsTransitioning(true);
-        setTimeout(() => {
-            setIsTransitioning(false);
-            callback();
-        }, 500);
-    };
-
+    // Floating AI Chat States
     const [isFloatingChatOpen, setIsFloatingChatOpen] = useState(false);
 
     const [userProfile, setUserProfile] = useState<UserProfile>({
         id: "",
-        full_name: "Cadet",
+        full_name: "Student",
         email: "",
         school: "",
         grade_class: "",
-        batch_no: "Catalyst Command Batch",
+        batch_no: "Registered Student",
         role: "STUDENT",
     });
 
@@ -204,7 +194,7 @@ function DashboardContent() {
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
         {
             role: "assistant",
-            content: "AZS AI Core online. Standing by for Physics mechanics or Chemistry reaction equations.",
+            content: "Hello! I am your AZS AI Academic Tutor. Feel free to ask any Physics or Chemistry doubts!",
         },
     ]);
     const [chatInput, setChatInput] = useState("");
@@ -225,10 +215,31 @@ function DashboardContent() {
         return `${year}-${m}-${d}`;
     };
 
+    // --- MOBILE BACK BUTTON GUARD & HISTORY MANAGEMENT ---
     useEffect(() => {
         setMounted(true);
         setCurrentYear(new Date().getFullYear());
 
+        // Prevent direct accidental signout via mobile back button
+        if (typeof window !== "undefined") {
+            window.history.pushState(null, "", window.location.href);
+            const handlePopState = (e: PopStateEvent) => {
+                e.preventDefault();
+                window.history.pushState(null, "", window.location.href);
+                // If user is inside sub-tabs (lectures/materials/ai), bring them back to dashboard home first instead of exiting
+                if (activeNav !== "dashboard") {
+                    setActiveNav("dashboard");
+                    setSearchQuery("");
+                }
+            };
+            window.addEventListener("popstate", handlePopState);
+            return () => {
+                window.removeEventListener("popstate", handlePopState);
+            };
+        }
+    }, [activeNav]);
+
+    useEffect(() => {
         const now = new Date();
         setCalendarViewDate(new Date(now.getFullYear(), now.getMonth(), 1));
 
@@ -254,9 +265,9 @@ function DashboardContent() {
             return;
         }
 
-        const storedName = localStorage.getItem("user_name") || localStorage.getItem("student_name") || "Cadet";
+        const storedName = localStorage.getItem("user_name") || localStorage.getItem("student_name") || "Student";
         const storedEmail = localStorage.getItem("user_email") || "";
-        const storedBatch = localStorage.getItem("batch_no") || "Catalyst Command Batch";
+        const storedBatch = localStorage.getItem("batch_no") || "General Batch";
         const storedClass = localStorage.getItem("grade_class") || "";
         const storedSchool = localStorage.getItem("school") || "";
 
@@ -337,7 +348,7 @@ function DashboardContent() {
                 if (res.data.batch_no) localStorage.setItem("batch_no", res.data.batch_no);
             }
         } catch {
-            // Retain local stored values
+            // Retain stored local values
         }
     };
 
@@ -382,6 +393,15 @@ function DashboardContent() {
         }
     };
 
+    const handleSubjectTransition = (subject: "PHYSICS" | "CHEMISTRY") => {
+        setActiveTransition(subject);
+        setSelectedSubject(subject);
+        setActiveNav("lectures");
+        setTimeout(() => {
+            setActiveTransition(null);
+        }, 600);
+    };
+
     const toggleWatchStatus = (id: string) => {
         const updated = watchedVideos.includes(id)
             ? watchedVideos.filter((vId) => vId !== id)
@@ -420,15 +440,15 @@ function DashboardContent() {
 
     const handleAddTimestampTag = (lectureId: string) => {
         const current = lectureNotes[lectureId] || "";
-        const stamp = `\n[Timestamp Record]: `;
+        const stamp = `\n[Timestamp Note]: `;
         handleNoteChange(lectureId, current + stamp);
     };
 
     const handleExportNotes = (lecture: VideoLecture) => {
-        const noteText = lectureNotes[lecture.id] || "No revision notes recorded.";
+        const noteText = lectureNotes[lecture.id] || "No notes recorded for this lecture.";
         const blob = new Blob(
             [
-                `AZS: The Catalyst - Revision Terminal\n`,
+                `AZS: The Catalyst - Revision Notes\n`,
                 `Subject: ${lecture.subject}\n`,
                 `Chapter: ${lecture.chapter}\n`,
                 `Lecture #${lecture.lecture_no}: ${lecture.topic || lecture.title}\n`,
@@ -463,7 +483,7 @@ function DashboardContent() {
                 ...newMsgs,
                 {
                     role: "assistant",
-                    content: err.response?.data?.detail || "AI Core connection interrupted.",
+                    content: err.response?.data?.detail || "Could not retrieve AI response right now.",
                 },
             ]);
         } finally {
@@ -593,37 +613,47 @@ function DashboardContent() {
     if (!mounted) return null;
 
     return (
-        <div className="min-h-screen bg-[#07090E] text-slate-100 flex flex-col font-sans antialiased relative selection:bg-indigo-500 selection:text-white">
-            {/* Subject-specific scientific micro-animation transition overlay */}
-            {isTransitioning && (
-                <div className="fixed inset-0 z-50 bg-[#07090E]/90 backdrop-blur-md flex items-center justify-center animate-in fade-in duration-200">
-                    <div className="flex flex-col items-center space-y-6">
-                        {transitionSubject === "PHYSICS" ? (
-                            <div className="relative flex items-center justify-center">
-                                <div className="w-24 h-24 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
-                                <div className="absolute w-16 h-16 rounded-full border-2 border-cyan-400/30 border-b-cyan-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }} />
-                                <Zap className="w-8 h-8 text-indigo-400 absolute animate-pulse" />
+        <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col font-sans antialiased relative overflow-x-hidden">
+
+            {/* SUBJECT TRANSITION SCI-FI OVERLAY ANIMATION */}
+            {activeTransition && (
+                <div className="fixed inset-0 z-50 bg-[#090D16]/90 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200">
+                    {activeTransition === "PHYSICS" ? (
+                        <div className="flex flex-col items-center space-y-6">
+                            <div className="relative w-24 h-24 flex items-center justify-center">
+                                <div className="absolute inset-0 rounded-full border-2 border-indigo-500/30 animate-ping" />
+                                <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-400 flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.5)]">
+                                    <Atom className="w-8 h-8 text-indigo-400 animate-spin" style={{ animationDuration: "6s" }} />
+                                </div>
                             </div>
-                        ) : (
-                            <div className="relative flex items-center justify-center">
-                                <div className="w-24 h-24 rounded-full border-2 border-amber-500/20 border-t-amber-500 animate-spin" />
-                                <div className="absolute w-16 h-16 rounded-full border-2 border-orange-400/30 border-b-orange-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.2s' }} />
-                                <FlaskConical className="w-8 h-8 text-amber-400 absolute animate-pulse" />
+                            <div className="text-center space-y-1">
+                                <span className="text-[10px] font-mono tracking-widest text-indigo-400 uppercase">Quantum Core Protocol</span>
+                                <h3 className="text-lg font-extrabold text-white tracking-wide">Initializing Physics Matrix...</h3>
                             </div>
-                        )}
-                        <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden">
-                            <div className={`h-full w-full animate-pulse ${transitionSubject === "PHYSICS" ? "bg-indigo-500 shadow-[0_0_15px_#6366f1]" : "bg-amber-500 shadow-[0_0_15px_#f59e0b]"}`} />
                         </div>
-                    </div>
+                    ) : (
+                        <div className="flex flex-col items-center space-y-6">
+                            <div className="relative w-24 h-24 flex items-center justify-center">
+                                <div className="absolute inset-0 rounded-full border-2 border-amber-500/30 animate-ping" />
+                                <div className="w-16 h-16 rounded-2xl bg-amber-600/20 border border-amber-400 flex items-center justify-center shadow-[0_0_30px_rgba(245,158,11,0.5)]">
+                                    <FlaskConical className="w-8 h-8 text-amber-400 animate-bounce" />
+                                </div>
+                            </div>
+                            <div className="text-center space-y-1">
+                                <span className="text-[10px] font-mono tracking-widest text-amber-400 uppercase">Synthesis Lab Protocol</span>
+                                <h3 className="text-lg font-extrabold text-white tracking-wide">Loading Chemistry Vault...</h3>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
             <div className="flex-1 flex min-w-0">
-                {/* 1. LEFT SIDEBAR (Desktop Cyber-Deck Command Center) */}
-                <aside className="w-72 bg-[#0B0F19] border-r border-slate-800/80 p-6 flex flex-col justify-between shrink-0 hidden md:flex shadow-2xl">
+                {/* 1. LEFT SIDEBAR (Cyber-Deck Theme) */}
+                <aside className="w-72 bg-[#0B101D] border-r border-slate-800/80 p-6 flex flex-col justify-between shrink-0 hidden md:flex shadow-2xl">
                     <div className="space-y-8">
-                        <div className="flex items-center space-x-3.5 px-1">
-                            <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-900 border border-slate-700 shadow-inner flex items-center justify-center shrink-0 p-1.5">
+                        <div className="flex items-center space-x-3 px-1">
+                            <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-900 border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)] flex items-center justify-center shrink-0 p-1.5">
                                 <img
                                     src="/logo.png"
                                     alt="AZS Logo"
@@ -648,8 +678,8 @@ function DashboardContent() {
                                     setSearchQuery("");
                                 }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "dashboard"
-                                        ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-600/30 border border-indigo-500/30"
-                                        : "text-slate-400 hover:text-white hover:bg-slate-900/60"
+                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                                        : "text-slate-400 hover:text-white hover:bg-slate-900/80"
                                     }`}
                             >
                                 <LayoutDashboard className="w-4 h-4" />
@@ -657,29 +687,35 @@ function DashboardContent() {
                             </button>
 
                             <button
-                                onClick={() => setActiveNav("lectures")}
+                                onClick={() => {
+                                    setActiveNav("lectures");
+                                    setSelectedSubject("ALL");
+                                }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "lectures"
-                                        ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-600/30 border border-indigo-500/30"
-                                        : "text-slate-400 hover:text-white hover:bg-slate-900/60"
+                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                                        : "text-slate-400 hover:text-white hover:bg-slate-900/80"
                                     }`}
                             >
                                 <PlayCircle className="w-4 h-4" />
                                 <span>Video Lectures</span>
-                                <span className="ml-auto text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">
+                                <span className="ml-auto text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md font-mono">
                                     {videos.length}
                                 </span>
                             </button>
 
                             <button
-                                onClick={() => setActiveNav("materials")}
+                                onClick={() => {
+                                    setActiveNav("materials");
+                                    setSelectedSubject("ALL");
+                                }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "materials"
-                                        ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-600/30 border border-indigo-500/30"
-                                        : "text-slate-400 hover:text-white hover:bg-slate-900/60"
+                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                                        : "text-slate-400 hover:text-white hover:bg-slate-900/80"
                                     }`}
                             >
                                 <FileText className="w-4 h-4" />
                                 <span>Study Sheets (PDF)</span>
-                                <span className="ml-auto text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">
+                                <span className="ml-auto text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md font-mono">
                                     {materials.length}
                                 </span>
                             </button>
@@ -687,13 +723,13 @@ function DashboardContent() {
                             <button
                                 onClick={() => setActiveNav("ai")}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "ai"
-                                        ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-600/30 border border-indigo-500/30"
-                                        : "text-slate-400 hover:text-white hover:bg-slate-900/60"
+                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                                        : "text-slate-400 hover:text-white hover:bg-slate-900/80"
                                     }`}
                             >
                                 <Bot className="w-4 h-4 text-indigo-400" />
                                 <span>AI Tutor Core</span>
-                                <span className="ml-auto text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-bold border border-indigo-500/30">
+                                <span className="ml-auto text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-md font-bold">
                                     Online
                                 </span>
                             </button>
@@ -702,20 +738,20 @@ function DashboardContent() {
 
                     {/* ELITE INSTRUCTOR DIRECT UPLINK TERMINAL */}
                     <div className="pt-6 border-t border-slate-800/80 space-y-4 mb-2">
-                        <div className="bg-gradient-to-br from-[#121826] via-[#0D121F] to-[#0A0E17] rounded-2xl p-4 text-white shadow-xl border border-slate-700/60 relative overflow-hidden group">
+                        <div className="bg-gradient-to-br from-slate-900 via-[#131826] to-slate-950 rounded-2xl p-4 text-white shadow-2xl border border-indigo-500/20 relative overflow-hidden group">
                             <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all duration-500" />
 
                             <div className="relative z-10 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[9px] font-extrabold tracking-widest text-indigo-400 uppercase bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
-                                        Lead Instructor
+                                        Academic Guide
                                     </span>
-                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#34d399]" title="Secure Uplink Active" />
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Active" />
                                 </div>
 
                                 <div>
                                     <h4 className="text-sm font-extrabold text-white tracking-tight">{TEACHER_SOCIAL.name}</h4>
-                                    <p className="text-[10px] text-slate-400 font-medium mt-0.5">{TEACHER_SOCIAL.role}</p>
+                                    <p className="text-[10px] text-slate-400 font-medium mt-0.5">Physics & Chemistry Lead</p>
                                 </div>
 
                                 <div className="grid grid-cols-3 gap-1.5 pt-1">
@@ -724,7 +760,7 @@ function DashboardContent() {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.04] hover:bg-emerald-500/20 hover:border-emerald-500/40 border border-white/10 rounded-xl transition-all group/btn"
-                                        title="WhatsApp Direct Uplink"
+                                        title="WhatsApp Direct"
                                     >
                                         <MessageCircle className="w-4 h-4 text-emerald-400 mb-1 group-hover/btn:scale-110 transition-transform" />
                                         <span className="text-[9px] font-semibold text-slate-300 group-hover/btn:text-white">WhatsApp</span>
@@ -735,7 +771,7 @@ function DashboardContent() {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.04] hover:bg-blue-500/20 hover:border-blue-500/40 border border-white/10 rounded-xl transition-all group/btn"
-                                        title="Facebook Command Node"
+                                        title="Facebook Profile"
                                     >
                                         <Globe className="w-4 h-4 text-blue-400 mb-1 group-hover/btn:scale-110 transition-transform" />
                                         <span className="text-[9px] font-semibold text-slate-300 group-hover/btn:text-white">Facebook</span>
@@ -746,7 +782,7 @@ function DashboardContent() {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.04] hover:bg-rose-500/20 hover:border-rose-500/40 border border-white/10 rounded-xl transition-all group/btn"
-                                        title="YouTube Archive Vault"
+                                        title="YouTube Channel"
                                     >
                                         <Video className="w-4 h-4 text-rose-400 mb-1 group-hover/btn:scale-110 transition-transform" />
                                         <span className="text-[9px] font-semibold text-slate-300 group-hover/btn:text-white">YouTube</span>
@@ -757,15 +793,15 @@ function DashboardContent() {
 
                         <div className="pt-3 border-t border-slate-800/80 space-y-3">
                             <div className="flex items-center space-x-3 px-2">
-                                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center font-extrabold text-indigo-400 text-xs shadow-inner shrink-0">
+                                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center font-extrabold text-indigo-400 text-xs shadow-sm shrink-0">
                                     {userProfile.full_name.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="overflow-hidden">
                                     <p className="text-xs font-bold text-white truncate">
                                         {userProfile.full_name}
                                     </p>
-                                    <p className="text-[10px] text-slate-400 font-mono truncate">
-                                        {userProfile.batch_no || userProfile.email || "Catalyst Cadet"}
+                                    <p className="text-[10px] text-slate-400 font-medium truncate">
+                                        {userProfile.batch_no || userProfile.email || "Registered Student"}
                                     </p>
                                 </div>
                             </div>
@@ -775,7 +811,7 @@ function DashboardContent() {
                                 className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-500/10 transition"
                             >
                                 <LogOut className="w-4 h-4" />
-                                <span>Disconnect Deck</span>
+                                <span>Sign Out</span>
                             </button>
                         </div>
                     </div>
@@ -783,25 +819,24 @@ function DashboardContent() {
 
                 {/* 2. MAIN WORKSPACE */}
                 <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-                    {/* TELEMETRY STATUS BAR (TOP HEADER) */}
-                    <header className="h-20 bg-[#0B0F19]/90 backdrop-blur-md border-b border-slate-800/80 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-30 shadow-md">
+                    <header className="h-20 bg-[#090D16]/80 backdrop-blur-md border-b border-slate-800/80 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-30 shadow-sm">
                         <div className="flex items-center gap-3 flex-1 max-w-md">
-                            <div className="w-9 h-9 rounded-xl overflow-hidden bg-slate-900 border border-slate-800 shadow-sm flex md:hidden items-center justify-center shrink-0 p-1">
+                            <div className="w-9 h-9 rounded-xl overflow-hidden bg-slate-900 border border-indigo-500/30 shadow-sm flex md:hidden items-center justify-center shrink-0 p-1">
                                 <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
                             </div>
                             <div className="relative flex-1">
-                                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                                 <input
                                     type="text"
-                                    placeholder="Search physics equations or chemical notes..."
+                                    placeholder="Search topic or chapter..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full bg-[#121826] border border-slate-800 focus:border-indigo-500 rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition shadow-inner"
+                                    className="w-full bg-[#131826] border border-slate-800 focus:border-indigo-500 rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition"
                                 />
                                 {searchQuery && (
                                     <button
                                         onClick={() => setSearchQuery("")}
-                                        className="absolute right-3 top-3 text-slate-500 hover:text-white"
+                                        className="absolute right-3 top-3 text-slate-400 hover:text-white"
                                     >
                                         <X className="w-3.5 h-3.5" />
                                     </button>
@@ -810,12 +845,12 @@ function DashboardContent() {
                         </div>
 
                         <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-xs font-bold shadow-sm">
-                                <Flame className="w-4 h-4 text-amber-500 animate-pulse" />
+                            <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-400 text-xs font-bold shadow-sm">
+                                <Flame className="w-4 h-4 text-amber-500" />
                                 <span>Streak Active</span>
                             </div>
 
-                            <div className="p-2.5 rounded-xl bg-[#121826] border border-slate-800 text-slate-400 relative hover:text-white transition cursor-pointer">
+                            <div className="p-2.5 rounded-xl bg-[#131826] text-slate-300 border border-slate-800 relative hover:bg-slate-800 transition cursor-pointer">
                                 <Bell className="w-4 h-4" />
                                 {notice && <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 animate-ping" />}
                             </div>
@@ -823,8 +858,8 @@ function DashboardContent() {
                     </header>
 
                     {notice && (
-                        <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-slate-950 px-6 py-2.5 flex items-center space-x-3 shadow-md">
-                            <span className="px-2 py-0.5 rounded bg-black text-amber-400 font-black text-[10px] tracking-wider uppercase">
+                        <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-6 py-2.5 flex items-center space-x-3 shadow-md">
+                            <span className="px-2 py-0.5 rounded bg-black/30 text-amber-300 font-black text-[10px] tracking-wider uppercase">
                                 Notice
                             </span>
                             <p className="text-xs font-bold text-white flex-1 truncate">{notice.content}</p>
@@ -847,30 +882,30 @@ function DashboardContent() {
                                     </div>
                                     <button
                                         onClick={() => setSearchQuery("")}
-                                        className="text-xs font-bold text-slate-400 hover:text-white bg-[#121826] border border-slate-800 px-3 py-1.5 rounded-xl transition"
+                                        className="text-xs font-bold text-slate-300 hover:text-white bg-[#131826] border border-slate-800 px-3 py-1.5 rounded-xl transition"
                                     >
                                         Clear Search
                                     </button>
                                 </div>
 
                                 {!hasSearchResults ? (
-                                    <div className="bg-[#0B0F19] rounded-3xl p-16 text-center border border-slate-800 shadow-xl space-y-4">
-                                        <div className="w-16 h-16 rounded-full bg-slate-900 text-slate-500 mx-auto flex items-center justify-center border border-slate-800">
+                                    <div className="bg-[#0B101D] rounded-3xl p-16 text-center border border-slate-800 shadow-xl space-y-4">
+                                        <div className="w-16 h-16 rounded-full bg-slate-900 text-slate-500 mx-auto flex items-center justify-center">
                                             <SearchX className="w-8 h-8" />
                                         </div>
                                         <div className="space-y-1">
                                             <h3 className="text-base font-extrabold text-white">
-                                                No Telemetry Data Found
+                                                No Results Found
                                             </h3>
                                             <p className="text-xs text-slate-400 max-w-md mx-auto">
-                                                No records match &ldquo;{searchQuery}&rdquo; across the physics & chemistry archives.
+                                                We couldn&apos;t find any lectures or study sheets matching &ldquo;{searchQuery}&rdquo;.
                                             </p>
                                         </div>
                                         <button
                                             onClick={() => setSearchQuery("")}
-                                            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/30"
+                                            className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-500 transition"
                                         >
-                                            Reset Query
+                                            Reset & View All Content
                                         </button>
                                     </div>
                                 ) : (
@@ -889,11 +924,11 @@ function DashboardContent() {
                                                             <div
                                                                 key={vid.id}
                                                                 id={`lecture-card-${vid.id}`}
-                                                                className={`bg-[#0B0F19] rounded-2xl overflow-hidden border transition-all duration-200 shadow-lg flex flex-col justify-between ${isWatched ? "border-emerald-500/40 ring-2 ring-emerald-500/10" : "border-slate-800"
+                                                                className={`bg-[#0B101D] rounded-2xl overflow-hidden border transition-all duration-200 shadow-lg flex flex-col justify-between ${isWatched ? "border-emerald-500/40 ring-2 ring-emerald-500/10" : "border-slate-800"
                                                                     }`}
                                                             >
                                                                 <div>
-                                                                    <div className="aspect-video w-full bg-black relative">
+                                                                    <div className="aspect-video w-full bg-slate-950 relative">
                                                                         {embedUrl ? (
                                                                             <iframe
                                                                                 src={embedUrl}
@@ -904,20 +939,20 @@ function DashboardContent() {
                                                                             />
                                                                         ) : (
                                                                             <div className="h-full flex items-center justify-center text-xs text-slate-500">
-                                                                                Signal Error
+                                                                                Invalid Video Link
                                                                             </div>
                                                                         )}
                                                                     </div>
 
                                                                     <div className="p-5 space-y-2">
                                                                         <div className="flex items-center justify-between">
-                                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-900 text-slate-300 border border-slate-800">
                                                                                 Lecture #{vid.lecture_no}
                                                                             </span>
                                                                             <span
-                                                                                className={`text-[10px] font-bold px-2 py-0.5 rounded ${vid.subject === "PHYSICS"
-                                                                                        ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                                                                                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                                                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
+                                                                                        ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+                                                                                        : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
                                                                                     }`}
                                                                             >
                                                                                 {vid.subject}
@@ -939,10 +974,10 @@ function DashboardContent() {
                                                                         }}
                                                                         className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
                                                                                 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                                                                                : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30"
+                                                                                : "bg-indigo-600 text-white hover:bg-indigo-500"
                                                                             }`}
                                                                     >
-                                                                        <span>{isWatched ? "✓ Completed" : "Mark Completed"}</span>
+                                                                        <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -965,14 +1000,14 @@ function DashboardContent() {
                                                         return (
                                                             <div
                                                                 key={mat.id}
-                                                                className="bg-[#0B0F19] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between space-y-4"
+                                                                className="bg-[#0B101D] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between space-y-4"
                                                             >
                                                                 <div className="space-y-3">
                                                                     <div className="flex items-center justify-between">
                                                                         <span
-                                                                            className={`text-[10px] font-bold px-2 py-0.5 rounded ${mat.subject === "PHYSICS"
-                                                                                    ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                                                                                    : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                                                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
+                                                                                    ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+                                                                                    : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
                                                                                 }`}
                                                                         >
                                                                             {mat.subject}
@@ -981,7 +1016,7 @@ function DashboardContent() {
                                                                     </div>
 
                                                                     <div className="flex items-start space-x-3">
-                                                                        <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-indigo-400 font-bold text-xs shrink-0 shadow-inner">
+                                                                        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-xs shrink-0">
                                                                             PDF
                                                                         </div>
                                                                         <div>
@@ -1006,8 +1041,8 @@ function DashboardContent() {
                                                                         href={rawFileUrl}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
-                                                                        className="p-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800"
-                                                                        title="Open / Download"
+                                                                        className="p-2.5 bg-[#131826] hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800"
+                                                                        title="Open in new tab / Download"
                                                                     >
                                                                         <ExternalLink className="w-3.5 h-3.5" />
                                                                     </a>
@@ -1023,112 +1058,100 @@ function DashboardContent() {
                             </div>
                         )}
 
-                        {/* VIEW: DASHBOARD COMMAND DECK (HOME) */}
+                        {/* VIEW: DASHBOARD OVERVIEW (EXPLORATION DECK) */}
                         {!isSearchActive && activeNav === "dashboard" && (
                             <>
-                                {/* 1. HERO "EXPLORATION CORE" SUBJECT CARDS (PHYSICS & CHEMISTRY) */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <h2 className="text-lg font-bold text-white tracking-tight">Subject Exploration Core</h2>
-                                        <span className="text-xs text-indigo-400 font-mono">Telemetry: Online</span>
+                                {/* CYBER-DECK HERO & SUBJECT EXPLORATION CARDS */}
+                                <div className="space-y-6">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                        <div>
+                                            <h2 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
+                                                <span>Command Center</span>
+                                                <span className="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-full">
+                                                    Online
+                                                </span>
+                                            </h2>
+                                            <p className="text-xs text-slate-400">Welcome back, {userProfile.full_name}. Select an exploration deck below.</p>
+                                        </div>
                                     </div>
 
+                                    {/* IMMERSIVE SUBJECT EXPLORATION LAUNCHPAD */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {/* PHYSICS ENGINE CARD */}
                                         <div
-                                            onClick={() => {
-                                                triggerSubjectTransition("PHYSICS", () => {
-                                                    setSelectedSubject("PHYSICS");
-                                                    setActiveNav("lectures");
-                                                });
-                                            }}
-                                            className="group relative bg-gradient-to-br from-[#0B0F19] via-[#0F1423] to-[#0A0D14] rounded-3xl p-8 border border-indigo-500/30 shadow-2xl hover:border-indigo-500/60 transition-all duration-300 cursor-pointer overflow-hidden"
+                                            onClick={() => handleSubjectTransition("PHYSICS")}
+                                            className="group relative bg-gradient-to-br from-[#101626] via-[#0B101D] to-[#131b2e] rounded-3xl p-8 border border-indigo-500/30 hover:border-indigo-400 shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between h-64"
                                         >
-                                            <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-indigo-600/10 rounded-full blur-3xl group-hover:bg-indigo-600/20 transition-all" />
-                                            <div className="relative z-10 space-y-6">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-[0_0_20px_#6366f133]">
-                                                        <Atom className="w-7 h-7 animate-spin" style={{ animationDuration: '12s' }} />
-                                                    </div>
-                                                    <span className="text-[10px] font-mono tracking-widest text-indigo-400 uppercase bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20">
-                                                        Engine 01
-                                                    </span>
-                                                </div>
+                                            <div className="absolute -right-10 -bottom-10 w-44 h-44 bg-indigo-600/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all duration-500" />
 
-                                                <div className="space-y-2">
-                                                    <h3 className="text-2xl font-black text-white group-hover:text-indigo-300 transition-colors">
-                                                        Physics Matrix
-                                                    </h3>
-                                                    <p className="text-xs text-slate-400 leading-relaxed">
-                                                        Engage optics, mechanics, thermodynamics, and electromagnetic theory archives.
-                                                    </p>
+                                            <div className="space-y-3 relative z-10">
+                                                <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-400/40 flex items-center justify-center text-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.3)] group-hover:scale-110 transition-transform">
+                                                    <Atom className="w-6 h-6 animate-spin" style={{ animationDuration: "12s" }} />
                                                 </div>
+                                                <div>
+                                                    <span className="text-[10px] font-mono uppercase tracking-widest text-indigo-400 font-bold">Sector 01</span>
+                                                    <h3 className="text-2xl font-black text-white tracking-tight mt-0.5">Physics Engine</h3>
+                                                </div>
+                                                <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
+                                                    Explore optics, motion mechanics, waves, and electromagnetism problem sets & video lectures.
+                                                </p>
+                                            </div>
 
-                                                <div className="flex items-center justify-between pt-2 text-xs font-bold text-indigo-400">
-                                                    <span className="group-hover:translate-x-1 transition-transform inline-flex items-center gap-1.5">
-                                                        Engage Physics Engine &rarr;
-                                                    </span>
-                                                    <span className="font-mono text-[11px] text-slate-500">
-                                                        {videos.filter(v => v.subject === "PHYSICS").length} Modules
-                                                    </span>
-                                                </div>
+                                            <div className="relative z-10 flex items-center justify-between pt-4 border-t border-indigo-500/20">
+                                                <span className="text-xs font-extrabold text-indigo-300 group-hover:translate-x-1 transition-transform flex items-center gap-1.5">
+                                                    <span>Engage Physics Deck</span>
+                                                    <ExternalLink className="w-3.5 h-3.5" />
+                                                </span>
+                                                <span className="text-xs font-mono text-slate-500">
+                                                    {videos.filter(v => v.subject === "PHYSICS").length} Lectures
+                                                </span>
                                             </div>
                                         </div>
 
-                                        {/* CHEMISTRY MATRIX CARD */}
+                                        {/* CHEMISTRY SYNTHESIS HUB CARD */}
                                         <div
-                                            onClick={() => {
-                                                triggerSubjectTransition("CHEMISTRY", () => {
-                                                    setSelectedSubject("CHEMISTRY");
-                                                    setActiveNav("lectures");
-                                                });
-                                            }}
-                                            className="group relative bg-gradient-to-br from-[#0B0F19] via-[#141210] to-[#0A0D14] rounded-3xl p-8 border border-amber-500/30 shadow-2xl hover:border-amber-500/60 transition-all duration-300 cursor-pointer overflow-hidden"
+                                            onClick={() => handleSubjectTransition("CHEMISTRY")}
+                                            className="group relative bg-gradient-to-br from-[#1A130F] via-[#0B101D] to-[#261A13] rounded-3xl p-8 border border-amber-500/30 hover:border-amber-400 shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between h-64"
                                         >
-                                            <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-amber-600/10 rounded-full blur-3xl group-hover:bg-amber-600/20 transition-all" />
-                                            <div className="relative z-10 space-y-6">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-[0_0_20px_#f59e0b33]">
-                                                        <FlaskConical className="w-7 h-7 animate-pulse" />
-                                                    </div>
-                                                    <span className="text-[10px] font-mono tracking-widest text-amber-400 uppercase bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
-                                                        Engine 02
-                                                    </span>
-                                                </div>
+                                            <div className="absolute -right-10 -bottom-10 w-44 h-44 bg-amber-600/10 rounded-full blur-3xl group-hover:bg-amber-500/20 transition-all duration-500" />
 
-                                                <div className="space-y-2">
-                                                    <h3 className="text-2xl font-black text-white group-hover:text-amber-300 transition-colors">
-                                                        Chemistry Protocol
-                                                    </h3>
-                                                    <p className="text-xs text-slate-400 leading-relaxed">
-                                                        Explore organic reaction mechanisms, stoichiometry, and periodic synthesis vaults.
-                                                    </p>
+                                            <div className="space-y-3 relative z-10">
+                                                <div className="w-12 h-12 rounded-2xl bg-amber-600/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.3)] group-hover:scale-110 transition-transform">
+                                                    <FlaskConical className="w-6 h-6 animate-bounce" />
                                                 </div>
+                                                <div>
+                                                    <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold">Sector 02</span>
+                                                    <h3 className="text-2xl font-black text-white tracking-tight mt-0.5">Chemistry Synthesis</h3>
+                                                </div>
+                                                <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
+                                                    Master organic reaction mechanisms, stoichiometry, periodic trends, and chemical bonds.
+                                                </p>
+                                            </div>
 
-                                                <div className="flex items-center justify-between pt-2 text-xs font-bold text-amber-400">
-                                                    <span className="group-hover:translate-x-1 transition-transform inline-flex items-center gap-1.5">
-                                                        Activate Chemistry Protocol &rarr;
-                                                    </span>
-                                                    <span className="font-mono text-[11px] text-slate-500">
-                                                        {videos.filter(v => v.subject === "CHEMISTRY").length} Modules
-                                                    </span>
-                                                </div>
+                                            <div className="relative z-10 flex items-center justify-between pt-4 border-t border-amber-500/20">
+                                                <span className="text-xs font-extrabold text-amber-300 group-hover:translate-x-1 transition-transform flex items-center gap-1.5">
+                                                    <span>Activate Chemistry Hub</span>
+                                                    <ExternalLink className="w-3.5 h-3.5" />
+                                                </span>
+                                                <span className="text-xs font-mono text-slate-500">
+                                                    {videos.filter(v => v.subject === "CHEMISTRY").length} Lectures
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* 2. CONTINUE WATCHING & RESUME BANNER */}
+                                {/* CONTINUE WATCHING & RESUME BANNER */}
                                 {activeResumeLecture && (
-                                    <div className="bg-gradient-to-r from-[#0B0F19] via-[#121826] to-[#0B0F19] rounded-3xl p-6 text-white border border-indigo-500/30 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                                    <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 text-white border border-indigo-500/20 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
                                         <div className="flex items-center space-x-4">
-                                            <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center shrink-0 shadow-inner">
+                                            <div className="w-12 h-12 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center shrink-0 shadow-inner">
                                                 <Play className="w-5 h-5 text-indigo-400 fill-indigo-400" />
                                             </div>
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                                                        Resume Telemetry
+                                                        Continue Watching
                                                     </span>
                                                     <span className="text-[10px] text-slate-400 font-bold uppercase">
                                                         {activeResumeLecture.subject}
@@ -1151,31 +1174,31 @@ function DashboardContent() {
                                     </div>
                                 )}
 
-                                {/* 3. METRICS & STUDY PLANNER */}
+                                {/* STATISTICS & INTERACTIVE STUDY PLANNER CALENDAR */}
                                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                                     <div className="lg:col-span-7 space-y-6">
-                                        <h3 className="text-base font-bold text-white">Deck Telemetry Metrics</h3>
+                                        <h3 className="text-base font-bold text-white">Telemetry & Progress</h3>
 
                                         <div className="grid grid-cols-3 gap-4">
-                                            <div className="bg-[#0B0F19] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
+                                            <div className="bg-[#0B101D] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
                                                 <p className="text-2xl sm:text-3xl font-black text-white">{completedCount}</p>
-                                                <p className="text-xs font-medium text-slate-400 mt-2">Lessons completed</p>
+                                                <p className="text-xs font-medium text-slate-400 mt-2">Lectures completed</p>
                                             </div>
 
-                                            <div className="bg-[#0B0F19] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
+                                            <div className="bg-[#0B101D] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
                                                 <p className="text-2xl sm:text-3xl font-black text-white">{chapterStats.length}</p>
-                                                <p className="text-xs font-medium text-slate-400 mt-2">Active chapters</p>
+                                                <p className="text-xs font-medium text-slate-400 mt-2">Chapters in progress</p>
                                             </div>
 
-                                            <div className="bg-[#0B0F19] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
+                                            <div className="bg-[#0B101D] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
                                                 <p className="text-2xl sm:text-3xl font-black text-white">{completionPercentage}%</p>
-                                                <p className="text-xs font-medium text-slate-400 mt-2">Syllabus integrity</p>
+                                                <p className="text-xs font-medium text-slate-400 mt-2">Syllabus coverage</p>
                                             </div>
                                         </div>
 
                                         <div className="space-y-3">
                                             <div className="flex items-center justify-between">
-                                                <h3 className="text-base font-bold text-white">Recommended Modules</h3>
+                                                <h3 className="text-base font-bold text-white">Recommended Lectures</h3>
                                                 <button
                                                     onClick={() => setActiveNav("lectures")}
                                                     className="text-xs font-bold text-indigo-400 hover:underline"
@@ -1190,13 +1213,13 @@ function DashboardContent() {
                                                     return (
                                                         <div
                                                             key={v.id}
-                                                            className="bg-[#0B0F19] rounded-2xl p-4 border border-slate-800 shadow-lg flex items-center justify-between"
+                                                            className="bg-[#0B101D] rounded-2xl p-4 border border-slate-800 shadow-lg flex items-center justify-between"
                                                         >
                                                             <div className="flex items-center space-x-3.5">
                                                                 <div
                                                                     className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs ${v.subject === "PHYSICS"
-                                                                            ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                                                                            : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                                                            ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                                                                            : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                                                                         }`}
                                                                 >
                                                                     #{v.lecture_no}
@@ -1216,7 +1239,7 @@ function DashboardContent() {
                                                                 }}
                                                                 className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition ${isDone
                                                                         ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                                                                        : "bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800"
+                                                                        : "bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800"
                                                                     }`}
                                                             >
                                                                 {isDone ? "✓ Done" : "Mark Watched"}
@@ -1229,23 +1252,23 @@ function DashboardContent() {
                                     </div>
 
                                     <div className="lg:col-span-5 space-y-6">
-                                        <div className="bg-[#0B0F19] rounded-3xl p-6 border border-slate-800 shadow-lg space-y-4">
+                                        <div className="bg-[#0B101D] rounded-3xl p-6 border border-slate-800 shadow-lg space-y-4">
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <h4 className="text-sm font-extrabold text-white">{currentMonthTitle}</h4>
-                                                    <p className="text-[10px] text-slate-400">Click any date to schedule study goals</p>
+                                                    <p className="text-[10px] text-slate-400">Click any date to schedule a study plan</p>
                                                 </div>
                                                 <div className="flex items-center space-x-1">
                                                     <button
                                                         onClick={handlePrevMonth}
-                                                        className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                                                        className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-300 transition"
                                                         title="Previous Month"
                                                     >
                                                         <ChevronLeft className="w-4 h-4" />
                                                     </button>
                                                     <button
                                                         onClick={handleNextMonth}
-                                                        className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                                                        className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-300 transition"
                                                         title="Next Month"
                                                     >
                                                         <ChevronRight className="w-4 h-4" />
@@ -1280,7 +1303,7 @@ function DashboardContent() {
                                                             <button
                                                                 onClick={() => setSelectedDateForPlan(dateKey)}
                                                                 className={`w-7 h-7 flex items-center justify-center rounded-xl transition relative ${isToday
-                                                                        ? "bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/40"
+                                                                        ? "bg-indigo-600 text-white font-bold shadow-md"
                                                                         : "text-slate-300 hover:bg-slate-800"
                                                                     }`}
                                                             >
@@ -1301,7 +1324,7 @@ function DashboardContent() {
                                         {tomorrowReminders.length > 0 && (
                                             <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl p-5 space-y-2 shadow-lg">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-extrabold uppercase text-amber-300 bg-amber-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-amber-500/30">
+                                                    <span className="text-[10px] font-extrabold uppercase text-amber-300 bg-amber-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                                                         <Bell className="w-3 h-3 text-amber-400" />
                                                         <span>Reminder: Plan Due Tomorrow!</span>
                                                     </span>
@@ -1311,7 +1334,7 @@ function DashboardContent() {
                                                     {tomorrowReminders.map((p) => (
                                                         <div key={p.id} className="text-xs font-bold text-slate-200 flex items-center justify-between">
                                                             <span>• {p.title}</span>
-                                                            {p.time && <span className="text-[10px] text-slate-400 font-mono">{p.time}</span>}
+                                                            {p.time && <span className="text-[10px] text-slate-400 font-normal">{p.time}</span>}
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1321,9 +1344,9 @@ function DashboardContent() {
                                         {todayReminders.length > 0 && (
                                             <div className="bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-500/30 rounded-2xl p-5 space-y-2 shadow-lg">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-extrabold uppercase text-indigo-300 bg-indigo-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-indigo-500/30">
+                                                    <span className="text-[10px] font-extrabold uppercase text-indigo-300 bg-indigo-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                                                         <Clock className="w-3 h-3 text-indigo-400" />
-                                                        <span>Today&apos;s Target Goals</span>
+                                                        <span>Today&apos;s Scheduled Goals</span>
                                                     </span>
                                                     <span className="text-[10px] text-slate-400 font-mono">{todayKey}</span>
                                                 </div>
@@ -1331,41 +1354,41 @@ function DashboardContent() {
                                                     {todayReminders.map((p) => (
                                                         <div key={p.id} className="text-xs font-bold text-slate-200 flex items-center justify-between">
                                                             <span>• {p.title}</span>
-                                                            {p.time && <span className="text-[10px] text-slate-400 font-mono">{p.time}</span>}
+                                                            {p.time && <span className="text-[10px] text-slate-400 font-normal">{p.time}</span>}
                                                         </div>
                                                     ))}
                                                 </div>
                                             </div>
                                         )}
 
-                                        <div className="bg-[#0B0F19] rounded-3xl p-6 border border-slate-800 shadow-lg space-y-3">
+                                        <div className="bg-[#0B101D] rounded-3xl p-6 border border-slate-800 shadow-lg space-y-3">
                                             <div className="flex items-center justify-between">
-                                                <h4 className="text-sm font-extrabold text-white">Live Command Broadcast</h4>
+                                                <h4 className="text-sm font-extrabold text-white">Upcoming Schedule</h4>
                                                 {notice && (
-                                                    <span className="text-[10px] font-bold uppercase text-indigo-400 bg-indigo-500/20 px-2 py-0.5 rounded border border-indigo-500/30">
-                                                        Active
+                                                    <span className="text-[10px] font-bold uppercase text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+                                                        Live Alert
                                                     </span>
                                                 )}
                                             </div>
 
                                             {notice ? (
-                                                <div className="bg-[#121826] text-white p-4 rounded-2xl border border-slate-800 flex items-center space-x-3.5">
-                                                    <div className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-500/40 text-indigo-400 flex items-center justify-center font-black text-sm shrink-0">
-                                                        📢
+                                                <div className="bg-[#131826] text-white p-4 rounded-2xl flex items-center space-x-3.5 border border-slate-800">
+                                                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black text-sm shrink-0 border border-amber-500/30">
+                                                        🗓️
                                                     </div>
                                                     <div className="overflow-hidden">
                                                         <p className="text-[10px] text-slate-400 font-bold uppercase">Instructor Notice</p>
-                                                        <p className="text-xs font-bold leading-tight text-white truncate">
+                                                        <p className="text-xs font-bold leading-tight truncate text-slate-200">
                                                             {notice.content}
                                                         </p>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="py-6 px-4 rounded-2xl bg-[#121826]/50 border border-dashed border-slate-800 text-center space-y-1">
+                                                <div className="py-6 px-4 rounded-2xl bg-slate-900/50 border border-dashed border-slate-800 text-center space-y-1">
                                                     <CalendarCheck className="w-6 h-6 text-slate-600 mx-auto" />
-                                                    <p className="text-xs font-bold text-slate-400">All Telemetry Clear</p>
+                                                    <p className="text-xs font-bold text-slate-400">No Upcoming Events</p>
                                                     <p className="text-[11px] text-slate-500">
-                                                        No special emergency broadcasts at this hour.
+                                                        There are currently no live sessions or notices scheduled.
                                                     </p>
                                                 </div>
                                             )}
@@ -1381,34 +1404,28 @@ function DashboardContent() {
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div>
                                         <h2 className="text-xl font-extrabold text-white">Video Lectures Vault</h2>
-                                        <p className="text-xs text-slate-400">Stream physics & chemistry sessions and record timestamp revision notes.</p>
+                                        <p className="text-xs text-slate-400">Stream recorded classes, take personal notes, and mark completed lectures.</p>
                                     </div>
 
-                                    <div className="flex items-center gap-1.5 bg-[#0B0F19] p-1 rounded-xl border border-slate-800 shadow-sm">
+                                    <div className="flex items-center gap-1.5 bg-[#0B101D] p-1 rounded-xl border border-slate-800 shadow-sm">
                                         {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
                                             <button
                                                 key={subj}
-                                                onClick={() => {
-                                                    if (subj !== "ALL") {
-                                                        triggerSubjectTransition(subj, () => setSelectedSubject(subj));
-                                                    } else {
-                                                        setSelectedSubject("ALL");
-                                                    }
-                                                }}
+                                                onClick={() => setSelectedSubject(subj)}
                                                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${selectedSubject === subj
-                                                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                                        ? "bg-indigo-600 text-white shadow-md"
                                                         : "text-slate-400 hover:text-white"
                                                     }`}
                                             >
-                                                {subj === "ALL" ? "All Subjects" : subj === "PHYSICS" ? "Physics Engine" : "Chemistry Protocol"}
+                                                {subj === "ALL" ? "All Subjects" : subj === "PHYSICS" ? "Physics" : "Chemistry"}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
                                 {filteredVideos.length === 0 ? (
-                                    <div className="bg-[#0B0F19] rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-800">
-                                        No video modules found for this telemetry filter.
+                                    <div className="bg-[#0B101D] rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-800">
+                                        No video lectures match your filter.
                                     </div>
                                 ) : (
                                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1422,11 +1439,11 @@ function DashboardContent() {
                                                 <div
                                                     key={vid.id}
                                                     id={`lecture-card-${vid.id}`}
-                                                    className={`bg-[#0B0F19] rounded-2xl overflow-hidden border transition-all duration-200 shadow-xl flex flex-col justify-between ${isWatched ? "border-emerald-500/40 ring-2 ring-emerald-500/10" : "border-slate-800"
+                                                    className={`bg-[#0B101D] rounded-2xl overflow-hidden border transition-all duration-200 shadow-lg flex flex-col justify-between ${isWatched ? "border-emerald-500/40 ring-2 ring-emerald-500/10" : "border-slate-800"
                                                         }`}
                                                 >
                                                     <div>
-                                                        <div className="aspect-video w-full bg-black relative">
+                                                        <div className="aspect-video w-full bg-slate-950 relative">
                                                             {embedUrl ? (
                                                                 <iframe
                                                                     src={embedUrl}
@@ -1437,20 +1454,20 @@ function DashboardContent() {
                                                                 />
                                                             ) : (
                                                                 <div className="h-full flex items-center justify-center text-xs text-slate-500">
-                                                                    Signal Error
+                                                                    Invalid Video Link
                                                                 </div>
                                                             )}
                                                         </div>
 
                                                         <div className="p-5 space-y-2">
                                                             <div className="flex items-center justify-between">
-                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-900 text-slate-300 border border-slate-800">
                                                                     Lecture #{vid.lecture_no}
                                                                 </span>
                                                                 <span
-                                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded ${vid.subject === "PHYSICS"
-                                                                            ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                                                                            : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${vid.subject === "PHYSICS"
+                                                                            ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+                                                                            : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
                                                                         }`}
                                                                 >
                                                                     {vid.subject}
@@ -1465,14 +1482,14 @@ function DashboardContent() {
                                                     </div>
 
                                                     <div className="p-5 pt-0 space-y-3">
-                                                        <div className="border border-slate-800 rounded-xl overflow-hidden bg-[#121826]/60">
+                                                        <div className="border border-slate-800 rounded-xl overflow-hidden bg-[#131826]/50">
                                                             <button
                                                                 onClick={() => setOpenNotesId(isNotesOpen ? null : vid.id)}
-                                                                className="w-full px-3.5 py-2.5 flex items-center justify-between text-xs font-bold text-slate-300 hover:bg-[#121826] transition"
+                                                                className="w-full px-3.5 py-2 flex items-center justify-between text-xs font-bold text-slate-300 hover:bg-slate-800/60 transition"
                                                             >
                                                                 <div className="flex items-center gap-1.5">
                                                                     <FileEdit className="w-3.5 h-3.5 text-indigo-400" />
-                                                                    <span>Revision & Timestamp Notes</span>
+                                                                    <span>My Lecture Notes</span>
                                                                     {hasNotes && (
                                                                         <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
                                                                     )}
@@ -1486,13 +1503,13 @@ function DashboardContent() {
                                                             </button>
 
                                                             {isNotesOpen && (
-                                                                <div className="p-3 bg-[#0B0F19] border-t border-slate-800 space-y-2.5 animate-in fade-in duration-100">
+                                                                <div className="p-3 bg-[#0B101D] border-t border-slate-800 space-y-2.5 animate-in fade-in duration-100">
                                                                     <textarea
                                                                         rows={4}
-                                                                        placeholder="Jot down formula derivations, problem shortcuts, or timestamps..."
+                                                                        placeholder="Jot down key formulas, tips, or timestamps here..."
                                                                         value={lectureNotes[vid.id] || ""}
                                                                         onChange={(e) => handleNoteChange(vid.id, e.target.value)}
-                                                                        className="w-full bg-[#121826] border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none font-sans"
+                                                                        className="w-full bg-[#131826] border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none font-sans"
                                                                     />
 
                                                                     <div className="flex items-center justify-between">
@@ -1508,7 +1525,7 @@ function DashboardContent() {
                                                                             <button
                                                                                 onClick={() => handleExportNotes(vid)}
                                                                                 className="text-[11px] font-bold text-slate-300 hover:text-white flex items-center gap-1"
-                                                                                title="Export revision notes as TXT"
+                                                                                title="Download as TXT file"
                                                                             >
                                                                                 <Download className="w-3.5 h-3.5" />
                                                                                 <span>Export</span>
@@ -1526,10 +1543,10 @@ function DashboardContent() {
                                                             }}
                                                             className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
                                                                     ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                                                                    : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30"
+                                                                    : "bg-indigo-600 text-white hover:bg-indigo-500"
                                                                 }`}
                                                         >
-                                                            <span>{isWatched ? "✓ Completed" : "Mark Completed"}</span>
+                                                            <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1545,23 +1562,17 @@ function DashboardContent() {
                             <div className="space-y-6">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div>
-                                        <h2 className="text-xl font-extrabold text-white">Study Sheets & Handouts Vault</h2>
-                                        <p className="text-xs text-slate-400">Access and preview physics equation sheets and chemistry problem sets.</p>
+                                        <h2 className="text-xl font-extrabold text-white">Study Materials & Handouts</h2>
+                                        <p className="text-xs text-slate-400">Download lecture notes and practice problem sets.</p>
                                     </div>
 
-                                    <div className="flex items-center gap-1.5 bg-[#0B0F19] p-1 rounded-xl border border-slate-800 shadow-sm">
+                                    <div className="flex items-center gap-1.5 bg-[#0B101D] p-1 rounded-xl border border-slate-800 shadow-sm">
                                         {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((subj) => (
                                             <button
                                                 key={subj}
-                                                onClick={() => {
-                                                    if (subj !== "ALL") {
-                                                        triggerSubjectTransition(subj, () => setSelectedSubject(subj));
-                                                    } else {
-                                                        setSelectedSubject("ALL");
-                                                    }
-                                                }}
+                                                onClick={() => setSelectedSubject(subj)}
                                                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${selectedSubject === subj
-                                                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                                        ? "bg-indigo-600 text-white shadow-md"
                                                         : "text-slate-400 hover:text-white"
                                                     }`}
                                             >
@@ -1572,8 +1583,8 @@ function DashboardContent() {
                                 </div>
 
                                 {filteredMaterials.length === 0 ? (
-                                    <div className="bg-[#0B0F19] rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-800">
-                                        No study sheets found in this sector.
+                                    <div className="bg-[#0B101D] rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-800">
+                                        No study sheets found.
                                     </div>
                                 ) : (
                                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1584,14 +1595,14 @@ function DashboardContent() {
                                             return (
                                                 <div
                                                     key={mat.id}
-                                                    className="bg-[#0B0F19] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between space-y-4"
+                                                    className="bg-[#0B101D] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between space-y-4"
                                                 >
                                                     <div className="space-y-3">
                                                         <div className="flex items-center justify-between">
                                                             <span
-                                                                className={`text-[10px] font-bold px-2 py-0.5 rounded ${mat.subject === "PHYSICS"
-                                                                        ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                                                                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${mat.subject === "PHYSICS"
+                                                                        ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+                                                                        : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
                                                                     }`}
                                                             >
                                                                 {mat.subject}
@@ -1600,7 +1611,7 @@ function DashboardContent() {
                                                         </div>
 
                                                         <div className="flex items-start space-x-3">
-                                                            <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-indigo-400 font-bold text-xs shrink-0 shadow-inner">
+                                                            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-xs shrink-0">
                                                                 PDF
                                                             </div>
                                                             <div>
@@ -1625,8 +1636,8 @@ function DashboardContent() {
                                                             href={rawFileUrl}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="p-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800"
-                                                            title="Open / Download"
+                                                            className="p-2.5 bg-[#131826] hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800"
+                                                            title="Open in new tab / Download"
                                                         >
                                                             <ExternalLink className="w-3.5 h-3.5" />
                                                         </a>
@@ -1641,14 +1652,14 @@ function DashboardContent() {
 
                         {/* VIEW: INTEGRATED AI TUTOR (FULL PAGE) */}
                         {!isSearchActive && activeNav === "ai" && (
-                            <div className="bg-[#0B0F19] rounded-3xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col h-[640px]">
-                                <div className="p-5 bg-[#121826] border-b border-slate-800 flex items-center space-x-3">
+                            <div className="bg-[#0B101D] rounded-3xl border border-slate-800 shadow-xl overflow-hidden flex flex-col h-[640px]">
+                                <div className="p-5 bg-[#131826] border-b border-slate-800 flex items-center space-x-3">
                                     <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow">
                                         ✨
                                     </div>
                                     <div>
-                                        <h3 className="text-sm font-extrabold text-white">AZS AI Assistant Core</h3>
-                                        <p className="text-[11px] text-emerald-400 font-mono">Quantum Simulation & Formula Solver Online</p>
+                                        <h3 className="text-sm font-extrabold text-white">AZS: The Catalyst - AI Tutor Core</h3>
+                                        <p className="text-[11px] text-emerald-400 font-medium">Ready to explain Theory, Formulas, and Math</p>
                                     </div>
                                 </div>
 
@@ -1660,8 +1671,8 @@ function DashboardContent() {
                                         >
                                             <div
                                                 className={`max-w-[80%] px-4 py-3 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
-                                                        ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-md shadow-indigo-600/20"
-                                                        : "bg-[#121826] text-slate-200 rounded-bl-none font-medium border border-slate-800 shadow-sm"
+                                                        ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-md"
+                                                        : "bg-[#131826] text-slate-200 rounded-bl-none font-medium border border-slate-800"
                                                     }`}
                                             >
                                                 {m.content}
@@ -1670,28 +1681,28 @@ function DashboardContent() {
                                     ))}
                                     {chatLoading && (
                                         <div className="flex justify-start">
-                                            <div className="bg-[#121826] text-slate-400 px-4 py-2.5 rounded-2xl text-xs border border-slate-800 animate-pulse">
-                                                Calculating physics/chemistry matrices...
+                                            <div className="bg-[#131826] text-slate-400 px-4 py-2.5 rounded-2xl text-xs animate-pulse border border-slate-800">
+                                                AI is thinking...
                                             </div>
                                         </div>
                                     )}
                                     <div ref={chatEndRef} />
                                 </div>
 
-                                <form onSubmit={handleSendChat} className="p-4 bg-[#121826] border-t border-slate-800 flex items-center gap-2">
+                                <form onSubmit={handleSendChat} className="p-4 bg-[#131826] border-t border-slate-800 flex items-center gap-2">
                                     <input
                                         type="text"
-                                        placeholder="Ask any doubt (e.g., Explain Newton's laws or Le Chatelier's principle)..."
+                                        placeholder="Ask any question (e.g., Explain Ohm's law or Archimedes principle)..."
                                         value={chatInput}
                                         onChange={(e) => setChatInput(e.target.value)}
-                                        className="flex-1 bg-[#0B0F19] border border-slate-800 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 shadow-inner"
+                                        className="flex-1 bg-[#090D16] border border-slate-800 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                                     />
                                     <button
                                         type="submit"
                                         disabled={chatLoading || !chatInput.trim()}
-                                        className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-5 py-3 rounded-xl text-xs transition shadow-md shadow-indigo-600/30"
+                                        className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-5 py-3 rounded-xl text-xs transition shadow-md"
                                     >
-                                        Transmit
+                                        Send
                                     </button>
                                 </form>
                             </div>
@@ -1699,8 +1710,8 @@ function DashboardContent() {
                     </main>
 
                     {/* DEVELOPER CREDIT FOOTER */}
-                    <footer className="w-full py-4 px-6 text-center border-t border-slate-800/80 bg-[#0B0F19]/90 backdrop-blur-sm mt-auto">
-                        <p className="text-xs text-slate-500 font-medium tracking-wide">
+                    <footer className="w-full py-4 px-6 text-center border-t border-slate-800/80 bg-[#090D16]/80 backdrop-blur-sm mt-auto">
+                        <p className="text-xs text-slate-400 font-medium tracking-wide">
                             © {currentYear} AZS: The Catalyst • Developed with ❤️ by{" "}
                             <a
                                 href="https://www.linkedin.com/in/sajedul-islam-data/"
@@ -1717,23 +1728,23 @@ function DashboardContent() {
             </div>
 
             {/* MOBILE BOTTOM NAVIGATION BAR */}
-            <div className="fixed bottom-0 left-0 right-0 bg-[#0B0F19] border-t border-slate-800 px-4 py-2 flex md:hidden items-center justify-around z-40 shadow-2xl">
+            <div className="fixed bottom-0 left-0 right-0 bg-[#0B101D] border-t border-slate-800 px-4 py-2 flex md:hidden items-center justify-around z-40 shadow-2xl">
                 <button
                     onClick={() => { setActiveNav("dashboard"); setSearchQuery(""); }}
                     className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "dashboard" ? "text-indigo-400" : "text-slate-400"}`}
                 >
                     <LayoutDashboard className="w-5 h-5 mb-0.5" />
-                    <span>Deck</span>
+                    <span>Home</span>
                 </button>
                 <button
-                    onClick={() => setActiveNav("lectures")}
+                    onClick={() => { setActiveNav("lectures"); setSelectedSubject("ALL"); }}
                     className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "lectures" ? "text-indigo-400" : "text-slate-400"}`}
                 >
                     <PlayCircle className="w-5 h-5 mb-0.5" />
                     <span>Lectures</span>
                 </button>
                 <button
-                    onClick={() => setActiveNav("materials")}
+                    onClick={() => { setActiveNav("materials"); setSelectedSubject("ALL"); }}
                     className={`flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold ${activeNav === "materials" ? "text-indigo-400" : "text-slate-400"}`}
                 >
                     <FileText className="w-5 h-5 mb-0.5" />
@@ -1761,14 +1772,14 @@ function DashboardContent() {
                     <button
                         onClick={() => setIsFloatingChatOpen(true)}
                         className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 group relative border-2 border-indigo-400/30"
-                        title="Open AI Core"
+                        title="Ask AI Tutor"
                     >
                         <Bot className="w-7 h-7 text-white animate-bounce" />
-                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 border-2 border-[#07090E] rounded-full shadow-[0_0_10px_#34d399]" />
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-[#090D16] rounded-full" />
                     </button>
                 ) : (
-                    <div className="bg-[#0B0F19] border border-slate-800 rounded-3xl w-[90vw] sm:w-[380px] h-[500px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
-                        <div className="px-5 py-3.5 bg-[#121826] text-white flex items-center justify-between border-b border-slate-800">
+                    <div className="bg-[#0B101D] border border-slate-800 rounded-3xl w-[90vw] sm:w-[380px] h-[500px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+                        <div className="px-5 py-3.5 bg-[#131826] text-white flex items-center justify-between border-b border-slate-800">
                             <div className="flex items-center space-x-2.5">
                                 <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-sm shadow">
                                     ✨
@@ -1786,7 +1797,7 @@ function DashboardContent() {
                             </button>
                         </div>
 
-                        <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-[#07090E]">
+                        <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-[#090D16]/50">
                             {chatMessages.map((m, idx) => (
                                 <div
                                     key={idx}
@@ -1794,8 +1805,8 @@ function DashboardContent() {
                                 >
                                     <div
                                         className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
-                                                ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-md shadow-indigo-600/20"
-                                                : "bg-[#121826] text-slate-200 rounded-bl-none font-medium border border-slate-800 shadow-sm"
+                                                ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-md"
+                                                : "bg-[#131826] text-slate-200 rounded-bl-none font-medium border border-slate-800"
                                             }`}
                                     >
                                         {m.content}
@@ -1804,26 +1815,26 @@ function DashboardContent() {
                             ))}
                             {chatLoading && (
                                 <div className="flex justify-start">
-                                    <div className="bg-[#121826] text-slate-400 px-3 py-2 rounded-2xl text-[11px] border border-slate-800 animate-pulse shadow-sm">
-                                        Calculating...
+                                    <div className="bg-[#131826] text-slate-400 px-3 py-2 rounded-2xl text-[11px] border border-slate-800 animate-pulse shadow-sm">
+                                        AI is thinking...
                                     </div>
                                 </div>
                             )}
                             <div ref={chatEndRef} />
                         </div>
 
-                        <form onSubmit={handleSendChat} className="p-3 bg-[#121826] border-t border-slate-800 flex items-center gap-2">
+                        <form onSubmit={handleSendChat} className="p-3 bg-[#131826] border-t border-slate-800 flex items-center gap-2">
                             <input
                                 type="text"
-                                placeholder="Ask doubt..."
+                                placeholder="Ask your doubt..."
                                 value={chatInput}
                                 onChange={(e) => setChatInput(e.target.value)}
-                                className="flex-1 bg-[#0B0F19] border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 shadow-inner"
+                                className="flex-1 bg-[#090D16] border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                             />
                             <button
                                 type="submit"
                                 disabled={chatLoading || !chatInput.trim()}
-                                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white p-2.5 rounded-xl transition shadow-md shadow-indigo-600/30"
+                                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white p-2.5 rounded-xl transition shadow-md shadow-indigo-600/20"
                             >
                                 <Send className="w-3.5 h-3.5" />
                             </button>
@@ -1834,15 +1845,15 @@ function DashboardContent() {
 
             {/* 3. STUDY PLANNER MODAL */}
             {selectedDateForPlan && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-                    <div className="bg-[#0B0F19] border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-[#0B101D] border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
                         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                             <div>
                                 <h3 className="text-base font-extrabold text-white flex items-center gap-2">
                                     <CalendarIcon className="w-4 h-4 text-indigo-400" />
                                     <span>Study Planner</span>
                                 </h3>
-                                <p className="text-xs text-slate-400 font-mono mt-0.5">Telemetry Date: {selectedDateForPlan}</p>
+                                <p className="text-xs text-slate-400 font-mono mt-0.5">Date: {selectedDateForPlan}</p>
                             </div>
                             <button
                                 onClick={() => setSelectedDateForPlan(null)}
@@ -1854,8 +1865,8 @@ function DashboardContent() {
 
                         <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                             {studyPlans.filter((p) => p.dateKey === selectedDateForPlan).length === 0 ? (
-                                <p className="text-xs text-slate-400 text-center py-4 bg-[#121826] rounded-2xl border border-slate-800">
-                                    No active study goals set for this date.
+                                <p className="text-xs text-slate-400 text-center py-4 bg-[#131826] rounded-2xl border border-slate-800">
+                                    No study plans set for this day yet.
                                 </p>
                             ) : (
                                 studyPlans
@@ -1863,16 +1874,16 @@ function DashboardContent() {
                                     .map((p) => (
                                         <div
                                             key={p.id}
-                                            className="flex items-center justify-between bg-[#121826] hover:bg-slate-800/80 p-3 rounded-2xl border border-slate-800 text-xs transition"
+                                            className="flex items-center justify-between bg-[#131826] hover:bg-slate-800 p-3 rounded-2xl border border-slate-800 text-xs transition"
                                         >
                                             <div className="space-y-0.5">
                                                 <p className="font-bold text-white">{p.title}</p>
-                                                {p.time && <p className="text-[10px] text-indigo-400 font-mono">{p.time}</p>}
+                                                {p.time && <p className="text-[10px] text-slate-400 font-mono">{p.time}</p>}
                                             </div>
                                             <button
                                                 onClick={() => handleDeletePlan(p.id)}
-                                                className="text-slate-500 hover:text-rose-400 p-1"
-                                                title="Remove goal"
+                                                className="text-slate-400 hover:text-rose-400 p-1"
+                                                title="Remove plan"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
@@ -1882,14 +1893,14 @@ function DashboardContent() {
                         </div>
 
                         <form onSubmit={handleAddPlan} className="space-y-3 pt-2 border-t border-slate-800">
-                            <label className="text-xs font-bold text-slate-300 block">Add Goal / Target Revision</label>
+                            <label className="text-xs font-bold text-slate-300 block">Add Goal / Revision Plan</label>
                             <input
                                 type="text"
                                 required
-                                placeholder="e.g. Complete Organic Chemistry Isomerism Problems"
+                                placeholder="e.g. Complete Reflection of Light CQ-01"
                                 value={newPlanTitle}
                                 onChange={(e) => setNewPlanTitle(e.target.value)}
-                                className="w-full bg-[#121826] border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                                className="w-full bg-[#131826] border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                             />
                             <div className="flex gap-2">
                                 <input
@@ -1897,14 +1908,14 @@ function DashboardContent() {
                                     placeholder="Target Time (e.g. 8:00 PM)"
                                     value={newPlanTime}
                                     onChange={(e) => setNewPlanTime(e.target.value)}
-                                    className="flex-1 bg-[#121826] border border-slate-800 rounded-2xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                                    className="flex-1 bg-[#131826] border border-slate-800 rounded-2xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                                 />
                                 <button
                                     type="submit"
                                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-indigo-600/30"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
-                                    <span>Save Goal</span>
+                                    <span>Save Plan</span>
                                 </button>
                             </div>
                         </form>
@@ -1914,18 +1925,18 @@ function DashboardContent() {
 
             {/* 4. PDF IN-APP PREVIEW MODAL */}
             {previewPdfUrl && (
-                <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-6 animate-in fade-in duration-200">
-                    <div className="bg-[#0B0F19] border border-slate-800 rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
-                        <div className="px-6 py-4 bg-[#121826] border-b border-slate-800 flex items-center justify-between">
+                <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-6 animate-in fade-in duration-200">
+                    <div className="bg-[#0B101D] border border-slate-800 rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+                        <div className="px-6 py-4 bg-[#131826] border-b border-slate-800 flex items-center justify-between">
                             <div className="flex items-center space-x-3">
-                                <div className="w-9 h-9 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-xs">
+                                <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-xs">
                                     PDF
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-extrabold text-white leading-tight">
-                                        {previewPdfTitle || "Study Document"}
+                                        {previewPdfTitle || "Document Preview"}
                                     </h3>
-                                    <p className="text-[10px] text-slate-400 font-mono">AZS: The Catalyst - Secure Vault Reader</p>
+                                    <p className="text-[10px] text-slate-400">AZS: The Catalyst - Document Reader</p>
                                 </div>
                             </div>
 
@@ -1948,7 +1959,7 @@ function DashboardContent() {
                             </div>
                         </div>
 
-                        <div className="flex-1 w-full bg-black relative">
+                        <div className="flex-1 w-full bg-slate-950 relative">
                             <iframe
                                 src={previewPdfUrl}
                                 title={previewPdfTitle}
@@ -1967,9 +1978,9 @@ export default function StudentDashboardPage() {
     return (
         <Suspense
             fallback={
-                <div className="min-h-0 min-h-screen bg-[#07090E] flex flex-col items-center justify-center space-y-3">
-                    <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-xs font-bold text-indigo-400 tracking-widest uppercase">Initializing Catalyst Cyber-Deck...</p>
+                <div className="min-h-0 min-h-screen bg-[#090D16] flex flex-col items-center justify-center space-y-3">
+                    <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
+                    <p className="text-xs font-bold text-slate-400 tracking-wide font-mono">INITIALIZING CYBER DECK...</p>
                 </div>
             }
         >

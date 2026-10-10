@@ -220,13 +220,11 @@ function DashboardContent() {
         setMounted(true);
         setCurrentYear(new Date().getFullYear());
 
-        // Prevent direct accidental signout via mobile back button
         if (typeof window !== "undefined") {
             window.history.pushState(null, "", window.location.href);
             const handlePopState = (e: PopStateEvent) => {
                 e.preventDefault();
                 window.history.pushState(null, "", window.location.href);
-                // If user is inside sub-tabs (lectures/materials/ai), bring them back to dashboard home first instead of exiting
                 if (activeNav !== "dashboard") {
                     setActiveNav("dashboard");
                     setSearchQuery("");
@@ -1075,12 +1073,12 @@ function DashboardContent() {
                                         </div>
                                     </div>
 
-                                    {/* IMMERSIVE SUBJECT EXPLORATION LAUNCHPAD */}
+                                    {/* IMMERSIVE SUBJECT EXPLORATION LAUNCHPAD (CLEANED UP) */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {/* PHYSICS ENGINE CARD */}
                                         <div
                                             onClick={() => handleSubjectTransition("PHYSICS")}
-                                            className="group relative bg-gradient-to-br from-[#101626] via-[#0B101D] to-[#131b2e] rounded-3xl p-8 border border-indigo-500/30 hover:border-indigo-400 shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between h-64"
+                                            className="group relative bg-gradient-to-br from-[#101626] via-[#0B101D] to-[#131b2e] rounded-3xl p-8 border border-indigo-500/30 hover:border-indigo-400 shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between h-52"
                                         >
                                             <div className="absolute -right-10 -bottom-10 w-44 h-44 bg-indigo-600/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all duration-500" />
 
@@ -1092,9 +1090,6 @@ function DashboardContent() {
                                                     <span className="text-[10px] font-mono uppercase tracking-widest text-indigo-400 font-bold">Sector 01</span>
                                                     <h3 className="text-2xl font-black text-white tracking-tight mt-0.5">Physics Engine</h3>
                                                 </div>
-                                                <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
-                                                    Explore optics, motion mechanics, waves, and electromagnetism problem sets & video lectures.
-                                                </p>
                                             </div>
 
                                             <div className="relative z-10 flex items-center justify-between pt-4 border-t border-indigo-500/20">
@@ -1102,7 +1097,7 @@ function DashboardContent() {
                                                     <span>Engage Physics Deck</span>
                                                     <ExternalLink className="w-3.5 h-3.5" />
                                                 </span>
-                                                <span className="text-xs font-mono text-slate-500">
+                                                <span className="text-xs font-mono text-slate-400">
                                                     {videos.filter(v => v.subject === "PHYSICS").length} Lectures
                                                 </span>
                                             </div>
@@ -1111,7 +1106,7 @@ function DashboardContent() {
                                         {/* CHEMISTRY SYNTHESIS HUB CARD */}
                                         <div
                                             onClick={() => handleSubjectTransition("CHEMISTRY")}
-                                            className="group relative bg-gradient-to-br from-[#1A130F] via-[#0B101D] to-[#261A13] rounded-3xl p-8 border border-amber-500/30 hover:border-amber-400 shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between h-64"
+                                            className="group relative bg-gradient-to-br from-[#1A130F] via-[#0B101D] to-[#261A13] rounded-3xl p-8 border border-amber-500/30 hover:border-amber-400 shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between h-52"
                                         >
                                             <div className="absolute -right-10 -bottom-10 w-44 h-44 bg-amber-600/10 rounded-full blur-3xl group-hover:bg-amber-500/20 transition-all duration-500" />
 
@@ -1123,9 +1118,6 @@ function DashboardContent() {
                                                     <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold">Sector 02</span>
                                                     <h3 className="text-2xl font-black text-white tracking-tight mt-0.5">Chemistry Synthesis</h3>
                                                 </div>
-                                                <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
-                                                    Master organic reaction mechanisms, stoichiometry, periodic trends, and chemical bonds.
-                                                </p>
                                             </div>
 
                                             <div className="relative z-10 flex items-center justify-between pt-4 border-t border-amber-500/20">
@@ -1133,7 +1125,7 @@ function DashboardContent() {
                                                     <span>Activate Chemistry Hub</span>
                                                     <ExternalLink className="w-3.5 h-3.5" />
                                                 </span>
-                                                <span className="text-xs font-mono text-slate-500">
+                                                <span className="text-xs font-mono text-slate-400">
                                                     {videos.filter(v => v.subject === "CHEMISTRY").length} Lectures
                                                 </span>
                                             </div>

@@ -41,7 +41,7 @@ import {
     ArrowLeft,
     Menu,
     ShieldAlert,
-    AlertCircle,
+    Lock,
     CreditCard,
 } from "lucide-react";
 import axios from "axios";
@@ -668,7 +668,7 @@ function DashboardContent() {
     const isSearchActive = normalizedQuery.length > 0;
     const hasSearchResults = filteredVideos.length > 0 || filteredMaterials.length > 0;
 
-    // --- SUBSCRIPTION STATUS CHECKS (Allows entry, but shows urgent warning if expired or <= 3 days) ---
+    // --- SUBSCRIPTION STATUS CHECKS ---
     const daysLeft = userProfile.days_left !== undefined ? userProfile.days_left : 30;
     const isExpired = daysLeft <= 0 || userProfile.is_approved === false;
     const isExpiringSoon = daysLeft > 0 && daysLeft <= 3;
@@ -968,11 +968,11 @@ function DashboardContent() {
                                 </div>
                                 <div>
                                     <h4 className="text-xs font-black uppercase tracking-wider text-white">
-                                        {isExpired ? "🔴 Subscription Expired — Payment Required" : `⚠️ Payment Reminder: ${daysLeft} ${daysLeft === 1 ? 'Day' : 'Days'} Remaining`}
+                                        {isExpired ? "🔴 Subscription Expired — Video Streaming & Materials Locked" : `⚠️ Payment Reminder: ${daysLeft} ${daysLeft === 1 ? 'Day' : 'Days'} Remaining`}
                                     </h4>
                                     <p className="text-[11px] text-slate-300 mt-0.5">
                                         {isExpired
-                                            ? "Your 30-day coaching pass has ended. Please clear your coaching fee to maintain full access."
+                                            ? "Your 30-day coaching pass has expired. Video streaming and PDF handouts are locked until payment is cleared."
                                             : "Your coaching pass is due for renewal soon. Please complete your payment to avoid interruption."
                                         }
                                     </p>
@@ -1004,8 +1004,39 @@ function DashboardContent() {
                     )}
 
                     <main className="p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8 flex-1 pb-16 md:pb-12">
+
+                        {/* SUBSCRIPTION EXPIRED WARNING NOTICE BOX (IF EXPIRED) */}
+                        {isExpired && (
+                            <div className="bg-[#0B101D] border border-rose-500/30 rounded-3xl p-8 sm:p-12 shadow-2xl text-center space-y-6">
+                                <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mx-auto">
+                                    <Lock className="w-8 h-8" />
+                                </div>
+                                <div className="space-y-2 max-w-lg mx-auto">
+                                    <h2 className="text-xl sm:text-2xl font-black text-white">System Access Notice: Payment Required</h2>
+                                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                        Your 30-day subscription period has ended. As a result, <span className="text-rose-400 font-bold">video lecture streaming and study material downloads are currently locked</span>.
+                                    </p>
+                                    <p className="text-xs text-slate-400">
+                                        Please contact <span className="font-bold text-white">AZS Razon Sir</span> to clear your coaching fees and renew your account instantly.
+                                    </p>
+                                </div>
+
+                                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                                    <a
+                                        href={TEACHER_SOCIAL.whatsapp}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-600/30"
+                                    >
+                                        <MessageCircle className="w-4 h-4" />
+                                        <span>Contact Sir on WhatsApp</span>
+                                    </a>
+                                </div>
+                            </div>
+                        )}
+
                         {/* SEARCH RESULTS VIEW */}
-                        {isSearchActive && (
+                        {!isExpired && isSearchActive && (
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -1196,7 +1227,7 @@ function DashboardContent() {
                         )}
 
                         {/* VIEW: DASHBOARD OVERVIEW (EXPLORATION DECK) */}
-                        {!isSearchActive && activeNav === "dashboard" && (
+                        {!isExpired && !isSearchActive && activeNav === "dashboard" && (
                             <>
                                 <div className="space-y-6">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1454,7 +1485,7 @@ function DashboardContent() {
                         )}
 
                         {/* VIEW: CHAPTER-WISE VIDEO LECTURES & MATERIALS */}
-                        {!isSearchActive && activeNav === "lectures" && (
+                        {!isExpired && !isSearchActive && activeNav === "lectures" && (
                             <div className="space-y-6">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div>
@@ -1756,7 +1787,7 @@ function DashboardContent() {
                         )}
 
                         {/* VIEW: STUDY MATERIALS (PDF TAB DIRECT) */}
-                        {!isSearchActive && activeNav === "materials" && (
+                        {!isExpired && !isSearchActive && activeNav === "materials" && (
                             <div className="space-y-6">
                                 <div>
                                     <h2 className="text-xl font-extrabold text-white">Study Materials & Handouts</h2>
@@ -1832,7 +1863,7 @@ function DashboardContent() {
                         )}
 
                         {/* VIEW: INTEGRATED AI TUTOR (FULL PAGE) */}
-                        {!isSearchActive && activeNav === "ai" && (
+                        {!isExpired && !isSearchActive && activeNav === "ai" && (
                             <div className="bg-[#0B101D] rounded-3xl border border-slate-800 shadow-xl overflow-hidden flex flex-col h-[640px]">
                                 <div className="p-5 bg-[#131826] border-b border-slate-800 flex items-center space-x-3">
                                     <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow">
@@ -1918,81 +1949,83 @@ function DashboardContent() {
             </div>
 
             {/* FLOATING AI CHAT BUTTON & POPUP WIDGET */}
-            <div className="fixed bottom-6 right-5 z-50">
-                {!isFloatingChatOpen ? (
-                    <button
-                        onClick={() => setIsFloatingChatOpen(true)}
-                        className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 group relative border-2 border-indigo-400/30"
-                        title="Ask AI Tutor"
-                    >
-                        <Bot className="w-7 h-7 text-white animate-bounce" />
-                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-[#090D16] rounded-full" />
-                    </button>
-                ) : (
-                    <div className="bg-[#0B101D] border border-slate-800 rounded-3xl w-[90vw] sm:w-[380px] h-[500px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
-                        <div className="px-5 py-3.5 bg-[#131826] text-white flex items-center justify-between border-b border-slate-800">
-                            <div className="flex items-center space-x-2.5">
-                                <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-sm shadow">
-                                    ✨
+            {!isExpired && (
+                <div className="fixed bottom-6 right-5 z-50">
+                    {!isFloatingChatOpen ? (
+                        <button
+                            onClick={() => setIsFloatingChatOpen(true)}
+                            className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 group relative border-2 border-indigo-400/30"
+                            title="Ask AI Tutor"
+                        >
+                            <Bot className="w-7 h-7 text-white animate-bounce" />
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-[#090D16] rounded-full" />
+                        </button>
+                    ) : (
+                        <div className="bg-[#0B101D] border border-slate-800 rounded-3xl w-[90vw] sm:w-[380px] h-[500px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+                            <div className="px-5 py-3.5 bg-[#131826] text-white flex items-center justify-between border-b border-slate-800">
+                                <div className="flex items-center space-x-2.5">
+                                    <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-sm shadow">
+                                        ✨
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-extrabold text-white">AZS AI Assistant</h4>
+                                        <p className="text-[10px] text-emerald-400 font-mono">Online • Physics & Chemistry</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h4 className="text-xs font-extrabold text-white">AZS AI Assistant</h4>
-                                    <p className="text-[10px] text-emerald-400 font-mono">Online • Physics & Chemistry</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setIsFloatingChatOpen(false)}
-                                className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-[#090D16]/50">
-                            {chatMessages.map((m, idx) => (
-                                <div
-                                    key={idx}
-                                    className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                                <button
+                                    onClick={() => setIsFloatingChatOpen(false)}
+                                    className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition"
                                 >
-                                    <div
-                                        className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
-                                            ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-md"
-                                            : "bg-[#131826] text-slate-200 rounded-bl-none font-medium border border-slate-800"
-                                            }`}
-                                    >
-                                        {m.content}
-                                    </div>
-                                </div>
-                            ))}
-                            {chatLoading && (
-                                <div className="flex justify-start">
-                                    <div className="bg-[#131826] text-slate-400 px-3 py-2 rounded-2xl text-[11px] border border-slate-800 animate-pulse shadow-sm">
-                                        AI is thinking...
-                                    </div>
-                                </div>
-                            )}
-                            <div ref={chatEndRef} />
-                        </div>
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
 
-                        <form onSubmit={handleSendChat} className="p-3 bg-[#131826] border-t border-slate-800 flex items-center gap-2">
-                            <input
-                                type="text"
-                                placeholder="Ask your doubt..."
-                                value={chatInput}
-                                onChange={(e) => setChatInput(e.target.value)}
-                                className="flex-1 bg-[#090D16] border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                            />
-                            <button
-                                type="submit"
-                                disabled={chatLoading || !chatInput.trim()}
-                                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white p-2.5 rounded-xl transition shadow-md shadow-indigo-600/20"
-                            >
-                                <Send className="w-3.5 h-3.5" />
-                            </button>
-                        </form>
-                    </div>
-                )}
-            </div>
+                            <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-[#090D16]/50">
+                                {chatMessages.map((m, idx) => (
+                                    <div
+                                        key={idx}
+                                        className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                                    >
+                                        <div
+                                            className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
+                                                ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-md"
+                                                : "bg-[#131826] text-slate-200 rounded-bl-none font-medium border border-slate-800"
+                                                }`}
+                                        >
+                                            {m.content}
+                                        </div>
+                                    </div>
+                                ))}
+                                {chatLoading && (
+                                    <div className="flex justify-start">
+                                        <div className="bg-[#131826] text-slate-400 px-3 py-2 rounded-2xl text-[11px] border border-slate-800 animate-pulse shadow-sm">
+                                            AI is thinking...
+                                        </div>
+                                    </div>
+                                )}
+                                <div ref={chatEndRef} />
+                            </div>
+
+                            <form onSubmit={handleSendChat} className="p-3 bg-[#131826] border-t border-slate-800 flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Ask your doubt..."
+                                    value={chatInput}
+                                    onChange={(e) => setChatInput(e.target.value)}
+                                    className="flex-1 bg-[#090D16] border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={chatLoading || !chatInput.trim()}
+                                    className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white p-2.5 rounded-xl transition shadow-md shadow-indigo-600/20"
+                                >
+                                    <Send className="w-3.5 h-3.5" />
+                                </button>
+                            </form>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* 3. STUDY PLANNER MODAL */}
             {selectedDateForPlan && (

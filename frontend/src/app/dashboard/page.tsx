@@ -664,7 +664,6 @@ function DashboardContent() {
                     {/* GOOGLE/STRIPE STANDARD PROFESSIONAL INSTRUCTOR CARD */}
                     <div className="pt-6 border-t border-slate-100 space-y-4 mb-2">
                         <div className="bg-gradient-to-br from-slate-900 via-[#181824] to-slate-950 rounded-2xl p-4 text-white shadow-xl border border-slate-800/80 relative overflow-hidden group">
-                            {/* Subtle background glow */}
                             <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all duration-500" />
 
                             <div className="relative z-10 space-y-3">
@@ -680,7 +679,6 @@ function DashboardContent() {
                                     <p className="text-[10px] text-slate-400 font-medium mt-0.5">{TEACHER_SOCIAL.role}</p>
                                 </div>
 
-                                {/* Minimalist Professional Action Links */}
                                 <div className="grid grid-cols-3 gap-1.5 pt-1">
                                     <a
                                         href={TEACHER_SOCIAL.whatsapp}
@@ -1937,7 +1935,6 @@ function DashboardContent() {
 }
 
 export default function StudentDashboardPage() {
-    (hidden)
     return (
         <Suspense
             fallback={

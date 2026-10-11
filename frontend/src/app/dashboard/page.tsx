@@ -633,7 +633,7 @@ function DashboardContent() {
                 )}
 
                 {/* 1. LEFT SIDEBAR (Cyber-Deck Theme) */}
-                <aside className={`fixed md:static inset-y-0 left-0 z-50 w-72 bg-[#0B101D] border-r border-slate-800/80 p-6 flex flex-col justify-between shrink-0 shadow-2xl transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+                <aside className={`fixed md:static inset-y-0 left-0 z-50 w-72 bg-[#0B0F19]/95 border-r border-slate-800/80 p-6 flex flex-col justify-between shrink-0 shadow-2xl transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
                     }`}>
                     <div className="space-y-8">
                         <div className="flex items-center justify-between">
@@ -824,7 +824,7 @@ function DashboardContent() {
                             {/* Mobile Hamburger Menu Toggle Button */}
                             <button
                                 onClick={() => setIsMobileSidebarOpen(true)}
-                                className="p-2.5 rounded-xl bg-[#131826] border border-slate-800 text-slate-300 hover:text-white flex md:hidden items-center justify-center shrink-0 shadow-sm"
+                                className="p-2.5 rounded-xl bg-[#111827] border border-slate-800 text-slate-300 hover:text-white flex md:hidden items-center justify-center shrink-0 shadow-sm"
                                 title="Open Menu"
                             >
                                 <Menu className="w-5 h-5" />
@@ -841,7 +841,7 @@ function DashboardContent() {
                                     placeholder="Search topic or chapter..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full bg-[#131826] border border-slate-800 focus:border-indigo-500 rounded-xl pl-10 pr-9 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition"
+                                    className="w-full bg-[#111827] border border-slate-800 focus:border-indigo-500 rounded-xl pl-10 pr-9 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition"
                                 />
                                 {searchQuery && (
                                     <button
@@ -860,7 +860,7 @@ function DashboardContent() {
                                 <span className="hidden sm:inline">Streak Active</span>
                             </div>
 
-                            <div className="p-2.5 rounded-xl bg-[#131826] text-slate-300 border border-slate-800 relative hover:bg-slate-800 transition cursor-pointer">
+                            <div className="p-2.5 rounded-xl bg-[#111827] text-slate-300 border border-slate-800 relative hover:bg-slate-800 transition cursor-pointer">
                                 <Bell className="w-4 h-4" />
                                 {notice && <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 animate-ping" />}
                             </div>
@@ -918,7 +918,7 @@ function DashboardContent() {
 
                         {/* SUBSCRIPTION EXPIRED WARNING NOTICE BOX (IF EXPIRED) */}
                         {isExpired && (
-                            <div className="bg-[#0B101D] border border-rose-500/30 rounded-3xl p-8 sm:p-12 shadow-2xl text-center space-y-6">
+                            <div className="bg-[#111827] border border-rose-500/30 rounded-3xl p-8 sm:p-12 shadow-2xl text-center space-y-6">
                                 <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mx-auto">
                                     <Lock className="w-8 h-8" />
                                 </div>
@@ -961,14 +961,14 @@ function DashboardContent() {
                                     </div>
                                     <button
                                         onClick={() => setSearchQuery("")}
-                                        className="text-xs font-bold text-slate-300 hover:text-white bg-[#131826] border border-slate-800 px-3 py-1.5 rounded-xl transition"
+                                        className="text-xs font-bold text-slate-300 hover:text-white bg-[#111827] border border-slate-800 px-3 py-1.5 rounded-xl transition"
                                     >
                                         Clear Search
                                     </button>
                                 </div>
 
                                 {!hasSearchResults ? (
-                                    <div className="bg-[#0B101D] rounded-3xl p-16 text-center border border-slate-800 shadow-xl space-y-4">
+                                    <div className="bg-[#111827] rounded-3xl p-16 text-center border border-slate-800 shadow-xl space-y-4">
                                         <div className="w-16 h-16 rounded-full bg-slate-900 text-slate-500 mx-auto flex items-center justify-center">
                                             <SearchX className="w-8 h-8" />
                                         </div>
@@ -1003,7 +1003,7 @@ function DashboardContent() {
                                                             <div
                                                                 key={vid.id}
                                                                 id={`lecture-card-${vid.id}`}
-                                                                className={`bg-[#0B101D] rounded-2xl overflow-hidden border transition-all duration-200 shadow-lg flex flex-col justify-between ${isWatched ? "border-emerald-500/40 ring-2 ring-emerald-500/10" : "border-slate-800"
+                                                                className={`bg-[#111827] rounded-2xl overflow-hidden border transition-all duration-200 shadow-lg flex flex-col justify-between ${isWatched ? "border-emerald-500/40 ring-2 ring-emerald-500/10" : "border-slate-800"
                                                                     }`}
                                                             >
                                                                 <div>
@@ -1078,7 +1078,7 @@ function DashboardContent() {
                                                         return (
                                                             <div
                                                                 key={mat.id}
-                                                                className="bg-[#0B101D] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between space-y-4"
+                                                                className="bg-[#111827] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between space-y-4"
                                                             >
                                                                 <div className="space-y-3">
                                                                     <div className="flex items-center justify-between">
@@ -1119,7 +1119,7 @@ function DashboardContent() {
                                                                         href={rawFileUrl}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
-                                                                        className="p-2.5 bg-[#131826] hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800"
+                                                                        className="p-2.5 bg-[#111827] hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800"
                                                                         title="Open in new tab / Download"
                                                                     >
                                                                         <ExternalLink className="w-3.5 h-3.5" />
@@ -1156,7 +1156,7 @@ function DashboardContent() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div
                                             onClick={() => handleSubjectTransition("PHYSICS")}
-                                            className="group relative bg-gradient-to-br from-[#101626] via-[#0B101D] to-[#131b2e] rounded-3xl p-8 border border-indigo-500/30 hover:border-indigo-400 shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between h-52"
+                                            className="group relative bg-gradient-to-br from-[#111827] via-[#0E1526] to-[#151D30] rounded-3xl p-8 border border-indigo-500/30 hover:border-indigo-400 shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between h-52"
                                         >
                                             <div className="absolute -right-10 -bottom-10 w-44 h-44 bg-indigo-600/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all duration-500" />
 
@@ -1183,7 +1183,7 @@ function DashboardContent() {
 
                                         <div
                                             onClick={() => handleSubjectTransition("CHEMISTRY")}
-                                            className="group relative bg-gradient-to-br from-[#1A130F] via-[#0B101D] to-[#261A13] rounded-3xl p-8 border border-amber-500/30 hover:border-amber-400 shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between h-52"
+                                            className="group relative bg-gradient-to-br from-[#1A1512] via-[#0E1526] to-[#201815] rounded-3xl p-8 border border-amber-500/30 hover:border-amber-400 shadow-2xl hover:shadow-amber-500/10 hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between h-52"
                                         >
                                             <div className="absolute -right-10 -bottom-10 w-44 h-44 bg-amber-600/10 rounded-full blur-3xl group-hover:bg-amber-500/20 transition-all duration-500" />
 
@@ -1216,17 +1216,17 @@ function DashboardContent() {
                                         <h3 className="text-base font-bold text-white">Telemetry & Progress</h3>
 
                                         <div className="grid grid-cols-3 gap-4">
-                                            <div className="bg-[#0B101D] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
+                                            <div className="bg-[#111827] hover:border-slate-700/80 hover:-translate-y-0.5 transition-all rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
                                                 <p className="text-2xl sm:text-3xl font-black text-white">{completedCount}</p>
                                                 <p className="text-xs font-medium text-slate-400 mt-2">Lectures completed</p>
                                             </div>
 
-                                            <div className="bg-[#0B101D] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
+                                            <div className="bg-[#111827] hover:border-slate-700/80 hover:-translate-y-0.5 transition-all rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
                                                 <p className="text-2xl sm:text-3xl font-black text-white">{chapterStats.length}</p>
                                                 <p className="text-xs font-medium text-slate-400 mt-2">Chapters in progress</p>
                                             </div>
 
-                                            <div className="bg-[#0B101D] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
+                                            <div className="bg-[#111827] hover:border-slate-700/80 hover:-translate-y-0.5 transition-all rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between">
                                                 <p className="text-2xl sm:text-3xl font-black text-white">{completionPercentage}%</p>
                                                 <p className="text-xs font-medium text-slate-400 mt-2">Syllabus coverage</p>
                                             </div>
@@ -1249,7 +1249,7 @@ function DashboardContent() {
                                                     return (
                                                         <div
                                                             key={v.id}
-                                                            className="bg-[#0B101D] rounded-2xl p-4 border border-slate-800 shadow-lg flex items-center justify-between"
+                                                            className="bg-[#111827] hover:bg-[#151f33] rounded-2xl p-4 border border-slate-800/80 hover:border-indigo-500/30 shadow-lg flex items-center justify-between transition-all"
                                                         >
                                                             <div className="flex items-center space-x-3.5">
                                                                 <div
@@ -1287,7 +1287,7 @@ function DashboardContent() {
                                     </div>
 
                                     <div className="lg:col-span-5 space-y-6">
-                                        <div className="bg-[#0B101D] rounded-3xl p-6 border border-slate-800 shadow-lg space-y-4">
+                                        <div className="bg-[#111827] rounded-3xl p-6 border border-slate-800/80 shadow-lg space-y-4">
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <h4 className="text-sm font-extrabold text-white">{currentMonthTitle}</h4>
@@ -1369,7 +1369,7 @@ function DashboardContent() {
                                             {selectedChapter && (
                                                 <button
                                                     onClick={() => setSelectedChapter(null)}
-                                                    className="p-1.5 rounded-lg bg-[#131826] hover:bg-slate-800 text-slate-300 transition border border-slate-800 mr-2"
+                                                    className="p-1.5 rounded-lg bg-[#111827] hover:bg-slate-800 text-slate-300 transition border border-slate-800 mr-2"
                                                     title="Back to Chapters"
                                                 >
                                                     <ArrowLeft className="w-4 h-4" />
@@ -1387,7 +1387,7 @@ function DashboardContent() {
                                     </div>
 
                                     {!selectedChapter && (
-                                        <div className="flex items-center gap-1.5 bg-[#0B101D] p-1 rounded-xl border border-slate-800 shadow-sm">
+                                        <div className="flex items-center gap-1.5 bg-[#111827] p-1 rounded-xl border border-slate-800 shadow-sm">
                                             <button
                                                 onClick={() => setSelectedSubjectTab("PHYSICS")}
                                                 className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${selectedSubjectTab === "PHYSICS"
@@ -1415,7 +1415,7 @@ function DashboardContent() {
                                 {!selectedChapter && (
                                     <div>
                                         {Object.keys(currentSubjectChapters).length === 0 ? (
-                                            <div className="bg-[#0B101D] rounded-3xl p-16 text-center text-slate-400 text-xs border border-slate-800 space-y-3">
+                                            <div className="bg-[#111827] rounded-3xl p-16 text-center text-slate-400 text-xs border border-slate-800 space-y-3">
                                                 <FolderOpen className="w-10 h-10 text-slate-600 mx-auto" />
                                                 <p className="font-bold text-slate-300">No chapters found for {selectedSubjectTab}.</p>
                                                 <p className="text-slate-500">Lectures uploaded by admin will automatically appear categorized here.</p>
@@ -1431,7 +1431,7 @@ function DashboardContent() {
                                                         <div
                                                             key={chName}
                                                             onClick={() => setSelectedChapter(chName)}
-                                                            className="group bg-[#0B101D] hover:bg-[#101626] rounded-3xl p-6 border border-slate-800 hover:border-indigo-500/50 shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-6 relative overflow-hidden"
+                                                            className="group bg-[#111827] hover:bg-[#101626] rounded-3xl p-6 border border-slate-800 hover:border-indigo-500/50 shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-6 relative overflow-hidden"
                                                         >
                                                             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-all" />
 
@@ -1502,7 +1502,7 @@ function DashboardContent() {
                                                     <div
                                                         key={vid.id}
                                                         id={`lecture-card-${vid.id}`}
-                                                        className={`bg-[#0B101D] rounded-2xl overflow-hidden border transition-all duration-200 shadow-lg flex flex-col justify-between ${isWatched ? "border-emerald-500/40 ring-2 ring-emerald-500/10" : "border-slate-800"
+                                                        className={`bg-[#111827] rounded-2xl overflow-hidden border transition-all duration-200 shadow-lg flex flex-col justify-between ${isWatched ? "border-emerald-500/40 ring-2 ring-emerald-500/10" : "border-slate-800"
                                                             }`}
                                                     >
                                                         <div>
@@ -1540,7 +1540,7 @@ function DashboardContent() {
                                                         </div>
 
                                                         <div className="p-5 pt-0 space-y-3">
-                                                            <div className="border border-slate-800 rounded-xl overflow-hidden bg-[#131826]/50">
+                                                            <div className="border border-slate-800 rounded-xl overflow-hidden bg-[#111827]/50">
                                                                 <button
                                                                     onClick={() => setOpenNotesId(isNotesOpen ? null : vid.id)}
                                                                     className="w-full px-3.5 py-2 flex items-center justify-between text-xs font-bold text-slate-300 hover:bg-slate-800/60 transition"
@@ -1561,13 +1561,13 @@ function DashboardContent() {
                                                                 </button>
 
                                                                 {isNotesOpen && (
-                                                                    <div className="p-3 bg-[#0B101D] border-t border-slate-800 space-y-2.5 animate-in fade-in duration-100">
+                                                                    <div className="p-3 bg-[#111827] border-t border-slate-800 space-y-2.5 animate-in fade-in duration-100">
                                                                         <textarea
                                                                             rows={4}
                                                                             placeholder="Jot down key formulas, tips, or timestamps here..."
                                                                             value={lectureNotes[vid.id] || ""}
                                                                             onChange={(e) => handleNoteChange(vid.id, e.target.value)}
-                                                                            className="w-full bg-[#131826] border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none font-sans"
+                                                                            className="w-full bg-[#111827] border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none font-sans"
                                                                         />
 
                                                                         <div className="flex items-center justify-between">
@@ -1625,7 +1625,7 @@ function DashboardContent() {
                                                         return (
                                                             <div
                                                                 key={mat.id}
-                                                                className="bg-[#0B101D] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between space-y-4"
+                                                                className="bg-[#111827] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between space-y-4"
                                                             >
                                                                 <div className="space-y-3">
                                                                     <div className="flex items-center justify-between">
@@ -1661,7 +1661,7 @@ function DashboardContent() {
                                                                         href={rawFileUrl}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
-                                                                        className="p-2.5 bg-[#131826] hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800"
+                                                                        className="p-2.5 bg-[#111827] hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800"
                                                                         title="Open in new tab / Download"
                                                                     >
                                                                         <ExternalLink className="w-3.5 h-3.5" />
@@ -1687,7 +1687,7 @@ function DashboardContent() {
                                 </div>
 
                                 {materials.length === 0 ? (
-                                    <div className="bg-[#0B101D] rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-800">
+                                    <div className="bg-[#111827] rounded-3xl p-12 text-center text-slate-400 text-xs border border-slate-800">
                                         No study sheets uploaded yet.
                                     </div>
                                 ) : (
@@ -1699,7 +1699,7 @@ function DashboardContent() {
                                             return (
                                                 <div
                                                     key={mat.id}
-                                                    className="bg-[#0B101D] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between space-y-4"
+                                                    className="bg-[#111827] rounded-2xl p-5 border border-slate-800 shadow-lg flex flex-col justify-between space-y-4"
                                                 >
                                                     <div className="space-y-3">
                                                         <div className="flex items-center justify-between">
@@ -1740,7 +1740,7 @@ function DashboardContent() {
                                                             href={rawFileUrl}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="p-2.5 bg-[#131826] hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800"
+                                                            className="p-2.5 bg-[#111827] hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800"
                                                             title="Open in new tab / Download"
                                                         >
                                                             <ExternalLink className="w-3.5 h-3.5" />
@@ -1812,7 +1812,7 @@ function DashboardContent() {
             {/* 3. STUDY PLANNER MODAL */}
             {selectedDateForPlan && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-[#0B101D] border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
+                    <div className="bg-[#111827] border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
                         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                             <div>
                                 <h3 className="text-base font-extrabold text-white flex items-center gap-2">
@@ -1831,7 +1831,7 @@ function DashboardContent() {
 
                         <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                             {studyPlans.filter((p) => p.dateKey === selectedDateForPlan).length === 0 ? (
-                                <p className="text-xs text-slate-400 text-center py-4 bg-[#131826] rounded-2xl border border-slate-800">
+                                <p className="text-xs text-slate-400 text-center py-4 bg-[#111827] rounded-2xl border border-slate-800">
                                     No study plans set for this day yet.
                                 </p>
                             ) : (
@@ -1840,7 +1840,7 @@ function DashboardContent() {
                                     .map((p) => (
                                         <div
                                             key={p.id}
-                                            className="flex items-center justify-between bg-[#131826] hover:bg-slate-800 p-3 rounded-2xl border border-slate-800 text-xs transition"
+                                            className="flex items-center justify-between bg-[#111827] hover:bg-slate-800 p-3 rounded-2xl border border-slate-800 text-xs transition"
                                         >
                                             <div className="space-y-0.5">
                                                 <p className="font-bold text-white">{p.title}</p>
@@ -1866,7 +1866,7 @@ function DashboardContent() {
                                 placeholder="e.g. Complete Reflection of Light CQ-01"
                                 value={newPlanTitle}
                                 onChange={(e) => setNewPlanTitle(e.target.value)}
-                                className="w-full bg-[#131826] border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                                className="w-full bg-[#111827] border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                             />
                             <div className="flex gap-2">
                                 <input
@@ -1874,7 +1874,7 @@ function DashboardContent() {
                                     placeholder="Target Time (e.g. 8:00 PM)"
                                     value={newPlanTime}
                                     onChange={(e) => setNewPlanTime(e.target.value)}
-                                    className="flex-1 bg-[#131826] border border-slate-800 rounded-2xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                                    className="flex-1 bg-[#111827] border border-slate-800 rounded-2xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                                 />
                                 <button
                                     type="submit"
@@ -1892,8 +1892,8 @@ function DashboardContent() {
             {/* 4. PDF IN-APP PREVIEW MODAL */}
             {previewPdfUrl && (
                 <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-6 animate-in fade-in duration-200">
-                    <div className="bg-[#0B101D] border border-slate-800 rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
-                        <div className="px-6 py-4 bg-[#131826] border-b border-slate-800 flex items-center justify-between">
+                    <div className="bg-[#111827] border border-slate-800 rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+                        <div className="px-6 py-4 bg-[#111827] border-b border-slate-800 flex items-center justify-between">
                             <div className="flex items-center space-x-3">
                                 <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-xs">
                                     PDF

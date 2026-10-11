@@ -197,7 +197,6 @@ function DashboardContent() {
     const [loading, setLoading] = useState(true);
 
     const [searchQuery, setSearchQuery] = useState("");
-    const [lastPlayedId, setLastPlayedId] = useState<string>("");
 
     const [openNotesId, setOpenNotesId] = useState<string | null>(null);
     const [lectureNotes, setLectureNotes] = useState<Record<string, string>>({});
@@ -314,11 +313,6 @@ function DashboardContent() {
             } catch {
                 setStudyPlans([]);
             }
-        }
-
-        const storedLastPlayed = localStorage.getItem("edutrack_last_played_id");
-        if (storedLastPlayed) {
-            setLastPlayedId(storedLastPlayed);
         }
 
         const storedNotes = localStorage.getItem("edutrack_lecture_notes");
@@ -467,29 +461,6 @@ function DashboardContent() {
         localStorage.setItem("edutrack_watched_videos", JSON.stringify(updated));
     };
 
-    const recordLecturePlayback = (id: string) => {
-        setLastPlayedId(id);
-        localStorage.setItem("edutrack_last_played_id", id);
-    };
-
-    const handleResumeLecture = (targetId?: string) => {
-        const idToOpen = targetId || lastPlayedId || (videos.length > 0 ? videos[0].id : "");
-        if (!idToOpen) return;
-        const targetVideo = videos.find(v => v.id === idToOpen);
-        if (targetVideo) {
-            setSelectedSubjectTab(targetVideo.subject === "CHEMISTRY" ? "CHEMISTRY" : "PHYSICS");
-            setSelectedChapter(targetVideo.chapter || null);
-        }
-        setActiveNav("lectures");
-        recordLecturePlayback(idToOpen);
-        setTimeout(() => {
-            const element = document.getElementById(`lecture-card-${idToOpen}`);
-            if (element) {
-                element.scrollIntoView({ behavior: "smooth", block: "center" });
-            }
-        }, 150);
-    };
-
     const handleNoteChange = (lectureId: string, content: string) => {
         const updated = { ...lectureNotes, [lectureId]: content };
         setLectureNotes(updated);
@@ -602,16 +573,6 @@ function DashboardContent() {
         localStorage.setItem("edutrack_study_plans", JSON.stringify(updated));
     };
 
-    const tomorrowReminders = useMemo(() => {
-        if (!tomorrowKey) return [];
-        return studyPlans.filter((p) => p.dateKey === tomorrowKey);
-    }, [studyPlans, tomorrowKey]);
-
-    const todayReminders = useMemo(() => {
-        if (!todayKey) return [];
-        return studyPlans.filter((p) => p.dateKey === todayKey);
-    }, [studyPlans, todayKey]);
-
     const totalLectures = videos.length;
     const completedCount = useMemo(() => {
         return videos.filter((v) => watchedVideos.includes(v.id)).length;
@@ -629,16 +590,6 @@ function DashboardContent() {
         });
         return Object.entries(map);
     }, [videos, watchedVideos]);
-
-    const activeResumeLecture = useMemo(() => {
-        if (!videos || videos.length === 0) return null;
-        if (lastPlayedId) {
-            const found = videos.find((v) => v.id === lastPlayedId);
-            if (found) return found;
-        }
-        const unwatched = videos.find((v) => !watchedVideos.includes(v.id));
-        return unwatched || videos[0];
-    }, [videos, lastPlayedId, watchedVideos]);
 
     const normalizedQuery = searchQuery.toLowerCase().trim();
 
@@ -1138,7 +1089,6 @@ function DashboardContent() {
                                                                     <button
                                                                         onClick={() => {
                                                                             toggleWatchStatus(vid.id);
-                                                                            recordLecturePlayback(vid.id);
                                                                         }}
                                                                         className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
                                                                             ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
@@ -1300,39 +1250,6 @@ function DashboardContent() {
                                     </div>
                                 </div>
 
-                                {/* CONTINUE WATCHING & RESUME BANNER */}
-                                {activeResumeLecture && (
-                                    <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 text-white border border-indigo-500/20 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-                                        <div className="flex items-center space-x-4">
-                                            <div className="w-12 h-12 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center shrink-0 shadow-inner">
-                                                <Play className="w-5 h-5 text-indigo-400 fill-indigo-400" />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                                                        Continue Watching
-                                                    </span>
-                                                    <span className="text-[10px] text-slate-400 font-bold uppercase">
-                                                        {activeResumeLecture.subject}
-                                                    </span>
-                                                </div>
-                                                <h4 className="text-sm sm:text-base font-extrabold text-white leading-snug">
-                                                    Lecture #{activeResumeLecture.lecture_no}: {activeResumeLecture.topic || activeResumeLecture.title}
-                                                </h4>
-                                                <p className="text-xs text-slate-400">{activeResumeLecture.chapter}</p>
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            onClick={() => handleResumeLecture(activeResumeLecture.id)}
-                                            className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition shadow-lg shadow-indigo-600/30 flex items-center gap-2 shrink-0 w-full sm:w-auto justify-center"
-                                        >
-                                            <Play className="w-3.5 h-3.5 fill-white" />
-                                            <span>Resume Class</span>
-                                        </button>
-                                    </div>
-                                )}
-
                                 {/* STATISTICS & CALENDAR */}
                                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                                     <div className="lg:col-span-7 space-y-6">
@@ -1394,7 +1311,6 @@ function DashboardContent() {
                                                             <button
                                                                 onClick={() => {
                                                                     toggleWatchStatus(v.id);
-                                                                    recordLecturePlayback(v.id);
                                                                 }}
                                                                 className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition ${isDone
                                                                     ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
@@ -1704,7 +1620,6 @@ function DashboardContent() {
                                                             <button
                                                                 onClick={() => {
                                                                     toggleWatchStatus(vid.id);
-                                                                    recordLecturePlayback(vid.id);
                                                                 }}
                                                                 className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${isWatched
                                                                     ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
@@ -1950,19 +1865,18 @@ function DashboardContent() {
 
             {/* FLOATING AI CHAT BUTTON & POPUP WIDGET */}
             {!isExpired && (
-                <div className={`fixed z-50 ${isFloatingChatOpen ? "inset-3 sm:inset-auto sm:bottom-6 sm:right-5" : "bottom-6 right-5"}`}>
+                <div className="fixed bottom-6 right-5 z-50">
                     {!isFloatingChatOpen ? (
                         <button
                             onClick={() => setIsFloatingChatOpen(true)}
                             className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 group relative border-2 border-indigo-400/30"
                             title="Ask AI Tutor"
-                            aria-label="Open AI tutor"
                         >
                             <Bot className="w-7 h-7 text-white animate-bounce" />
                             <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-[#090D16] rounded-full" />
                         </button>
                     ) : (
-                        <div className="bg-[#0B101D] border border-slate-800 rounded-3xl w-full h-full sm:w-[380px] sm:h-[500px] max-h-[calc(100dvh-1.5rem)] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+                        <div className="bg-[#0B101D] border border-slate-800 rounded-3xl w-[90vw] sm:w-[380px] h-[500px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
                             <div className="px-5 py-3.5 bg-[#131826] text-white flex items-center justify-between border-b border-slate-800">
                                 <div className="flex items-center space-x-2.5">
                                     <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-sm shadow">
@@ -2163,7 +2077,7 @@ export default function StudentDashboardPage() {
     return (
         <Suspense
             fallback={
-                <div className="min-h-screen bg-[#090D16] flex flex-col items-center justify-center space-y-3">
+                <div className="min-h-0 min-h-screen bg-[#090D16] flex flex-col items-center justify-center space-y-3">
                     <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
                     <p className="text-xs font-bold text-slate-400 tracking-wide font-mono">INITIALIZING CYBER DECK...</p>
                 </div>

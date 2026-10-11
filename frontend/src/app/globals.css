@@ -2,8 +2,10 @@
 @import "tailwindcss";
 
 :root {
-  --background: #020617;
+  --background: #070b19;
   --foreground: #f8fafc;
+  --azs-cyan: #22d3ee;
+  --azs-indigo: #6366f1;
 }
 
 @theme inline {
@@ -13,8 +15,101 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background: #020617;
-  color: #f8fafc;
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.45);
+  color: #fff;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0b101d;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+.azs-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(51 65 85 / 0.85);
+  background: #0f172a;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.875rem;
+  color: #fff;
+}
+
+.azs-input::placeholder {
+  color: #64748b;
+}
+
+.azs-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 0.2);
+}
+
+.azs-btn-primary {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  background: #4f46e5;
+  padding: 0.8rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 10px 24px rgb(79 70 229 / 0.28);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.azs-btn-primary:hover:not(:disabled) {
+  background: #6366f1;
+}
+
+.azs-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.azs-grid-bg {
+  background-color: #070b19;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgb(99 102 241 / 0.28), transparent),
+    linear-gradient(rgb(148 163 184 / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(148 163 184 / 0.04) 1px, transparent 1px);
+  background-size: auto, 48px 48px, 48px 48px;
 }

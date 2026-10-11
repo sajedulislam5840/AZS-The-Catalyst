@@ -760,7 +760,7 @@ function DashboardContent() {
                                     setSearchQuery("");
                                     setIsMobileSidebarOpen(false);
                                 }}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "dashboard"
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeNav === "dashboard"
                                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                                     : "text-slate-400 hover:text-white hover:bg-slate-900/80"
                                     }`}
@@ -775,7 +775,7 @@ function DashboardContent() {
                                     setSelectedChapter(null);
                                     setIsMobileSidebarOpen(false);
                                 }}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "lectures"
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeNav === "lectures"
                                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                                     : "text-slate-400 hover:text-white hover:bg-slate-900/80"
                                     }`}
@@ -793,7 +793,7 @@ function DashboardContent() {
                                     setSelectedChapter(null);
                                     setIsMobileSidebarOpen(false);
                                 }}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "materials"
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeNav === "materials"
                                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                                     : "text-slate-400 hover:text-white hover:bg-slate-900/80"
                                     }`}
@@ -811,7 +811,7 @@ function DashboardContent() {
                                     setSelectedChapter(null);
                                     setIsMobileSidebarOpen(false);
                                 }}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeNav === "ai"
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeNav === "ai"
                                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                                     : "text-slate-400 hover:text-white hover:bg-slate-900/80"
                                     }`}
@@ -930,7 +930,7 @@ function DashboardContent() {
                                     placeholder="Search topic or chapter..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full bg-[#131826] border border-slate-800 focus:border-indigo-500 rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition"
+                                    className="w-full bg-[#131826] border border-slate-800 focus:border-indigo-500 rounded-xl pl-10 pr-9 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition"
                                 />
                                 {searchQuery && (
                                     <button
@@ -1950,18 +1950,19 @@ function DashboardContent() {
 
             {/* FLOATING AI CHAT BUTTON & POPUP WIDGET */}
             {!isExpired && (
-                <div className="fixed bottom-6 right-5 z-50">
+                <div className={`fixed z-50 ${isFloatingChatOpen ? "inset-3 sm:inset-auto sm:bottom-6 sm:right-5" : "bottom-6 right-5"}`}>
                     {!isFloatingChatOpen ? (
                         <button
                             onClick={() => setIsFloatingChatOpen(true)}
                             className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 group relative border-2 border-indigo-400/30"
                             title="Ask AI Tutor"
+                            aria-label="Open AI tutor"
                         >
                             <Bot className="w-7 h-7 text-white animate-bounce" />
                             <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-[#090D16] rounded-full" />
                         </button>
                     ) : (
-                        <div className="bg-[#0B101D] border border-slate-800 rounded-3xl w-[90vw] sm:w-[380px] h-[500px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+                        <div className="bg-[#0B101D] border border-slate-800 rounded-3xl w-full h-full sm:w-[380px] sm:h-[500px] max-h-[calc(100dvh-1.5rem)] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
                             <div className="px-5 py-3.5 bg-[#131826] text-white flex items-center justify-between border-b border-slate-800">
                                 <div className="flex items-center space-x-2.5">
                                     <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-sm shadow">
@@ -2162,7 +2163,7 @@ export default function StudentDashboardPage() {
     return (
         <Suspense
             fallback={
-                <div className="min-h-0 min-h-screen bg-[#090D16] flex flex-col items-center justify-center space-y-3">
+                <div className="min-h-screen bg-[#090D16] flex flex-col items-center justify-center space-y-3">
                     <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
                     <p className="text-xs font-bold text-slate-400 tracking-wide font-mono">INITIALIZING CYBER DECK...</p>
                 </div>

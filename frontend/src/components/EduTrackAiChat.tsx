@@ -21,7 +21,7 @@ export default function EduTrackAiChat({ isOpen, onClose }: EduTrackAiChatProps)
         {
             role: "assistant",
             content:
-                "সালাম! আমি EduTrack AI Academic Tutor। ফিজিক্স, কেমিস্ট্রি বা যেকোনো গাণিতিক সমস্যার জন্য প্রশ্ন করতে পারো।",
+                "আসসালামু আলাইকুম! আমি AZS AI Academic Tutor। ফিজিক্স, কেমিস্ট্রি বা যেকোনো গাণিতিক সমস্যার জন্য প্রশ্ন করতে পারো।",
         },
     ]);
     const [input, setInput] = useState<string>("");
@@ -56,10 +56,12 @@ export default function EduTrackAiChat({ isOpen, onClose }: EduTrackAiChatProps)
 
             const backendUrl =
                 process.env.NEXT_PUBLIC_API_URL ||
-                "https://edutrack-backend.onrender.com";
+                "https://edutrack-backend-qjxg.onrender.com";
 
             const token =
-                typeof window !== "undefined" ? localStorage.getItem("token") : null;
+                typeof window !== "undefined"
+                    ? localStorage.getItem("token") || localStorage.getItem("access_token")
+                    : null;
 
             const headers: Record<string, string> = {
                 "Content-Type": "application/json",
@@ -112,7 +114,7 @@ export default function EduTrackAiChat({ isOpen, onClose }: EduTrackAiChatProps)
     if (!isOpen) return null;
 
     return (
-        <div className="fixed bottom-6 right-6 w-96 max-w-[92vw] h-[560px] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50 text-slate-100 font-sans">
+        <div className="fixed inset-3 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-96 sm:h-[560px] max-w-[100vw] h-[min(560px,calc(100dvh-1.5rem))] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50 text-slate-100 font-sans">
             <div className="flex items-center justify-between px-4 py-3 bg-slate-800/90 backdrop-blur border-b border-slate-700/60">
                 <div className="flex items-center space-x-2">
                     <div className="p-2 bg-indigo-600 rounded-xl shadow-md">
@@ -120,7 +122,7 @@ export default function EduTrackAiChat({ isOpen, onClose }: EduTrackAiChatProps)
                     </div>
                     <div>
                         <h3 className="font-semibold text-sm leading-tight text-white">
-                            EduTrack AI Tutor
+                            AZS AI Tutor
                         </h3>
                         <p className="text-[11px] text-emerald-400 font-medium">
                             ● Online • Guide & Solver
@@ -146,8 +148,8 @@ export default function EduTrackAiChat({ isOpen, onClose }: EduTrackAiChatProps)
                     >
                         <div
                             className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${msg.role === "user"
-                                    ? "bg-indigo-600 text-white"
-                                    : "bg-slate-800 text-slate-200 border border-slate-700/60"
+                                ? "bg-indigo-600 text-white"
+                                : "bg-slate-800 text-slate-200 border border-slate-700/60"
                                 }`}
                         >
                             {msg.role === "assistant" ? (
@@ -170,7 +172,7 @@ export default function EduTrackAiChat({ isOpen, onClose }: EduTrackAiChatProps)
                     <div className="flex justify-start">
                         <div className="bg-slate-800 border border-slate-700/60 rounded-2xl px-4 py-2 flex items-center space-x-2 text-slate-300 text-xs">
                             <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
-                            <span>EduTrack সমাধান তৈরি করছে...</span>
+                            <span>AZS সমাধান তৈরি করছে...</span>
                         </div>
                     </div>
                 )}
@@ -193,6 +195,7 @@ export default function EduTrackAiChat({ isOpen, onClose }: EduTrackAiChatProps)
                         type="submit"
                         disabled={isLoading || !input.trim()}
                         className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-40 disabled:hover:bg-indigo-600 transition-colors"
+                        aria-label="Send message"
                     >
                         <Send className="w-4 h-4" />
                     </button>

@@ -74,6 +74,7 @@ export default function AdminPage() {
     const [loading, setLoading] = useState(true);
     const [actionLoadingId, setActionLoadingId] = useState<string | number | null>(null);
     const [currentYear, setCurrentYear] = useState<number>(2026);
+    const [sessionEmail, setSessionEmail] = useState("Admin");
 
     const [filterVideoSubject, setFilterVideoSubject] = useState<string>("ALL");
     const [filterVideoChapter, setFilterVideoChapter] = useState<string>("ALL");
@@ -168,6 +169,7 @@ export default function AdminPage() {
 
         const role = (localStorage.getItem("user_role") || "").toUpperCase();
         const email = (localStorage.getItem("user_email") || "").toLowerCase();
+        setSessionEmail(email || localStorage.getItem("user_name") || "Admin");
 
         if (role !== "ADMIN" && email !== "rabbi@edutrack.com") {
             router.replace("/dashboard");
@@ -567,7 +569,7 @@ export default function AdminPage() {
     return (
         <div className="min-h-screen bg-[#070b19] text-slate-100 flex flex-col font-sans antialiased selection:bg-indigo-600 selection:text-white">
             <header className="border-b border-slate-800/80 bg-[#0c1227]/90 backdrop-blur-md sticky top-0 z-30 shadow-lg shadow-black/20">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center space-x-3.5">
                         <div className="w-10 h-10 rounded-2xl overflow-hidden bg-slate-900 border border-slate-700/80 shadow-lg flex items-center justify-center shrink-0 p-1">
                             <img
@@ -590,10 +592,10 @@ export default function AdminPage() {
                         </div>
                     </div>
 
-                    <div className="flex items-center space-x-1.5 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800/90 shadow-inner">
+                    <div className="order-3 w-full lg:order-none lg:w-auto flex items-center space-x-1.5 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800/90 shadow-inner overflow-x-auto">
                         <button
                             onClick={() => setActiveTab("students")}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${activeTab === "students"
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 ${activeTab === "students"
                                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                                 : "text-slate-400 hover:text-white hover:bg-slate-800/60"
                                 }`}
@@ -603,7 +605,7 @@ export default function AdminPage() {
                         </button>
                         <button
                             onClick={() => setActiveTab("video")}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${activeTab === "video"
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 ${activeTab === "video"
                                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                                 : "text-slate-400 hover:text-white hover:bg-slate-800/60"
                                 }`}
@@ -613,7 +615,7 @@ export default function AdminPage() {
                         </button>
                         <button
                             onClick={() => setActiveTab("sheet")}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${activeTab === "sheet"
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 ${activeTab === "sheet"
                                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                                 : "text-slate-400 hover:text-white hover:bg-slate-800/60"
                                 }`}
@@ -625,7 +627,7 @@ export default function AdminPage() {
 
                     <div className="flex items-center space-x-3">
                         <div className="hidden md:flex flex-col text-right">
-                            <span className="text-xs font-bold text-slate-200">rabbi@edutrack.com</span>
+                            <span className="text-xs font-bold text-slate-200">{sessionEmail}</span>
                             <span className="text-[10px] text-emerald-400 font-mono flex items-center justify-end gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                 Active Session

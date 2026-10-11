@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
 import axios from "axios";
 
@@ -19,6 +19,7 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [school, setSchool] = useState("");
   const [gradeClass, setGradeClass] = useState("Class 10");
   const [batchNo, setBatchNo] = useState("Batch 01");
@@ -56,79 +57,98 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070b19] text-slate-100 flex flex-col justify-between font-sans antialiased py-6">
+    <div className="azs-grid-bg min-h-screen text-slate-100 flex flex-col justify-between font-sans antialiased py-6">
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="bg-[#0f172a] border border-slate-800 rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-6">
+        <div className="bg-[#0f172a]/95 border border-slate-800 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6">
           <div className="text-center space-y-3">
-            <div className="w-14 h-14 mx-auto rounded-2xl overflow-hidden bg-slate-900 border border-slate-700/80 shadow-lg flex items-center justify-center p-1">
+            <Link href="/" className="w-14 h-14 mx-auto rounded-2xl overflow-hidden bg-slate-900 border border-slate-700/80 shadow-lg flex items-center justify-center p-1">
               <img src="/logo.png" alt="AZS Logo" className="w-full h-full object-contain" />
-            </div>
+            </Link>
             <div>
-              <h1 className="text-xl font-black text-white tracking-tight">Create Student Account</h1>
-              <p className="text-xs text-slate-400 mt-1">Provide your academic batch details to get started</p>
+              <h1 className="text-xl font-black text-white tracking-tight">Create student account</h1>
+              <p className="text-sm text-slate-400 mt-1">Add your batch details to join the portal</p>
             </div>
           </div>
 
           {errorMsg && (
-            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs p-3 rounded-xl text-center font-semibold">
+            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-300 text-sm p-3 rounded-xl text-center font-medium" role="alert">
               {errorMsg}
             </div>
           )}
 
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">Full Name</label>
+              <label htmlFor="reg-name" className="text-sm font-semibold text-slate-300 block mb-1.5">Full name</label>
               <input
+                id="reg-name"
                 type="text"
                 required
+                autoComplete="name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="e.g. Razon"
-                className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                className="azs-input"
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">Email Address</label>
+              <label htmlFor="reg-email" className="text-sm font-semibold text-slate-300 block mb-1.5">Email address</label>
               <input
+                id="reg-email"
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="student@example.com"
-                className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                className="azs-input"
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">Password</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-              />
+              <label htmlFor="reg-password" className="text-sm font-semibold text-slate-300 block mb-1.5">Password</label>
+              <div className="relative">
+                <input
+                  id="reg-password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                  className="azs-input pr-11"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1">School / College</label>
+                <label htmlFor="reg-school" className="text-sm font-semibold text-slate-300 block mb-1.5">School / college</label>
                 <input
+                  id="reg-school"
                   type="text"
                   value={school}
                   onChange={(e) => setSchool(e.target.value)}
                   placeholder="Institution name"
-                  className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  className="azs-input"
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1">Class / Grade</label>
+                <label htmlFor="reg-class" className="text-sm font-semibold text-slate-300 block mb-1.5">Class / grade</label>
                 <select
+                  id="reg-class"
                   value={gradeClass}
                   onChange={(e) => setGradeClass(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="azs-input"
                 >
                   <option value="Class 9">Class 9</option>
                   <option value="Class 10">Class 10</option>
@@ -139,37 +159,34 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">Batch Assignment</label>
+              <label htmlFor="reg-batch" className="text-sm font-semibold text-slate-300 block mb-1.5">Batch assignment</label>
               <input
+                id="reg-batch"
                 type="text"
                 value={batchNo}
                 onChange={(e) => setBatchNo(e.target.value)}
                 placeholder="Batch 01"
-                className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                className="azs-input"
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2"
-            >
+            <button type="submit" disabled={loading} className="azs-btn-primary">
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Submitting...</span>
                 </>
               ) : (
-                <span>Submit Registration</span>
+                <span>Submit registration</span>
               )}
             </button>
           </form>
 
           <div className="text-center pt-2 border-t border-slate-800/80">
-            <p className="text-xs text-slate-400">
+            <p className="text-sm text-slate-400">
               Already have an account?{" "}
               <Link href="/login" className="text-indigo-400 font-bold hover:underline">
-                Sign In
+                Sign in
               </Link>
             </p>
           </div>
@@ -178,7 +195,7 @@ export default function RegisterPage() {
 
       <footer className="w-full py-4 px-6 text-center border-t border-slate-800/80 bg-[#0c1227]/90 backdrop-blur-sm">
         <p className="text-xs text-slate-400 font-medium">
-          © {currentYear} AZS: The Catalyst • Developed with by{" "}
+          © {currentYear} AZS: The Catalyst · Developed with ❤️ by{" "}
           <a
             href="https://www.linkedin.com/in/sajedul-islam-data/"
             target="_blank"

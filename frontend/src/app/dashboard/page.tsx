@@ -45,6 +45,7 @@ import {
     CreditCard,
 } from "lucide-react";
 import axios from "axios";
+import EduTrackAiChat from "@/components/EduTrackAiChat";
 
 // --- Professional Teacher Social Config ---
 const TEACHER_SOCIAL = {
@@ -110,10 +111,6 @@ interface Notice {
     created_at: string;
 }
 
-interface ChatMessage {
-    role: "user" | "assistant";
-    content: string;
-}
 
 interface StudyPlan {
     id: string;
@@ -205,15 +202,6 @@ function DashboardContent() {
     const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
     const [previewPdfTitle, setPreviewPdfTitle] = useState<string>("");
 
-    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-        {
-            role: "assistant",
-            content: "Hello! I am your AZS AI Academic Tutor. Feel free to ask any Physics or Chemistry doubts!",
-        },
-    ]);
-    const [chatInput, setChatInput] = useState("");
-    const [chatLoading, setChatLoading] = useState(false);
-    const chatEndRef = useRef<HTMLDivElement>(null);
 
     const [calendarViewDate, setCalendarViewDate] = useState<Date | null>(null);
     const [todayKey, setTodayKey] = useState<string>("");
@@ -328,9 +316,6 @@ function DashboardContent() {
         fetchAcademicData();
     }, [router]);
 
-    useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [chatMessages, isFloatingChatOpen]);
 
     const fetchUserData = async () => {
         try {
@@ -498,31 +483,6 @@ function DashboardContent() {
         URL.revokeObjectURL(url);
     };
 
-    const handleSendChat = async (e?: FormEvent) => {
-        if (e) e.preventDefault();
-        const prompt = chatInput.trim();
-        if (!prompt || chatLoading) return;
-
-        const newMsgs: ChatMessage[] = [...chatMessages, { role: "user", content: prompt }];
-        setChatMessages(newMsgs);
-        setChatInput("");
-        setChatLoading(true);
-
-        try {
-            const res = await api.post("/api/v1/ai/chat", { prompt });
-            setChatMessages([...newMsgs, { role: "assistant", content: res.data.reply }]);
-        } catch (err: any) {
-            setChatMessages([
-                ...newMsgs,
-                {
-                    role: "assistant",
-                    content: err.response?.data?.detail || "Could not retrieve AI response right now.",
-                },
-            ]);
-        } finally {
-            setChatLoading(false);
-        }
-    };
 
     const handleLogout = () => {
         localStorage.clear();
@@ -1779,59 +1739,8 @@ function DashboardContent() {
 
                         {/* VIEW: INTEGRATED AI TUTOR (FULL PAGE) */}
                         {!isExpired && !isSearchActive && activeNav === "ai" && (
-                            <div className="bg-[#0B101D] rounded-3xl border border-slate-800 shadow-xl overflow-hidden flex flex-col h-[640px]">
-                                <div className="p-5 bg-[#131826] border-b border-slate-800 flex items-center space-x-3">
-                                    <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow">
-                                        ✨
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-extrabold text-white">AZS: The Catalyst - AI Tutor Core</h3>
-                                        <p className="text-[11px] text-emerald-400 font-medium">Ready to explain Theory, Formulas, and Math</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex-1 p-6 overflow-y-auto space-y-4 text-xs">
-                                    {chatMessages.map((m, idx) => (
-                                        <div
-                                            key={idx}
-                                            className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-                                        >
-                                            <div
-                                                className={`max-w-[80%] px-4 py-3 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
-                                                    ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-md"
-                                                    : "bg-[#131826] text-slate-200 rounded-bl-none font-medium border border-slate-800"
-                                                    }`}
-                                            >
-                                                {m.content}
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {chatLoading && (
-                                        <div className="flex justify-start">
-                                            <div className="bg-[#131826] text-slate-400 px-4 py-2.5 rounded-2xl text-xs animate-pulse border border-slate-800">
-                                                AI is thinking...
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div ref={chatEndRef} />
-                                </div>
-
-                                <form onSubmit={handleSendChat} className="p-4 bg-[#131826] border-t border-slate-800 flex items-center gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Ask any question (e.g., Explain Ohm's law or Archimedes principle)..."
-                                        value={chatInput}
-                                        onChange={(e) => setChatInput(e.target.value)}
-                                        className="flex-1 bg-[#090D16] border border-slate-800 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                                    />
-                                    <button
-                                        type="submit"
-                                        disabled={chatLoading || !chatInput.trim()}
-                                        className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-5 py-3 rounded-xl text-xs transition shadow-md"
-                                    >
-                                        Send
-                                    </button>
-                                </form>
+                            <div className="h-[calc(100vh-140px)] min-h-[640px]">
+                                <EduTrackAiChat isEmbedded={true} />
                             </div>
                         )}
                     </main>
@@ -1864,82 +1773,23 @@ function DashboardContent() {
             </div>
 
             {/* FLOATING AI CHAT BUTTON & POPUP WIDGET */}
-            {!isExpired && (
-                <div className="fixed bottom-6 right-5 z-50">
+            {!isExpired && activeNav !== "ai" && (
+                <>
                     {!isFloatingChatOpen ? (
-                        <button
-                            onClick={() => setIsFloatingChatOpen(true)}
-                            className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 group relative border-2 border-indigo-400/30"
-                            title="Ask AI Tutor"
-                        >
-                            <Bot className="w-7 h-7 text-white animate-bounce" />
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-[#090D16] rounded-full" />
-                        </button>
-                    ) : (
-                        <div className="bg-[#0B101D] border border-slate-800 rounded-3xl w-[90vw] sm:w-[380px] h-[500px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
-                            <div className="px-5 py-3.5 bg-[#131826] text-white flex items-center justify-between border-b border-slate-800">
-                                <div className="flex items-center space-x-2.5">
-                                    <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-sm shadow">
-                                        ✨
-                                    </div>
-                                    <div>
-                                        <h4 className="text-xs font-extrabold text-white">AZS AI Assistant</h4>
-                                        <p className="text-[10px] text-emerald-400 font-mono">Online • Physics & Chemistry</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setIsFloatingChatOpen(false)}
-                                    className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
-                            </div>
-
-                            <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-[#090D16]/50">
-                                {chatMessages.map((m, idx) => (
-                                    <div
-                                        key={idx}
-                                        className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-                                    >
-                                        <div
-                                            className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap ${m.role === "user"
-                                                ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-md"
-                                                : "bg-[#131826] text-slate-200 rounded-bl-none font-medium border border-slate-800"
-                                                }`}
-                                        >
-                                            {m.content}
-                                        </div>
-                                    </div>
-                                ))}
-                                {chatLoading && (
-                                    <div className="flex justify-start">
-                                        <div className="bg-[#131826] text-slate-400 px-3 py-2 rounded-2xl text-[11px] border border-slate-800 animate-pulse shadow-sm">
-                                            AI is thinking...
-                                        </div>
-                                    </div>
-                                )}
-                                <div ref={chatEndRef} />
-                            </div>
-
-                            <form onSubmit={handleSendChat} className="p-3 bg-[#131826] border-t border-slate-800 flex items-center gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="Ask your doubt..."
-                                    value={chatInput}
-                                    onChange={(e) => setChatInput(e.target.value)}
-                                    className="flex-1 bg-[#090D16] border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={chatLoading || !chatInput.trim()}
-                                    className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white p-2.5 rounded-xl transition shadow-md shadow-indigo-600/20"
-                                >
-                                    <Send className="w-3.5 h-3.5" />
-                                </button>
-                            </form>
+                        <div className="fixed bottom-6 right-5 z-50">
+                            <button
+                                onClick={() => setIsFloatingChatOpen(true)}
+                                className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 group relative border-2 border-indigo-400/30"
+                                title="Ask AI Tutor"
+                            >
+                                <Bot className="w-7 h-7 text-white animate-bounce" />
+                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-[#090D16] rounded-full" />
+                            </button>
                         </div>
+                    ) : (
+                        <EduTrackAiChat isOpen={true} onClose={() => setIsFloatingChatOpen(false)} />
                     )}
-                </div>
+                </>
             )}
 
             {/* 3. STUDY PLANNER MODAL */}

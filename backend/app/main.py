@@ -10,6 +10,7 @@ from sqlalchemy import text
 from app.core.database import engine, Base
 from app.models.user import User
 import app.models.academic
+import app.models.chat
 from app.api.v1.auth import router as auth_router
 # Updated import from admin_academic.py
 from app.api.v1.admin_academic import router as admin_router

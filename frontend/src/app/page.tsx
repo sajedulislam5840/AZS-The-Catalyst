@@ -95,9 +95,9 @@ export default function Home() {
         {features.map(({ icon: Icon, title, text }) => (
           <article
             key={title}
-            className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 text-left shadow-xl shadow-black/20"
+            className="group rounded-2xl border border-slate-800/80 bg-[#111827]/85 p-5 text-left shadow-xl shadow-black/20 hover:border-indigo-500/40 hover:-translate-y-1 transition-all duration-200"
           >
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-300">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-300 group-hover:scale-105 transition-transform">
               <Icon className="h-5 w-5" />
             </div>
             <h2 className="text-sm font-bold text-white">{title}</h2>

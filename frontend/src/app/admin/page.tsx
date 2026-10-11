@@ -567,7 +567,7 @@ export default function AdminPage() {
     const totalActivePaidCount = useMemo(() => students.filter(s => s.is_approved && s.days_left > 0).length, [students]);
 
     return (
-        <div className="min-h-screen bg-[#070b19] text-slate-100 flex flex-col font-sans antialiased selection:bg-indigo-600 selection:text-white">
+        <div className="min-h-screen bg-[#0B0F19] text-slate-100 flex flex-col font-sans antialiased selection:bg-indigo-600 selection:text-white">
             <header className="border-b border-slate-800/80 bg-[#0c1227]/90 backdrop-blur-md sticky top-0 z-30 shadow-lg shadow-black/20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center space-x-3.5">

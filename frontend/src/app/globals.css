@@ -2,7 +2,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #070b19;
+  --background: #0B0F19;
   --foreground: #f8fafc;
   --azs-cyan: #22d3ee;
   --azs-indigo: #6366f1;
@@ -106,10 +106,18 @@ button {
 }
 
 .azs-grid-bg {
-  background-color: #070b19;
+  background-color: #0B0F19;
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgb(99 102 241 / 0.28), transparent),
-    linear-gradient(rgb(148 163 184 / 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(148 163 184 / 0.04) 1px, transparent 1px);
-  background-size: auto, 48px 48px, 48px 48px;
+    radial-gradient(ellipse 90% 55% at 50% -15%, rgba(99, 102, 241, 0.22), transparent),
+    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px);
+  background-size: auto, 40px 40px, 40px 40px;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

@@ -268,13 +268,13 @@ export default function EduTrackAiChat({
 
     // Container styling: Embedded fills dashboard container, Floating is fixed drawer
     const containerClasses = isEmbedded
-        ? "w-full h-full min-h-[600px] flex flex-col bg-[#0B101D] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl relative text-slate-100 font-sans"
-        : "fixed inset-3 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[440px] sm:h-[620px] max-w-[100vw] h-[min(620px,calc(100dvh-1.5rem))] bg-[#0B101D] border border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden z-50 text-slate-100 font-sans";
+        ? "w-full h-full min-h-[600px] flex flex-col bg-[#0B0F19] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl relative text-slate-100 font-sans"
+        : "fixed inset-3 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[440px] sm:h-[620px] max-w-[100vw] h-[min(620px,calc(100dvh-1.5rem))] bg-[#0B0F19] border border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden z-50 text-slate-100 font-sans";
 
     return (
         <div className={containerClasses}>
             {/* TOP HEADER */}
-            <header className="px-4 py-3 bg-[#131826]/95 backdrop-blur border-b border-slate-800 flex items-center justify-between gap-2 z-10">
+            <header className="px-4 py-3 bg-[#111827]/95 backdrop-blur border-b border-slate-800 flex items-center justify-between gap-2 z-10">
                 <div className="flex items-center gap-2">
                     {/* Retrack Sidebar Toggle */}
                     <button
@@ -354,7 +354,7 @@ export default function EduTrackAiChat({
             <div className="flex-1 flex overflow-hidden relative">
                 {/* SESSIONS HISTORY DRAWER (RETRACK CHATS) */}
                 {isSidebarOpen && (
-                    <aside className="absolute inset-y-0 left-0 w-72 sm:w-80 bg-[#0B101D]/98 backdrop-blur-md border-r border-slate-800 p-4 flex flex-col z-20 shadow-2xl transition-all">
+                    <aside className="absolute inset-y-0 left-0 w-72 sm:w-80 bg-[#0B0F19]/98 backdrop-blur-md border-r border-slate-800 p-4 flex flex-col z-20 shadow-2xl transition-all">
                         <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
                                 <History className="w-4 h-4 text-cyan-400" /> পূর্বের কথোপকথন (Retrack)
@@ -390,7 +390,7 @@ export default function EduTrackAiChat({
                                         className={`group p-2.5 rounded-xl border text-left cursor-pointer transition-all flex items-start justify-between gap-2 ${
                                             currentSessionId === s.id
                                                 ? "bg-indigo-600/15 border-indigo-500/50 text-white"
-                                                : "bg-[#131826]/70 border-slate-800/80 text-slate-300 hover:bg-slate-800/80 hover:border-slate-700"
+                                                : "bg-[#111827]/70 border-slate-800/80 text-slate-300 hover:bg-slate-800/80 hover:border-slate-700"
                                         }`}
                                     >
                                         <div className="flex items-start gap-2 min-w-0">
@@ -431,7 +431,7 @@ export default function EduTrackAiChat({
                                 className={`group relative max-w-[88%] sm:max-w-[82%] rounded-2xl px-4 py-3 leading-relaxed ${
                                     msg.role === "user"
                                         ? "bg-indigo-600 text-white rounded-br-none font-medium shadow-lg shadow-indigo-600/20"
-                                        : "bg-[#131826] text-slate-200 rounded-bl-none border border-slate-800/80 shadow-md"
+                                        : "bg-[#111827] text-slate-200 rounded-bl-none border border-slate-800/80 shadow-md"
                                 }`}
                             >
                                 {msg.role === "assistant" ? (
@@ -477,7 +477,7 @@ export default function EduTrackAiChat({
                                         key={idx}
                                         type="button"
                                         onClick={() => handleSend(p.text)}
-                                        className="text-left p-2.5 rounded-xl bg-[#131826]/80 hover:bg-[#1a2133] border border-slate-800/80 hover:border-indigo-500/50 transition-all text-xs text-slate-300 hover:text-white"
+                                        className="text-left p-2.5 rounded-xl bg-[#111827]/80 hover:bg-[#1f293d] border border-slate-800/80 hover:border-indigo-500/50 transition-all text-xs text-slate-300 hover:text-white"
                                     >
                                         <p className="font-bold text-[11px] text-cyan-300 mb-0.5">{p.label}</p>
                                         <p className="text-[10px] text-slate-400 line-clamp-1">{p.text}</p>
@@ -489,7 +489,7 @@ export default function EduTrackAiChat({
 
                     {isLoading && (
                         <div className="flex justify-start">
-                            <div className="bg-[#131826] border border-slate-800 rounded-2xl px-4 py-2.5 flex items-center space-x-2.5 text-slate-300 text-xs shadow-md animate-pulse">
+                            <div className="bg-[#111827] border border-slate-800 rounded-2xl px-4 py-2.5 flex items-center space-x-2.5 text-slate-300 text-xs shadow-md animate-pulse">
                                 <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
                                 <span>
                                     {selectedModel === "deepseek"
@@ -504,13 +504,13 @@ export default function EduTrackAiChat({
             </div>
 
             {/* BOTTOM INPUT BAR */}
-            <footer className="p-3 bg-[#131826]/95 border-t border-slate-800 z-10">
+            <footer className="p-3 bg-[#111827]/95 border-t border-slate-800 z-10">
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
                         handleSend();
                     }}
-                    className="flex items-center gap-2 bg-[#090D16] border border-slate-800 rounded-2xl px-3 py-1.5 focus-within:border-indigo-500 transition-colors"
+                    className="flex items-center gap-2 bg-[#0B0F19] border border-slate-800 rounded-2xl px-3 py-1.5 focus-within:border-indigo-500 transition-colors"
                 >
                     <input
                         type="text"

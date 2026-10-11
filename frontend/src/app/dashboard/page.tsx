@@ -587,11 +587,11 @@ function DashboardContent() {
     if (!mounted) return null;
 
     return (
-        <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col font-sans antialiased relative overflow-x-hidden">
+        <div className="min-h-screen azs-grid-bg bg-[#0B0F19] text-slate-100 flex flex-col font-sans antialiased relative overflow-x-hidden">
 
             {/* SUBJECT TRANSITION SCI-FI OVERLAY ANIMATION */}
             {activeTransition && (
-                <div className="fixed inset-0 z-50 bg-[#090D16]/90 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-50 bg-[#0B0F19]/90 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200">
                     {activeTransition === "PHYSICS" ? (
                         <div className="flex flex-col items-center space-y-6">
                             <div className="relative w-24 h-24 flex items-center justify-center">
@@ -819,7 +819,7 @@ function DashboardContent() {
 
                 {/* 2. MAIN WORKSPACE */}
                 <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-                    <header className="h-20 bg-[#090D16]/80 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-10 flex items-center justify-between sticky top-0 z-30 shadow-sm gap-3">
+                    <header className="h-16 sm:h-20 bg-[#0B0F19]/90 backdrop-blur-xl border-b border-slate-800/80 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-md gap-3">
                         <div className="flex items-center gap-3 flex-1 max-w-md">
                             {/* Mobile Hamburger Menu Toggle Button */}
                             <button
@@ -914,7 +914,7 @@ function DashboardContent() {
                         </div>
                     )}
 
-                    <main className="p-6 sm:p-10 max-w-7xl w-full mx-auto space-y-8 flex-1 pb-16 md:pb-12">
+                    <main className="p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6 sm:space-y-8 flex-1 pb-28 md:pb-12">
 
                         {/* SUBSCRIPTION EXPIRED WARNING NOTICE BOX (IF EXPIRED) */}
                         {isExpired && (
@@ -1473,7 +1473,24 @@ function DashboardContent() {
                                 )}
 
                                 {selectedChapter && (
-                                    <div className="space-y-8 animate-in fade-in duration-200">
+                                    <div className="space-y-6 animate-in fade-in duration-200">
+                                        {/* Horizontal Swipeable Chapter Carousel on Mobile */}
+                                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                                            {Object.keys(currentSubjectChapters).map((ch) => (
+                                                <button
+                                                    key={ch}
+                                                    onClick={() => setSelectedChapter(ch)}
+                                                    className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] ${
+                                                        selectedChapter === ch
+                                                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                                            : "bg-[#111827] text-slate-400 hover:text-white border border-slate-800"
+                                                    }`}
+                                                >
+                                                    {ch}
+                                                </button>
+                                            ))}
+                                        </div>
+
                                         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                             {(currentSubjectChapters[selectedChapter] || []).map((vid) => {
                                                 const embedUrl = getYouTubeEmbedUrl(vid.youtube_url || vid.video_url || "");
@@ -1776,14 +1793,14 @@ function DashboardContent() {
             {!isExpired && activeNav !== "ai" && (
                 <>
                     {!isFloatingChatOpen ? (
-                        <div className="fixed bottom-6 right-5 z-50">
+                        <div className="fixed bottom-20 md:bottom-6 right-4 md:right-5 z-40">
                             <button
                                 onClick={() => setIsFloatingChatOpen(true)}
-                                className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 group relative border-2 border-indigo-400/30"
+                                className="w-13 h-13 sm:w-14 sm:h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 group relative border-2 border-indigo-400/30"
                                 title="Ask AI Tutor"
                             >
-                                <Bot className="w-7 h-7 text-white animate-bounce" />
-                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-[#090D16] rounded-full" />
+                                <Bot className="w-6 h-6 sm:w-7 sm:h-7 text-white animate-bounce" />
+                                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-emerald-500 border-2 border-[#0B0F19] rounded-full" />
                             </button>
                         </div>
                     ) : (
@@ -1919,6 +1936,73 @@ function DashboardContent() {
                     </div>
                 </div>
             )}
+
+            {/* MOBILE STICKY BOTTOM NAVIGATION DOCK (Thumb Zone Optimized) */}
+            <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[#0E1526]/95 backdrop-blur-xl border-t border-slate-800/80 px-2 py-2 flex items-center justify-around shadow-2xl">
+                <button
+                    onClick={() => {
+                        setActiveNav("dashboard");
+                        setSelectedChapter(null);
+                        setIsMobileSidebarOpen(false);
+                    }}
+                    className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all active:scale-95 ${
+                        activeNav === "dashboard"
+                            ? "text-cyan-400 font-bold"
+                            : "text-slate-400 hover:text-slate-200"
+                    }`}
+                >
+                    <LayoutDashboard className="w-5 h-5" />
+                    <span className="text-[10px] tracking-tight">ড্যাশবোর্ড</span>
+                </button>
+
+                <button
+                    onClick={() => {
+                        setActiveNav("lectures");
+                        setSelectedChapter(null);
+                        setIsMobileSidebarOpen(false);
+                    }}
+                    className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all active:scale-95 ${
+                        activeNav === "lectures"
+                            ? "text-cyan-400 font-bold"
+                            : "text-slate-400 hover:text-slate-200"
+                    }`}
+                >
+                    <PlayCircle className="w-5 h-5" />
+                    <span className="text-[10px] tracking-tight">ক্লাস</span>
+                </button>
+
+                <button
+                    onClick={() => {
+                        setActiveNav("materials");
+                        setSelectedChapter(null);
+                        setIsMobileSidebarOpen(false);
+                    }}
+                    className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all active:scale-95 ${
+                        activeNav === "materials"
+                            ? "text-cyan-400 font-bold"
+                            : "text-slate-400 hover:text-slate-200"
+                    }`}
+                >
+                    <FileText className="w-5 h-5" />
+                    <span className="text-[10px] tracking-tight">শিট</span>
+                </button>
+
+                <button
+                    onClick={() => {
+                        setActiveNav("ai");
+                        setSelectedChapter(null);
+                        setIsMobileSidebarOpen(false);
+                    }}
+                    className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all active:scale-95 ${
+                        activeNav === "ai"
+                            ? "text-indigo-400 font-bold"
+                            : "text-slate-400 hover:text-slate-200"
+                    }`}
+                >
+                    <Bot className="w-5 h-5 text-indigo-400" />
+                    <span className="text-[10px] tracking-tight">AI টিউটর</span>
+                </button>
+            </nav>
         </div>
     );
 }

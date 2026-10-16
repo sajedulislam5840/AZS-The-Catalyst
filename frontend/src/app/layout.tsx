@@ -26,6 +26,8 @@ export const metadata: Metadata = {
     "Chemistry",
     "AI Tutor",
     "Coaching",
+    "HSC",
+    "Admission",
   ],
   authors: [{ name: "AZS" }],
   openGraph: {
@@ -37,8 +39,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#060a12",
-  colorScheme: "dark",
+  themeColor: "#faf8f5",
+  colorScheme: "light",
   width: "device-width",
   initialScale: 1,
 };
@@ -53,7 +55,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans bg-background text-foreground antialiased">
+      <body className="min-h-full flex flex-col font-sans bg-background text-foreground antialiased selection:bg-indigo-100 selection:text-indigo-900">
         {children}
       </body>
     </html>

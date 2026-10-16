@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { motion, AnimatePresence } from "framer-motion";
 import {
     Send,
     X,
@@ -21,7 +20,6 @@ import {
     ChevronLeft,
     Atom,
     FlaskConical,
-    Bot
 } from "lucide-react";
 
 export interface Message {
@@ -50,10 +48,26 @@ const BACKEND_URL = (
 ).replace(/\/$/, "");
 
 const SUGGESTED_PROMPTS = [
-    { label: "⚛️ গতিবিদ্যা (Kinematics)", text: "নিউটনের গতির দ্বিতীয় সূত্র $F=ma$ প্রতিপাদন করো এবং বিস্তারিত বুঝিয়ে দাও।" },
-    { label: "🧪 জারণ-বিজারণ (Redox)", text: "অম্লীয় মাধ্যমে $KMnO_4$ ও $FeSO_4$-এর সমতাকৃত বিক্রিয়া আয়ন-ইলেকট্রন পদ্ধতিতে দেখাও।" },
-    { label: "📐 প্রাসের গতি (Projectile)", text: "প্রাসের গতিপথে সর্বোচ্চ উচ্চতা $H$ এবং অনুভূমিক পাল্লা $R$-এর সমীকরণ প্রতিপাদন করো।" },
-    { label: "⚡ তড়িৎ রসায়ন (Electrochem)", text: "নার্নস্টের সমীকরণ (Nernst Equation) কীভাবে কাজ করে? উদাহরণসহ বুঝিয়ে বলো।" },
+    {
+        label: "⚛️ গতিবিদ্যা (Kinematics)",
+        text: "নিউটনের গতির দ্বিতীয় সূত্র $F=ma$ প্রতিপাদন করো এবং বিস্তারিত বুঝিয়ে দাও।",
+        subject: "physics" as const,
+    },
+    {
+        label: "🧪 জারণ-বিজারণ (Redox)",
+        text: "অম্লীয় মাধ্যমে $KMnO_4$ ও $FeSO_4$-এর সমতাকৃত বিক্রিয়া আয়ন-ইলেকট্রন পদ্ধতিতে দেখাও।",
+        subject: "chemistry" as const,
+    },
+    {
+        label: "📐 প্রাসের গতি (Projectile)",
+        text: "প্রাসের গতিপথে সর্বোচ্চ উচ্চতা $H$ এবং অনুভূমিক পাল্লা $R$-এর সমীকরণ প্রতিপাদন করো।",
+        subject: "physics" as const,
+    },
+    {
+        label: "⚡ তড়িৎ রসায়ন (Electrochem)",
+        text: "নার্নস্টের সমীকরণ (Nernst Equation) কীভাবে কাজ করে? উদাহরণসহ বুঝিয়ে বলো।",
+        subject: "chemistry" as const,
+    },
 ];
 
 export default function EduTrackAiChat({
@@ -268,46 +282,50 @@ export default function EduTrackAiChat({
 
     if (!isOpen && !isEmbedded) return null;
 
-    // Container styling
+    // Nord Soft Academic Cream containers — no drawer/slide motion
     const containerClasses = isEmbedded
-        ? "w-full h-full min-h-[600px] flex flex-col bg-[#060a12]/90 backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative text-slate-100 font-sans"
-        : "fixed inset-3 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[460px] sm:h-[640px] max-w-[100vw] h-[min(640px,calc(100dvh-1.5rem))] bg-[#060a12]/95 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden z-50 text-slate-100 font-sans";
+        ? "w-full h-full min-h-[600px] flex flex-col bg-white border border-[#E6E1D8] rounded-2xl overflow-hidden shadow-sm relative text-[#0F172A] font-sans"
+        : "fixed inset-3 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[460px] sm:h-[640px] max-w-[100vw] h-[min(640px,calc(100dvh-1.5rem))] bg-white border border-[#E6E1D8] rounded-2xl shadow-xl flex flex-col overflow-hidden z-50 text-[#0F172A] font-sans";
 
     const chatContent = (
         <div className={containerClasses}>
-            {/* Ambient Background Glow */}
-            <div className="absolute top-0 right-1/4 w-48 h-48 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-1/4 w-48 h-48 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none" />
+            {/* Soft subject aura washes (static, non-animated chrome) */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-[#0369A1]/[0.06] rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-40 h-40 bg-[#047857]/[0.05] rounded-full blur-3xl pointer-events-none" />
 
-            {/* TOP HEADER */}
-            <header className="px-4 py-3 bg-white/[0.03] backdrop-blur-md border-b border-white/10 flex items-center justify-between gap-2 z-10 relative">
+            {/* TOP HEADER — sapphire academic bar */}
+            <header className="px-3 sm:px-4 py-3 bg-[#1E3A8A] border-b border-[#1E3A8A] flex items-center justify-between gap-2 z-10 relative min-h-[56px]">
                 <div className="flex items-center gap-2 min-w-0">
-                    {/* Retrack Sidebar Toggle */}
+                    {/* Sessions toggle — instant panel, no slide drawer */}
                     <button
                         onClick={() => setIsSidebarOpen((prev) => !prev)}
                         type="button"
-                        className={`p-2 rounded-xl border transition-all flex items-center gap-1.5 text-xs font-semibold shrink-0 ${
+                        className={`min-h-[48px] min-w-[48px] px-3 rounded-xl border transition-colors flex items-center justify-center gap-1.5 text-xs font-semibold shrink-0 ${
                             isSidebarOpen
-                                ? "bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(34,211,238,0.2)]"
-                                : "bg-white/5 border-white/10 text-slate-300 hover:text-white hover:bg-white/10"
+                                ? "bg-white text-[#1E3A8A] border-white"
+                                : "bg-white/10 border-white/20 text-white hover:bg-white/20"
                         }`}
                         title="Chat History (Retrack)"
+                        aria-label="Toggle chat sessions"
                     >
-                        <History className="w-3.5 h-3.5" />
+                        <History className="w-4 h-4" />
                         <span className="hidden sm:inline">সেশন</span>
                     </button>
 
                     <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-cyan-500 to-indigo-400 text-white flex items-center justify-center font-bold text-xs shadow-[0_0_15px_rgba(34,211,238,0.3)] shrink-0">
-                            <Sparkles className="w-4 h-4 text-white animate-pulse" />
+                        <div className="w-10 h-10 rounded-xl bg-white text-[#1E3A8A] flex items-center justify-center shrink-0 shadow-sm">
+                            <Sparkles className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
-                            <h3 className="font-black text-xs sm:text-sm leading-tight text-white flex items-center gap-1.5 truncate">
-                                AZS AI Tutor
+                            <h3 className="font-bold text-sm leading-tight text-white flex items-center gap-1.5 truncate">
+                                AZS AI Catalyst
                             </h3>
-                            <p className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                Online Solver
+                            <p className="text-[11px] text-emerald-300 font-medium flex items-center gap-1.5">
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                                </span>
+                                AI Online
                             </p>
                         </div>
                     </div>
@@ -316,33 +334,33 @@ export default function EduTrackAiChat({
                 {/* Right controls: Dual Model Selector + Close */}
                 <div className="flex items-center gap-1.5 shrink-0">
                     {/* Model Switcher Pill */}
-                    <div className="flex items-center bg-black/40 border border-white/10 rounded-xl p-0.5 backdrop-blur-sm">
+                    <div className="flex items-center bg-[#0F172A]/25 border border-white/20 rounded-xl p-1">
                         <button
                             type="button"
                             onClick={() => setSelectedModel("deepseek")}
-                            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all ${
+                            className={`flex items-center gap-1 min-h-[40px] px-2.5 sm:px-3 rounded-lg text-[10px] sm:text-[11px] font-bold transition-colors ${
                                 selectedModel === "deepseek"
-                                    ? "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-[0_0_10px_rgba(99,102,241,0.4)]"
-                                    : "text-slate-400 hover:text-slate-200"
+                                    ? "bg-white text-[#1E3A8A] shadow-sm"
+                                    : "text-white/80 hover:text-white hover:bg-white/10"
                             }`}
                             title="DeepSeek R1: Advanced mathematical reasoning and step-by-step derivations"
                         >
-                            <BrainCircuit className="w-3 h-3 text-cyan-300" />
-                            <span>DeepSeek</span>
+                            <BrainCircuit className="w-3.5 h-3.5" />
+                            <span className="hidden xs:inline sm:inline">DeepSeek</span>
                         </button>
 
                         <button
                             type="button"
                             onClick={() => setSelectedModel("groq")}
-                            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all ${
+                            className={`flex items-center gap-1 min-h-[40px] px-2.5 sm:px-3 rounded-lg text-[10px] sm:text-[11px] font-bold transition-colors ${
                                 selectedModel === "groq"
-                                    ? "bg-gradient-to-r from-cyan-600 to-teal-500 text-white shadow-[0_0_10px_rgba(34,211,238,0.4)]"
-                                    : "text-slate-400 hover:text-slate-200"
+                                    ? "bg-white text-[#0369A1] shadow-sm"
+                                    : "text-white/80 hover:text-white hover:bg-white/10"
                             }`}
                             title="Groq Fast: Ultra-fast explanations and concept guidance"
                         >
-                            <Zap className="w-3 h-3 text-amber-300" />
-                            <span>Groq</span>
+                            <Zap className="w-3.5 h-3.5" />
+                            <span className="hidden xs:inline sm:inline">Groq</span>
                         </button>
                     </div>
 
@@ -350,113 +368,125 @@ export default function EduTrackAiChat({
                         <button
                             onClick={onClose}
                             type="button"
-                            className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors border border-transparent hover:border-white/10 ml-0.5"
+                            className="min-h-[48px] min-w-[48px] flex items-center justify-center text-white/90 hover:text-white rounded-xl hover:bg-white/15 transition-colors border border-transparent hover:border-white/20"
                             aria-label="Close Chat"
                         >
-                            <X className="w-4 h-4" />
+                            <X className="w-5 h-5" />
                         </button>
                     )}
                 </div>
             </header>
 
-            {/* MAIN CONTENT AREA WITH OPTIONAL RETRACK SIDEBAR OVERLAY */}
-            <div className="flex-1 flex overflow-hidden relative z-10">
-                {/* SESSIONS HISTORY DRAWER */}
-                <AnimatePresence>
-                    {isSidebarOpen && (
-                        <motion.aside
-                            initial={{ x: "-100%" }}
-                            animate={{ x: 0 }}
-                            exit={{ x: "-100%" }}
-                            transition={{ type: "spring", damping: 25, stiffness: 280 }}
-                            className="absolute inset-y-0 left-0 w-72 sm:w-80 bg-[#060a12]/98 backdrop-blur-2xl border-r border-white/10 p-4 flex flex-col z-30 shadow-2xl"
-                        >
-                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
-                                <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
-                                    <History className="w-4 h-4 text-cyan-400" /> পূর্বের সেশন (Retrack)
-                                </h4>
-                                <button
-                                    onClick={() => setIsSidebarOpen(false)}
-                                    className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
-                                >
-                                    <ChevronLeft className="w-4 h-4" />
-                                </button>
-                            </div>
-
-                            {/* + New Chat Button */}
+            {/* MAIN CONTENT — sessions panel is instant (no slide / drawer animation) */}
+            <div className="flex-1 flex overflow-hidden relative z-10 bg-[#FAF8F5]">
+                {/* SESSIONS HISTORY PANEL — instant show/hide, no motion drawer */}
+                {isSidebarOpen && (
+                    <aside className="absolute inset-y-0 left-0 w-[min(100%,20rem)] sm:w-80 bg-white border-r border-[#E6E1D8] p-4 flex flex-col z-30 shadow-lg">
+                        <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#E6E1D8]">
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-[#1E3A8A] flex items-center gap-2">
+                                <History className="w-4 h-4 text-[#0369A1]" /> পূর্বের সেশন
+                            </h4>
                             <button
-                                onClick={handleNewChat}
-                                className="azs-btn-primary w-full py-2.5 px-3 mb-3 text-xs font-bold rounded-xl flex items-center justify-center gap-2 shrink-0"
+                                onClick={() => setIsSidebarOpen(false)}
+                                type="button"
+                                className="min-h-[48px] min-w-[48px] flex items-center justify-center text-[#64748B] hover:text-[#1E3A8A] rounded-xl hover:bg-[#FAF8F5] transition-colors border border-transparent hover:border-[#E6E1D8]"
+                                aria-label="Close sessions"
                             >
-                                <Plus className="w-4 h-4" />
-                                নতুন কথোপকথন শুরু করো
+                                <ChevronLeft className="w-5 h-5" />
                             </button>
+                        </div>
 
-                            {/* Sessions List */}
-                            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
-                                {sessions.length === 0 ? (
-                                    <p className="text-slate-500 text-xs text-center py-8">
-                                        কোনো পূর্বের কথোপকথন পাওয়া যায়নি।
-                                    </p>
-                                ) : (
-                                    sessions.map((s) => (
-                                        <div
-                                            key={s.id}
-                                            onClick={() => loadSessionHistory(s.id)}
-                                            className={`group p-2.5 rounded-xl border text-left cursor-pointer transition-all flex items-start justify-between gap-2 ${
-                                                currentSessionId === s.id
-                                                    ? "bg-cyan-500/15 border-cyan-500/50 text-white shadow-[0_0_15px_rgba(34,211,238,0.15)]"
-                                                    : "bg-white/[0.03] border-white/5 text-slate-300 hover:bg-white/10 hover:border-white/10"
-                                            }`}
-                                        >
-                                            <div className="flex items-start gap-2 min-w-0">
-                                                <MessageSquare className="w-3.5 h-3.5 mt-0.5 text-cyan-400 shrink-0" />
-                                                <div className="min-w-0">
-                                                    <p className="text-xs font-semibold truncate leading-tight">
-                                                        {s.title}
-                                                    </p>
-                                                    <span className="text-[10px] font-mono text-slate-500">
-                                                        {s.model === "groq" ? "⚡ Groq" : "🧠 DeepSeek"}
-                                                    </span>
-                                                </div>
+                        {/* + New Chat Button */}
+                        <button
+                            onClick={handleNewChat}
+                            type="button"
+                            className="w-full min-h-[48px] py-2.5 px-3 mb-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 shrink-0 bg-[#1E3A8A] text-white hover:bg-[#1e40af] transition-colors shadow-sm"
+                        >
+                            <Plus className="w-4 h-4" />
+                            নতুন কথোপকথন শুরু করো
+                        </button>
+
+                        {/* Sessions List */}
+                        <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
+                            {sessions.length === 0 ? (
+                                <p className="text-[#94A3B8] text-sm text-center py-8">
+                                    কোনো পূর্বের কথোপকথন পাওয়া যায়নি।
+                                </p>
+                            ) : (
+                                sessions.map((s) => (
+                                    <div
+                                        key={s.id}
+                                        onClick={() => loadSessionHistory(s.id)}
+                                        className={`group p-3 rounded-xl border text-left cursor-pointer transition-colors flex items-start justify-between gap-2 min-h-[52px] ${
+                                            currentSessionId === s.id
+                                                ? "bg-[#EFF6FF] border-[#1E3A8A]/40 text-[#0F172A]"
+                                                : "bg-[#FAF8F5] border-[#E6E1D8] text-[#334155] hover:bg-white hover:border-[#0369A1]/35"
+                                        }`}
+                                    >
+                                        <div className="flex items-start gap-2 min-w-0">
+                                            <MessageSquare className="w-4 h-4 mt-0.5 text-[#0369A1] shrink-0" />
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-semibold truncate leading-tight">
+                                                    {s.title}
+                                                </p>
+                                                <span className="text-[11px] font-medium text-[#64748B]">
+                                                    {s.model === "groq" ? "⚡ Groq" : "🧠 DeepSeek"}
+                                                </span>
                                             </div>
-                                            <button
-                                                onClick={(e) => handleDeleteSession(s.id, e)}
-                                                className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 p-1 rounded transition-opacity"
-                                                title="মুছে ফেলো"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
                                         </div>
-                                    ))
-                                )}
-                            </div>
-                        </motion.aside>
-                    )}
-                </AnimatePresence>
+                                        <button
+                                            onClick={(e) => handleDeleteSession(s.id, e)}
+                                            type="button"
+                                            className="min-h-[44px] min-w-[44px] flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 text-[#94A3B8] hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
+                                            title="মুছে ফেলো"
+                                            aria-label="Delete session"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </aside>
+                )}
+
+                {/* Dim scrim when sessions open — tap to close, no animation */}
+                {isSidebarOpen && (
+                    <button
+                        type="button"
+                        className="absolute inset-0 z-20 bg-[#0F172A]/20 sm:bg-[#0F172A]/10 border-0 cursor-pointer"
+                        aria-label="Close sessions overlay"
+                        onClick={() => setIsSidebarOpen(false)}
+                    />
+                )}
 
                 {/* MESSAGES FEED */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs no-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-sm no-scrollbar">
                     {messages.map((msg, index) => (
-                        <motion.div
+                        <div
                             key={index}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.2 }}
                             className={`flex ${
                                 msg.role === "user" ? "justify-end" : "justify-start"
                             }`}
                         >
                             <div
-                                className={`group relative max-w-[88%] sm:max-w-[82%] rounded-2xl px-4 py-3 leading-relaxed shadow-lg ${
+                                className={`group relative max-w-[88%] sm:max-w-[82%] rounded-2xl px-4 py-3 leading-relaxed ${
                                     msg.role === "user"
-                                        ? "bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-600 text-white rounded-br-none font-medium shadow-[0_0_20px_rgba(99,102,241,0.25)] border border-white/20"
-                                        : "bg-white/[0.04] text-slate-100 rounded-bl-none border border-white/10 backdrop-blur-md shadow-2xl"
+                                        ? "bg-[#1E3A8A] text-white rounded-br-md shadow-sm"
+                                        : "bg-white text-[#0F172A] rounded-bl-md border border-[#E6E1D8] shadow-sm"
                                 }`}
                             >
                                 {msg.role === "assistant" ? (
                                     <>
-                                        <div className="prose prose-invert prose-xs sm:prose-sm max-w-none break-words leading-relaxed">
+                                        {/* AI Catalyst badge */}
+                                        <div className="flex items-center gap-1.5 mb-2">
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#EFF6FF] border border-[#BFDBFE] text-[10px] font-bold uppercase tracking-wide text-[#1E3A8A]">
+                                                <Sparkles className="w-3 h-3" />
+                                                AI Catalyst
+                                            </span>
+                                        </div>
+
+                                        <div className="prose prose-sm max-w-none break-words leading-relaxed text-[#0F172A] prose-headings:text-[#1E3A8A] prose-a:text-[#0369A1] prose-code:text-[#047857] prose-pre:bg-[#FAF8F5] prose-pre:border prose-pre:border-[#E6E1D8]">
                                             <ReactMarkdown
                                                 remarkPlugins={[remarkMath]}
                                                 rehypePlugins={[rehypeKatex]}
@@ -468,54 +498,79 @@ export default function EduTrackAiChat({
                                         {/* Copy button */}
                                         <button
                                             onClick={() => copyToClipboard(msg.content, index)}
-                                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-black/60 text-slate-400 hover:text-white transition-all border border-white/10 backdrop-blur-sm"
+                                            type="button"
+                                            className="absolute top-2 right-2 min-h-[40px] min-w-[40px] flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-2 rounded-lg bg-[#FAF8F5] text-[#64748B] hover:text-[#1E3A8A] transition-colors border border-[#E6E1D8]"
                                             title="Copy reply"
+                                            aria-label="Copy reply"
                                         >
                                             {copiedIndex === index ? (
-                                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                                <Check className="w-4 h-4 text-[#047857]" />
                                             ) : (
-                                                <Copy className="w-3.5 h-3.5" />
+                                                <Copy className="w-4 h-4" />
                                             )}
                                         </button>
                                     </>
                                 ) : (
-                                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                                    <p className="whitespace-pre-wrap text-[14px] sm:text-sm">{msg.content}</p>
                                 )}
                             </div>
-                        </motion.div>
+                        </div>
                     ))}
 
-                    {/* Quick topic suggestion chips */}
+                    {/* Quick topic suggestion chips — subject-tinted */}
                     {messages.length <= 1 && (
-                        <motion.div 
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="pt-2 pb-1"
-                        >
-                            <p className="text-[11px] font-bold text-slate-400 mb-2.5 flex items-center gap-1.5 uppercase tracking-wider">
-                                <Sparkles className="w-3.5 h-3.5 text-cyan-400" /> ঝটপট প্রশ্ন করো (Suggested Topics):
+                        <div className="pt-2 pb-1">
+                            <p className="text-[11px] font-bold text-[#64748B] mb-2.5 flex items-center gap-1.5 uppercase tracking-wider">
+                                <Sparkles className="w-3.5 h-3.5 text-[#0369A1]" /> ঝটপট প্রশ্ন করো
+                                (Suggested Topics):
                             </p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                {SUGGESTED_PROMPTS.map((p, idx) => (
-                                    <button
-                                        key={idx}
-                                        type="button"
-                                        onClick={() => handleSend(p.text)}
-                                        className="text-left p-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 hover:border-cyan-500/40 transition-all text-xs text-slate-300 hover:text-white group relative overflow-hidden"
-                                    >
-                                        <p className="font-bold text-[11px] text-cyan-300 mb-0.5 group-hover:text-cyan-200">{p.label}</p>
-                                        <p className="text-[10px] text-slate-400 line-clamp-1 group-hover:text-slate-300">{p.text}</p>
-                                    </button>
-                                ))}
+                                {SUGGESTED_PROMPTS.map((p, idx) => {
+                                    const isPhysics = p.subject === "physics";
+                                    return (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => handleSend(p.text)}
+                                            className={`text-left p-3 min-h-[48px] rounded-xl border transition-colors text-sm group ${
+                                                isPhysics
+                                                    ? "bg-[#F0F9FF] border-[#BAE6FD] hover:border-[#0369A1] hover:bg-[#E0F2FE]"
+                                                    : "bg-[#ECFDF5] border-[#A7F3D0] hover:border-[#047857] hover:bg-[#D1FAE5]"
+                                            }`}
+                                        >
+                                            <p
+                                                className={`font-bold text-[12px] mb-0.5 flex items-center gap-1 ${
+                                                    isPhysics ? "text-[#0369A1]" : "text-[#047857]"
+                                                }`}
+                                            >
+                                                {isPhysics ? (
+                                                    <Atom className="w-3.5 h-3.5 shrink-0" />
+                                                ) : (
+                                                    <FlaskConical className="w-3.5 h-3.5 shrink-0" />
+                                                )}
+                                                {p.label}
+                                            </p>
+                                            <p className="text-[11px] text-[#64748B] line-clamp-1 group-hover:text-[#334155]">
+                                                {p.text}
+                                            </p>
+                                        </button>
+                                    );
+                                })}
                             </div>
-                        </motion.div>
+                        </div>
                     )}
 
+                    {/* Thinking indicator — azure 3-dot wave style */}
                     {isLoading && (
                         <div className="flex justify-start">
-                            <div className="bg-white/[0.04] border border-white/10 rounded-2xl px-4 py-3 flex items-center space-x-3 text-slate-300 text-xs shadow-xl animate-pulse backdrop-blur-md">
-                                <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
-                                <span>
+                            <div className="bg-white border border-[#E6E1D8] rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-3 text-[#334155] text-sm shadow-sm">
+                                <div className="flex items-center gap-1" aria-hidden>
+                                    <span className="w-2 h-2 rounded-full bg-[#0369A1] animate-bounce [animation-delay:-0.3s]" />
+                                    <span className="w-2 h-2 rounded-full bg-[#0369A1] animate-bounce [animation-delay:-0.15s]" />
+                                    <span className="w-2 h-2 rounded-full bg-[#0369A1] animate-bounce" />
+                                </div>
+                                <span className="flex items-center gap-2">
+                                    <Loader2 className="w-4 h-4 animate-spin text-[#0369A1]" />
                                     {selectedModel === "deepseek"
                                         ? "DeepSeek R1 গভীর বিশ্লেষণ করছে..."
                                         : "Groq Fast সমাধান তৈরি করছে..."}
@@ -527,51 +582,41 @@ export default function EduTrackAiChat({
                 </div>
             </div>
 
-            {/* BOTTOM INPUT BAR */}
-            <footer className="p-3 bg-white/[0.03] border-t border-white/10 z-10 backdrop-blur-md">
+            {/* BOTTOM INPUT BAR — thumb-zone, 48px targets, safe area */}
+            <footer className="p-3 sm:p-3.5 bg-white border-t border-[#E6E1D8] z-10 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
                         handleSend();
                     }}
-                    className="flex items-center gap-2 bg-black/50 border border-white/10 rounded-2xl px-3.5 py-1.5 focus-within:border-cyan-400/60 focus-within:ring-2 focus-within:ring-cyan-500/20 transition-all shadow-inner"
+                    className="flex items-center gap-2 bg-[#FAF8F5] border border-[#E6E1D8] rounded-2xl px-3 py-1.5 focus-within:border-[#1E3A8A]/50 focus-within:ring-2 focus-within:ring-[#1E3A8A]/15 transition-colors"
                 >
                     <input
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder={`Ask ${
-                            selectedModel === "deepseek" ? "DeepSeek R1 (Math & Reasoning)" : "Groq Fast"
+                            selectedModel === "deepseek"
+                                ? "DeepSeek R1 (Math & Reasoning)"
+                                : "Groq Fast"
                         }...`}
-                        className="flex-1 bg-transparent border-none outline-none text-xs sm:text-sm text-slate-100 placeholder-slate-500 py-1.5"
+                        className="flex-1 min-h-[48px] bg-transparent border-none outline-none text-sm sm:text-[15px] text-[#0F172A] placeholder-[#94A3B8] py-2"
                     />
                     <button
                         type="submit"
                         disabled={isLoading || !input.trim()}
-                        className="p-2 bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-xl hover:from-indigo-500 hover:to-cyan-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-md shadow-indigo-600/30 shrink-0"
+                        className="min-h-[48px] min-w-[48px] flex items-center justify-center bg-[#1E3A8A] text-white rounded-xl hover:bg-[#1e40af] disabled:opacity-35 disabled:cursor-not-allowed transition-colors shadow-sm shrink-0"
                         aria-label="Send message"
                     >
-                        <Send className="w-3.5 h-3.5" />
+                        <Send className="w-5 h-5" />
                     </button>
                 </form>
             </footer>
         </div>
     );
 
+    // Embedded: direct render. Floating: instant mount/unmount — no drawer / scale / slide animation
     if (isEmbedded) return chatContent;
-
-    return (
-        <AnimatePresence>
-            {isOpen && (
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                    transition={{ type: "spring", stiffness: 350, damping: 28 }}
-                >
-                    {chatContent}
-                </motion.div>
-            )}
-        </AnimatePresence>
-    );
+    if (!isOpen) return null;
+    return chatContent;
 }

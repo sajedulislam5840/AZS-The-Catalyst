@@ -4,6 +4,8 @@ export interface DeveloperInfo {
   linkedin: string;
   github: string;
   portfolio: string;
+  whatsapp: string;
+  facebook: string;
 }
 
 export interface TeacherInfo {
@@ -21,6 +23,8 @@ export const DEVELOPER: DeveloperInfo = {
   linkedin: "https://www.linkedin.com/in/sajedul-islam-data/",
   github: "https://github.com/sajedulislam5840",
   portfolio: "https://sajedulislam5840.github.io/portfolio/",
+  whatsapp: "https://wa.me/8801909027695",
+  facebook: "https://www.facebook.com/rabbi12411",
 };
 
 export const TEACHER: TeacherInfo = {

@@ -2,38 +2,58 @@
 @import "tailwindcss";
 
 /* ============================================
-   AZS: The Catalyst — Design Tokens
+   AZS: The Catalyst — Nord Soft Academic Cream
+   Mobile-first • Warm paper • Professional
    ============================================ */
 :root {
-  /* Core surfaces */
-  --background: #060a12;
-  --background-elevated: #0a0f1a;
-  --foreground: #f1f5f9;
-  --muted: #94a3b8;
-  --dim: #64748b;
+  /* Core surfaces — warm linen paper */
+  --background: #faf8f5;
+  --background-elevated: #ffffff;
+  --background-muted: #f3efe8;
+  --foreground: #1e293b;
+  --muted: #64748b;
+  --dim: #94a3b8;
 
-  /* Brand */
-  --azs-cyan: #22d3ee;
-  --azs-cyan-dim: rgba(34, 211, 238, 0.15);
-  --azs-indigo: #6366f1;
-  --azs-indigo-dim: rgba(99, 102, 241, 0.18);
-  --azs-violet: #8b5cf6;
-  --azs-violet-dim: rgba(139, 92, 246, 0.15);
-  --azs-emerald: #34d399;
-  --azs-amber: #fbbf24;
-  --azs-rose: #f472b6;
+  /* Brand — academic sapphire + mint */
+  --azs-primary: #1e3a8a;
+  --azs-primary-soft: rgba(30, 58, 138, 0.08);
+  --azs-sapphire: #1e3a8a;
+  --azs-azure: #0369a1;
+  --azs-azure-soft: rgba(3, 105, 161, 0.1);
+  --azs-mint: #047857;
+  --azs-mint-soft: rgba(4, 120, 87, 0.1);
+  --azs-emerald: #059669;
+  --azs-terracotta: #b45309;
+  --azs-terracotta-soft: rgba(180, 83, 9, 0.1);
+  --azs-amber: #d97706;
+  --azs-rose: #be123c;
 
-  /* Glass & borders */
-  --glass: rgba(15, 23, 42, 0.55);
-  --glass-border: rgba(148, 163, 184, 0.12);
-  --glass-border-hover: rgba(34, 211, 238, 0.35);
-  --card: rgba(15, 23, 42, 0.65);
+  /* Legacy aliases (so older class names still resolve safely) */
+  --azs-cyan: #0369a1;
+  --azs-cyan-dim: rgba(3, 105, 161, 0.1);
+  --azs-indigo: #1e3a8a;
+  --azs-indigo-dim: rgba(30, 58, 138, 0.1);
+  --azs-violet: #4338ca;
+  --azs-violet-dim: rgba(67, 56, 202, 0.08);
 
-  /* Shadows / glows */
-  --glow-cyan: 0 0 40px rgba(34, 211, 238, 0.25);
-  --glow-indigo: 0 0 40px rgba(99, 102, 241, 0.3);
-  --glow-violet: 0 0 50px rgba(139, 92, 246, 0.22);
-  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.35);
+  /* Paper borders & cards */
+  --border: #e6e1d8;
+  --border-strong: #d4cdc0;
+  --glass: #ffffff;
+  --glass-border: #e6e1d8;
+  --glass-border-hover: #c4b9a8;
+  --card: #ffffff;
+
+  /* Soft paper elevation (phone-friendly, not heavy) */
+  --shadow-sm: 0 1px 2px rgba(30, 41, 59, 0.04);
+  --shadow-card: 0 2px 10px -2px rgba(30, 41, 59, 0.06), 0 1px 3px rgba(30, 41, 59, 0.04);
+  --shadow-card-hover: 0 8px 24px -6px rgba(30, 41, 59, 0.1), 0 2px 6px rgba(30, 41, 59, 0.05);
+  --shadow-dock: 0 -4px 24px rgba(30, 41, 59, 0.08);
+
+  /* Touch */
+  --touch-min: 48px;
+  --radius-card: 1rem;
+  --radius-btn: 0.75rem;
 }
 
 @theme inline {
@@ -42,46 +62,33 @@
   --color-muted: var(--muted);
   --color-dim: var(--dim);
 
+  --color-azs-primary: var(--azs-primary);
+  --color-azs-sapphire: var(--azs-sapphire);
+  --color-azs-azure: var(--azs-azure);
+  --color-azs-mint: var(--azs-mint);
+  --color-azs-emerald: var(--azs-emerald);
+  --color-azs-terracotta: var(--azs-terracotta);
+  --color-azs-amber: var(--azs-amber);
+  --color-azs-rose: var(--azs-rose);
+
   --color-azs-cyan: var(--azs-cyan);
   --color-azs-indigo: var(--azs-indigo);
   --color-azs-violet: var(--azs-violet);
-  --color-azs-emerald: var(--azs-emerald);
-  --color-azs-amber: var(--azs-amber);
-  --color-azs-rose: var(--azs-rose);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Motion tokens */
-  --animate-float: float 6s ease-in-out infinite;
-  --animate-pulse-glow: pulse-glow 3s ease-in-out infinite;
-  --animate-shimmer: shimmer 2.5s linear infinite;
-  --animate-fade-up: fade-up 0.6s ease-out both;
-  --animate-spin-slow: spin 12s linear infinite;
+  --animate-fade-up: fade-up 0.4s ease-out both;
+  --animate-fade-in: fade-in 0.25s ease-out both;
 }
 
 /* ============================================
-   Keyframes
+   Keyframes — restrained, professional
    ============================================ */
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-12px); }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.55; filter: blur(28px); }
-  50% { opacity: 0.9; filter: blur(36px); }
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -89,14 +96,9 @@
   }
 }
 
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-@keyframes border-spin {
-  to { --angle: 360deg; }
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ============================================
@@ -104,6 +106,7 @@
    ============================================ */
 html {
   scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -112,11 +115,15 @@ body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   min-height: 100dvh;
   overflow-x: hidden;
+  /* Comfortable reading size on phones */
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: rgba(99, 102, 241, 0.5);
-  color: #fff;
+  background: rgba(30, 58, 138, 0.18);
+  color: var(--foreground);
 }
 
 input,
@@ -127,30 +134,26 @@ button {
 }
 
 :focus-visible {
-  outline: 2px solid var(--azs-cyan);
-  outline-offset: 3px;
+  outline: 2px solid var(--azs-azure);
+  outline-offset: 2px;
 }
 
 /* ============================================
-   Scrollbar
+   Scrollbar — subtle warm slate
    ============================================ */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #334155, #1e293b);
+  background: #cfc8bc;
   border-radius: 999px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, var(--azs-indigo), var(--azs-cyan));
-  border: 2px solid transparent;
-  background-clip: padding-box;
+  background: #a89f8f;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -162,165 +165,113 @@ button {
 }
 
 /* ============================================
-   Background Systems
+   Page background — soft paper (no orbs/grid)
    ============================================ */
-
-/* Deep grid + ambient aurora (default page bg) */
 .azs-grid-bg {
   background-color: var(--background);
-  background-image:
-    radial-gradient(ellipse 100% 70% at 50% -20%, rgba(99, 102, 241, 0.28), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(34, 211, 238, 0.1), transparent 50%),
-    radial-gradient(ellipse 50% 35% at 10% 60%, rgba(139, 92, 246, 0.08), transparent 50%),
-    linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
-  background-size: auto, auto, auto, 48px 48px, 48px 48px;
-  background-attachment: fixed;
+  background-image: none;
 }
 
-/* Soft mesh orbs (place as absolute decorative layers) */
-.azs-orb {
-  position: absolute;
-  border-radius: 9999px;
-  pointer-events: none;
-  filter: blur(60px);
-  animation: pulse-glow 5s ease-in-out infinite;
-}
-.azs-orb-cyan {
-  background: rgba(34, 211, 238, 0.35);
-}
-.azs-orb-indigo {
-  background: rgba(99, 102, 241, 0.4);
-}
+/* Orbs disabled — keep class names so old JSX does not break */
+.azs-orb,
+.azs-orb-cyan,
+.azs-orb-indigo,
 .azs-orb-violet {
-  background: rgba(139, 92, 246, 0.35);
+  display: none !important;
 }
 
 /* ============================================
-   Glass / Cards
+   Cards / surfaces — white paper on cream
    ============================================ */
-.azs-glass {
-  background: var(--glass);
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
-  border: 1px solid var(--glass-border);
+.azs-glass,
+.azs-card {
+  background: var(--card);
+  border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
+  border-radius: var(--radius-card);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .azs-glass-hover {
   transition:
-    border-color 0.25s ease,
-    box-shadow 0.25s ease,
-    transform 0.25s ease,
-    background 0.25s ease;
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 .azs-glass-hover:hover {
-  border-color: var(--glass-border-hover);
-  box-shadow: var(--shadow-card), var(--glow-cyan);
-  background: rgba(15, 23, 42, 0.72);
-  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-1px);
+}
+/* Phones: no hover lift — rely on active state */
+@media (hover: none) {
+  .azs-glass-hover:hover {
+    transform: none;
+    box-shadow: var(--shadow-card);
+  }
+  .azs-glass-hover:active {
+    background: var(--background-muted);
+  }
 }
 
-.azs-card {
-  border-radius: 1.25rem;
-  background: var(--card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-card);
-}
-
-/* Gradient border card (premium) */
 .azs-card-glow {
   position: relative;
-  border-radius: 1.25rem;
+  border-radius: var(--radius-card);
   background: var(--card);
-  border: 1px solid transparent;
-  background-clip: padding-box;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
 }
 .azs-card-glow::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  padding: 1px;
-  border-radius: inherit;
-  background: linear-gradient(
-    135deg,
-    rgba(34, 211, 238, 0.5),
-    rgba(99, 102, 241, 0.15),
-    rgba(139, 92, 246, 0.45)
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
+  display: none;
 }
 
 /* ============================================
-   Typography helpers
+   Typography
    ============================================ */
-.azs-gradient-text {
-  background: linear-gradient(
-    135deg,
-    #22d3ee 0%,
-    #818cf8 45%,
-    #c084fc 100%
-  );
-  background-size: 200% 200%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: gradient-shift 8s ease infinite;
-}
-
+.azs-gradient-text,
 .azs-gradient-text-static {
-  background: linear-gradient(135deg, #22d3ee, #818cf8 50%, #a78bfa);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  color: var(--azs-sapphire);
+  animation: none;
+  font-weight: 800;
 }
 
 /* ============================================
-   Form Controls
+   Form controls — large for thumbs
    ============================================ */
 .azs-input {
   width: 100%;
-  border-radius: 0.875rem;
-  border: 1px solid rgba(51, 65, 85, 0.9);
-  background: rgba(15, 23, 42, 0.85);
+  min-height: var(--touch-min);
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--border-strong);
+  background: #ffffff;
   padding: 0.75rem 1rem;
-  font-size: 0.875rem;
-  color: #fff;
+  font-size: 0.9375rem;
+  color: var(--foreground);
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .azs-input::placeholder {
-  color: #64748b;
+  color: var(--dim);
 }
 
 .azs-input:hover {
-  border-color: rgba(99, 102, 241, 0.45);
+  border-color: #b8ae9e;
 }
 
 .azs-input:focus {
   outline: none;
-  border-color: var(--azs-indigo);
-  background: rgba(15, 23, 42, 0.95);
-  box-shadow:
-    0 0 0 3px rgba(99, 102, 241, 0.22),
-    0 0 24px rgba(99, 102, 241, 0.12);
+  border-color: var(--azs-azure);
+  box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.15);
 }
 
 /* ============================================
-   Buttons
+   Buttons — solid, tap-friendly (48px+)
    ============================================ */
 .azs-btn-primary {
   display: inline-flex;
@@ -328,175 +279,212 @@ button {
   justify-content: center;
   gap: 0.5rem;
   width: 100%;
-  border-radius: 0.875rem;
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #7c3aed 100%);
-  background-size: 180% 180%;
-  padding: 0.85rem 1.25rem;
-  font-size: 0.875rem;
+  min-height: var(--touch-min);
+  border-radius: var(--radius-btn);
+  background: var(--azs-sapphire);
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9375rem;
   font-weight: 700;
-  letter-spacing: 0.01em;
-  color: #fff;
-  border: 1px solid rgba(165, 180, 252, 0.25);
-  box-shadow:
-    0 10px 28px rgba(79, 70, 229, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-sm);
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    background-position 0.3s ease,
-    filter 0.2s ease;
+    background 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.15s ease;
 }
 
 .azs-btn-primary:hover:not(:disabled) {
-  background-position: 100% 50%;
-  transform: translateY(-1px);
-  box-shadow:
-    0 14px 36px rgba(99, 102, 241, 0.45),
-    0 0 28px rgba(34, 211, 238, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  filter: brightness(1.06);
+  background: #1e40af;
+  box-shadow: var(--shadow-card);
 }
 
 .azs-btn-primary:active:not(:disabled) {
-  transform: translateY(0);
+  transform: scale(0.98);
 }
 
 .azs-btn-primary:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
-  filter: grayscale(0.2);
 }
 
-/* Secondary / ghost */
 .azs-btn-ghost {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 0.875rem;
-  padding: 0.85rem 1.25rem;
-  font-size: 0.875rem;
+  min-height: var(--touch-min);
+  border-radius: var(--radius-btn);
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9375rem;
   font-weight: 600;
-  color: #e2e8f0;
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  backdrop-filter: blur(8px);
+  color: var(--foreground);
+  background: #ffffff;
+  border: 1px solid var(--border-strong);
   transition:
-    border-color 0.2s ease,
-    background 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .azs-btn-ghost:hover {
-  border-color: rgba(34, 211, 238, 0.4);
-  background: rgba(34, 211, 238, 0.08);
-  color: #fff;
-  transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(34, 211, 238, 0.1);
+  background: var(--background-muted);
+  border-color: #b8ae9e;
 }
 
-/* Cyan CTA variant */
+.azs-btn-ghost:active {
+  transform: scale(0.98);
+}
+
+/* Secondary solid CTA (mint) */
 .azs-btn-cyan {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 0.875rem;
-  padding: 0.85rem 1.25rem;
-  font-size: 0.875rem;
+  min-height: var(--touch-min);
+  border-radius: var(--radius-btn);
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9375rem;
   font-weight: 700;
-  color: #042f2e;
-  background: linear-gradient(135deg, #22d3ee, #67e8f9);
-  border: 1px solid rgba(165, 243, 252, 0.4);
-  box-shadow: 0 10px 28px rgba(34, 211, 238, 0.3);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  color: #ffffff;
+  background: var(--azs-mint);
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s ease, transform 0.1s ease;
 }
 
 .azs-btn-cyan:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 36px rgba(34, 211, 238, 0.45);
-  filter: brightness(1.05);
+  background: #065f46;
+}
+
+.azs-btn-cyan:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 /* ============================================
-   Badges / chips
+   Badges — soft subject chips
    ============================================ */
 .azs-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   border-radius: 999px;
-  padding: 0.3rem 0.75rem;
-  font-size: 0.7rem;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.6875rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(15, 23, 42, 0.7);
-  color: #cbd5e1;
+  border: 1px solid var(--border);
+  background: var(--background-muted);
+  color: var(--muted);
 }
 
-.azs-badge-cyan {
-  border-color: rgba(34, 211, 238, 0.35);
-  background: rgba(34, 211, 238, 0.1);
-  color: #67e8f9;
+.azs-badge-cyan,
+.azs-badge-physics {
+  border-color: rgba(3, 105, 161, 0.25);
+  background: var(--azs-azure-soft);
+  color: var(--azs-azure);
 }
 
 .azs-badge-indigo {
-  border-color: rgba(99, 102, 241, 0.4);
-  background: rgba(99, 102, 241, 0.12);
-  color: #a5b4fc;
+  border-color: rgba(30, 58, 138, 0.2);
+  background: var(--azs-primary-soft);
+  color: var(--azs-sapphire);
 }
 
-.azs-badge-emerald {
-  border-color: rgba(52, 211, 153, 0.35);
-  background: rgba(52, 211, 153, 0.1);
-  color: #6ee7b7;
+.azs-badge-emerald,
+.azs-badge-chemistry {
+  border-color: rgba(4, 120, 87, 0.25);
+  background: var(--azs-mint-soft);
+  color: var(--azs-mint);
 }
 
 /* ============================================
-   Dividers / accents
+   Dividers
    ============================================ */
 .azs-divider {
   height: 1px;
   width: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(148, 163, 184, 0.25),
-    transparent
-  );
+  background: var(--border);
 }
 
 .azs-shine {
-  background: linear-gradient(
-    110deg,
-    transparent 20%,
-    rgba(255, 255, 255, 0.08) 45%,
-    transparent 70%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 3s linear infinite;
+  display: none;
 }
 
 /* ============================================
-   Utility motion classes
+   Subject helpers
    ============================================ */
-.animate-float {
-  animation: float 6s ease-in-out infinite;
+.azs-physics {
+  color: var(--azs-azure);
 }
-.animate-pulse-glow {
-  animation: pulse-glow 3s ease-in-out infinite;
+.azs-physics-bg {
+  background: var(--azs-azure-soft);
+  border-color: rgba(3, 105, 161, 0.2);
 }
-.animate-fade-up {
-  animation: fade-up 0.6s ease-out both;
+.azs-chemistry {
+  color: var(--azs-mint);
+}
+.azs-chemistry-bg {
+  background: var(--azs-mint-soft);
+  border-color: rgba(4, 120, 87, 0.2);
 }
 
-/* Stagger helpers (set style={{ animationDelay }}) */
+/* ============================================
+   Mobile bottom dock
+   ============================================ */
+.azs-mobile-dock {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  box-shadow: var(--shadow-dock);
+  /* Safe area for iPhone home indicator */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.azs-dock-item {
+  min-height: var(--touch-min);
+  min-width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 0.75rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--muted);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.azs-dock-item-active {
+  color: var(--azs-sapphire);
+  background: var(--azs-primary-soft);
+}
+
+/* ============================================
+   Utility motion — light only
+   ============================================ */
+.animate-float,
+.animate-pulse-glow {
+  animation: none;
+}
+.animate-fade-up {
+  animation: fade-up 0.4s ease-out both;
+}
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out both;
+}
+
 .delay-100 { animation-delay: 100ms; }
 .delay-200 { animation-delay: 200ms; }
 .delay-300 { animation-delay: 300ms; }
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
+
+/* KaTeX on cream paper — keep readable */
+.katex {
+  font-size: 1.05em;
+  color: var(--foreground);
+}

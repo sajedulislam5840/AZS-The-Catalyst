@@ -11,12 +11,12 @@ import {
   Lock,
   ArrowLeft,
   ShieldCheck,
-  Sparkles,
   AlertCircle,
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import axios from "axios";
+import SiteFooter from "@/components/SiteFooter";
 
 const BACKEND_URL = (
   process.env.NEXT_PUBLIC_API_URL || "https://edutrack-backend-qjxg.onrender.com"
@@ -35,10 +35,8 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [currentYear, setCurrentYear] = useState(2025);
 
   useEffect(() => {
-    setCurrentYear(new Date().getFullYear());
     const prefilledEmail = searchParams.get("email");
     if (prefilledEmail) {
       setEmail(prefilledEmail);
@@ -95,58 +93,50 @@ function LoginContent() {
   };
 
   return (
-    <div className="azs-grid-bg relative min-h-screen text-slate-100 flex flex-col justify-between font-sans antialiased overflow-hidden selection:bg-indigo-500/30">
-      {/* Ambient background glow orbs */}
-      <div className="azs-orb azs-orb-indigo top-[-100px] left-1/2 -translate-x-1/2 h-[400px] w-[500px] opacity-35" />
-      <div className="azs-orb azs-orb-cyan bottom-[-50px] right-[-50px] h-[350px] w-[350px] opacity-25" />
-
+    <div className="azs-grid-bg relative min-h-screen text-[#1E293B] flex flex-col justify-between font-sans antialiased overflow-x-hidden">
       {/* Top Floating Navigation */}
-      <header className="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-5 sm:px-8">
+      <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3.5 py-2 text-xs font-semibold text-slate-300 backdrop-blur-md transition-all hover:border-slate-700 hover:bg-slate-900 hover:text-white"
+          className="min-h-[44px] inline-flex items-center gap-2 rounded-xl border border-[#E6E1D8] bg-white px-3.5 py-2 text-xs font-bold text-[#1E293B] shadow-sm transition-all hover:bg-[#FAF8F5] active:scale-95"
         >
-          <ArrowLeft className="h-4 w-4 text-cyan-400" />
+          <ArrowLeft className="h-4 w-4 text-[#0369A1]" />
           <span>Back to Home</span>
         </Link>
 
         <div className="flex items-center gap-2">
           <span className="azs-badge azs-badge-indigo text-[10px]">
-            <ShieldCheck className="h-3 w-3 text-cyan-400" />
+            <ShieldCheck className="h-3.5 w-3.5 text-[#1E3A8A]" />
             Secure Portal
           </span>
         </div>
       </header>
 
       {/* Main Login Card Container */}
-      <div className="relative z-10 flex-1 flex items-center justify-center p-4 sm:p-6">
+      <div className="relative z-10 flex-1 flex items-center justify-center p-4 sm:p-6 my-4">
         <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          initial={{ opacity: 0, y: 12, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.45, ease: "easeOut" }}
-          className="azs-card-glow max-w-md w-full p-6 sm:p-8 bg-[#0a0f1d]/90 backdrop-blur-2xl shadow-2xl shadow-black/80 space-y-6"
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className="azs-card max-w-md w-full p-6 sm:p-8 bg-white border border-[#E6E1D8] shadow-[0_8px_30px_-8px_rgba(30,41,59,0.08)] space-y-6"
         >
           {/* Logo & Header Title */}
           <div className="text-center space-y-3">
-            <Link
-              href="/"
-              className="inline-flex relative group"
-            >
-              <div className="w-16 h-14 mx-auto rounded-2xl overflow-hidden bg-slate-900 border border-slate-700/80 shadow-xl flex items-center justify-center p-1.5 transition-transform group-hover:scale-105">
+            <Link href="/" className="inline-flex relative group">
+              <div className="w-14 h-14 mx-auto rounded-2xl overflow-hidden bg-[#FAF8F5] border border-[#E6E1D8] shadow-sm flex items-center justify-center p-2 transition-transform group-hover:scale-105">
                 <img
                   src="/logo.png"
                   alt="AZS Logo"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-cyan-500/20 to-indigo-500/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
             </Link>
 
             <div>
-              <h1 className="text-2xl font-black text-white tracking-tight flex items-center justify-center gap-2">
+              <h1 className="text-2xl font-black text-[#1E3A8A] tracking-tight">
                 Sign In to Portal
               </h1>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-[#64748B] mt-1">
                 Enter your student or instructor credentials to access classes.
               </p>
             </div>
@@ -159,11 +149,11 @@ function LoginContent() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs p-3.5 rounded-xl flex items-start gap-2.5 shadow-lg shadow-rose-950/20"
+                className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-3.5 rounded-xl flex items-start gap-2.5 shadow-sm"
                 role="alert"
               >
-                <AlertCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
-                <span className="leading-relaxed">{errorMsg}</span>
+                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                <span className="leading-relaxed font-medium">{errorMsg}</span>
               </motion.div>
             )}
           </AnimatePresence>
@@ -174,7 +164,7 @@ function LoginContent() {
             <div>
               <label
                 htmlFor="login-email"
-                className="text-xs font-bold text-slate-300 block mb-1.5 tracking-wide"
+                className="text-xs font-extrabold text-[#1E293B] block mb-1.5 tracking-wide"
               >
                 Email Address
               </label>
@@ -189,7 +179,7 @@ function LoginContent() {
                   placeholder="student@example.com"
                   className="azs-input pl-10 text-sm"
                 />
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Mail className="w-4 h-4 text-[#94A3B8] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
@@ -198,7 +188,7 @@ function LoginContent() {
               <div className="flex items-center justify-between mb-1.5">
                 <label
                   htmlFor="login-password"
-                  className="text-xs font-bold text-slate-300 block tracking-wide"
+                  className="text-xs font-extrabold text-[#1E293B] block tracking-wide"
                 >
                   Password
                 </label>
@@ -215,12 +205,12 @@ function LoginContent() {
                   placeholder="••••••••"
                   className="azs-input pl-10 pr-11 text-sm"
                 />
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Lock className="w-4 h-4 text-[#94A3B8] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
 
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#1E293B] transition-colors p-1"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
@@ -236,29 +226,29 @@ function LoginContent() {
             <button
               type="submit"
               disabled={loading}
-              className="azs-btn-primary mt-2 py-3.5 text-sm font-extrabold group"
+              className="azs-btn-primary min-h-[48px] mt-2 text-sm font-extrabold"
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-cyan-300" />
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
                   <span>Authenticating...</span>
                 </>
               ) : (
                 <>
                   <span>Sign In to Dashboard</span>
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
 
           {/* Registration Redirect Banner */}
-          <div className="text-center pt-4 border-t border-slate-800/80">
-            <p className="text-xs text-slate-400">
+          <div className="text-center pt-4 border-t border-[#E6E1D8]">
+            <p className="text-xs text-[#64748B]">
               Don&apos;t have a batch account yet?{" "}
               <Link
                 href="/register"
-                className="text-cyan-400 font-bold hover:text-cyan-300 hover:underline transition-colors"
+                className="text-[#0369A1] font-bold hover:underline transition-colors"
               >
                 Register as a student ↗
               </Link>
@@ -267,27 +257,15 @@ function LoginContent() {
         </motion.div>
       </div>
 
-      {/* Footer */}
-      <footer className="relative z-10 w-full py-4 px-6 text-center border-t border-slate-800/80 bg-[#040810]/80 backdrop-blur-md">
-        <p className="text-xs text-slate-400">
-          © {currentYear} AZS: The Catalyst · Developed with ❤️ by{" "}
-          <a
-            href="https://www.linkedin.com/in/sajedul-islam-data/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-bold text-cyan-400 hover:text-cyan-300 transition-colors"
-          >
-            Mir Mohammad Sajedul Islam
-          </a>
-        </p>
-      </footer>
+      {/* Shared Unified Footer */}
+      <SiteFooter />
     </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#060a12]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#FAF8F5]" />}>
       <LoginContent />
     </Suspense>
   );

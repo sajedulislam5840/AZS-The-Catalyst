@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -13,14 +13,14 @@ import {
   GraduationCap,
   Users,
   Building2,
-  ArrowLeft,
+  ChevronLeft,
   ArrowRight,
-  ShieldCheck,
   AlertCircle,
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import axios from "axios";
+import SiteFooter from "@/components/SiteFooter";
 
 const BACKEND_URL = (
   process.env.NEXT_PUBLIC_API_URL || "https://edutrack-backend-qjxg.onrender.com"
@@ -42,11 +42,6 @@ export default function RegisterPage() {
   const [batchNo, setBatchNo] = useState("Batch 01");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [currentYear, setCurrentYear] = useState(2025);
-
-  useEffect(() => {
-    setCurrentYear(new Date().getFullYear());
-  }, []);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,11 +58,12 @@ export default function RegisterPage() {
         batch_no: batchNo,
       });
 
+      // Redirect to login with pre-filled email
       router.push(`/login?email=${encodeURIComponent(email.trim())}`);
     } catch (err: any) {
       setErrorMsg(
         err.response?.data?.detail ||
-          "Registration failed. Please check your details and try again."
+          "Registration failed. Please check your connectivity and try again."
       );
     } finally {
       setLoading(false);
@@ -75,280 +71,224 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="azs-grid-bg relative min-h-screen text-slate-100 flex flex-col justify-between font-sans antialiased overflow-hidden selection:bg-indigo-500/30">
-      {/* Ambient background glow orbs */}
-      <div className="azs-orb azs-orb-indigo top-[-100px] left-1/2 -translate-x-1/2 h-[450px] w-[550px] opacity-35" />
-      <div className="azs-orb azs-orb-cyan bottom-[-80px] left-[-50px] h-[380px] w-[380px] opacity-25" />
-      <div className="azs-orb azs-orb-violet top-[200px] right-[-100px] h-[350px] w-[350px] opacity-20" />
-
-      {/* Top Floating Navigation */}
-      <header className="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-5 sm:px-8">
+    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-sans selection:bg-blue-100">
+      {/* Header / Navigation */}
+      <header className="w-full max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3.5 py-2 text-xs font-semibold text-slate-300 backdrop-blur-md transition-all hover:border-slate-700 hover:bg-slate-900 hover:text-white"
+          className="group inline-flex items-center gap-2 text-slate-500 hover:text-[#1E3A8A] transition-colors font-medium text-sm"
         >
-          <ArrowLeft className="h-4 w-4 text-cyan-400" />
+          <div className="w-8 h-8 rounded-full bg-white border border-[#E6E1D8] flex items-center justify-center group-hover:border-[#1E3A8A] transition-all">
+            <ChevronLeft className="w-4 h-4" />
+          </div>
           <span>Back to Home</span>
         </Link>
 
-        <div className="flex items-center gap-2">
-          <span className="azs-badge azs-badge-cyan text-[10px]">
-            <Sparkles className="h-3 w-3 text-cyan-400" />
-            New Batch Registration
-          </span>
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-full text-emerald-700 text-[11px] font-bold uppercase tracking-wider">
+          <Sparkles className="w-3 h-3" />
+          Academic Enrollment Open
         </div>
       </header>
 
-      {/* Main Registration Card */}
-      <div className="relative z-10 flex-1 flex items-center justify-center p-4 sm:p-6 py-8">
+      {/* Registration Section */}
+      <main className="flex-1 flex items-center justify-center px-4 py-8">
         <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.45, ease: "easeOut" }}
-          className="azs-card-glow max-w-lg w-full p-6 sm:p-8 bg-[#0a0f1d]/90 backdrop-blur-2xl shadow-2xl shadow-black/80 space-y-6"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-xl bg-white border border-[#E6E1D8] rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden"
         >
-          {/* Logo & Header Title */}
-          <div className="text-center space-y-3">
-            <Link href="/" className="inline-flex relative group">
-              <div className="w-16 h-14 mx-auto rounded-2xl overflow-hidden bg-slate-900 border border-slate-700/80 shadow-xl flex items-center justify-center p-1.5 transition-transform group-hover:scale-105">
+          {/* Top Branding Strip */}
+          <div className="bg-[#1E3A8A] h-2 w-full" />
+
+          <div className="p-8 sm:p-10">
+            {/* Logo & Intro */}
+            <div className="text-center mb-8">
+              <div className="inline-block w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E6E1D8] p-2 mb-4">
                 <img
                   src="/logo.png"
                   alt="AZS Logo"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-cyan-500/20 to-indigo-500/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
-            </Link>
-
-            <div>
-              <h1 className="text-2xl font-black text-white tracking-tight">
+              <h1 className="text-2xl font-bold text-[#1E3A8A] tracking-tight">
                 Create Student Account
               </h1>
-              <p className="text-xs text-slate-400 mt-1">
-                Enter your batch &amp; academic details to access lectures and AI tutoring.
+              <p className="text-slate-500 text-sm mt-1">
+                Join the catalyst for your academic excellence.
+              </p>
+            </div>
+
+            {/* Error Message */}
+            <AnimatePresence>
+              {errorMsg && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3"
+                >
+                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+                  <p className="text-sm text-red-700 font-medium">{errorMsg}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <form onSubmit={handleRegister} className="space-y-5">
+              {/* Full Name */}
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-semibold text-slate-700 ml-1">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Enter your full name"
+                    className="w-full h-12 pl-12 pr-4 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-semibold text-slate-700 ml-1">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    className="w-full h-12 pl-12 pr-4 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-semibold text-slate-700 ml-1">
+                  Create Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Min. 6 characters"
+                    className="w-full h-12 pl-12 pr-12 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Academic Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[13px] font-semibold text-slate-700 ml-1">
+                    Institution
+                  </label>
+                  <div className="relative">
+                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="text"
+                      required
+                      value={school}
+                      onChange={(e) => setSchool(e.target.value)}
+                      placeholder="School/College"
+                      className="w-full h-12 pl-12 pr-4 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[13px] font-semibold text-slate-700 ml-1">
+                    Class / Grade
+                  </label>
+                  <div className="relative">
+                    <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+                    <select
+                      value={gradeClass}
+                      onChange={(e) => setGradeClass(e.target.value)}
+                      className="w-full h-12 pl-12 pr-4 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none appearance-none cursor-pointer text-slate-900"
+                    >
+                      <option value="Class 9">Class 9</option>
+                      <option value="Class 10">Class 10</option>
+                      <option value="HSC 1st Year">HSC 1st Year</option>
+                      <option value="HSC 2nd Year">HSC 2nd Year</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Batch Assignment */}
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-semibold text-slate-700 ml-1">
+                  Batch Designation
+                </label>
+                <div className="relative">
+                  <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    value={batchNo}
+                    onChange={(e) => setBatchNo(e.target.value)}
+                    placeholder="e.g. Batch 01"
+                    className="w-full h-12 pl-12 pr-4 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 bg-[#1E3A8A] hover:bg-[#1e3a8a]/90 text-white font-bold rounded-xl shadow-lg shadow-blue-900/10 flex items-center justify-center gap-2 transition-all disabled:opacity-70 active:scale-[0.98]"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Complete Registration</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="mt-8 pt-6 border-t border-[#E6E1D8] text-center">
+              <p className="text-sm text-slate-500">
+                Already registered?{" "}
+                <Link
+                  href="/login"
+                  className="text-[#0369A1] font-bold hover:underline underline-offset-4 transition-all"
+                >
+                  Sign in here
+                </Link>
               </p>
             </div>
           </div>
-
-          {/* Error Message Alert */}
-          <AnimatePresence>
-            {errorMsg && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs p-3.5 rounded-xl flex items-start gap-2.5 shadow-lg shadow-rose-950/20"
-                role="alert"
-              >
-                <AlertCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
-                <span className="leading-relaxed">{errorMsg}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Registration Form */}
-          <form onSubmit={handleRegister} className="space-y-4">
-            {/* Full Name */}
-            <div>
-              <label
-                htmlFor="reg-name"
-                className="text-xs font-bold text-slate-300 block mb-1.5 tracking-wide"
-              >
-                Full Name
-              </label>
-              <div className="relative">
-                <input
-                  id="reg-name"
-                  type="text"
-                  required
-                  autoComplete="name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Razon Islam"
-                  className="azs-input pl-10 text-sm"
-                />
-                <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Email Address */}
-            <div>
-              <label
-                htmlFor="reg-email"
-                className="text-xs font-bold text-slate-300 block mb-1.5 tracking-wide"
-              >
-                Email Address
-              </label>
-              <div className="relative">
-                <input
-                  id="reg-email"
-                  type="email"
-                  required
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="student@example.com"
-                  className="azs-input pl-10 text-sm"
-                />
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label
-                htmlFor="reg-password"
-                className="text-xs font-bold text-slate-300 block mb-1.5 tracking-wide"
-              >
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  id="reg-password"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 6 characters"
-                  className="azs-input pl-10 pr-11 text-sm"
-                />
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Grid 2 Columns: School + Class */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {/* Institution */}
-              <div>
-                <label
-                  htmlFor="reg-school"
-                  className="text-xs font-bold text-slate-300 block mb-1.5 tracking-wide"
-                >
-                  School / College
-                </label>
-                <div className="relative">
-                  <input
-                    id="reg-school"
-                    type="text"
-                    value={school}
-                    onChange={(e) => setSchool(e.target.value)}
-                    placeholder="Institution name"
-                    className="azs-input pl-10 text-xs"
-                  />
-                  <Building2 className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* Class / Grade Select */}
-              <div>
-                <label
-                  htmlFor="reg-class"
-                  className="text-xs font-bold text-slate-300 block mb-1.5 tracking-wide"
-                >
-                  Class / Level
-                </label>
-                <div className="relative">
-                  <select
-                    id="reg-class"
-                    value={gradeClass}
-                    onChange={(e) => setGradeClass(e.target.value)}
-                    className="azs-input pl-10 text-xs appearance-none cursor-pointer"
-                  >
-                    <option value="Class 9" className="bg-slate-900 text-white">Class 9</option>
-                    <option value="Class 10" className="bg-slate-900 text-white">Class 10</option>
-                    <option value="HSC 1st Year" className="bg-slate-900 text-white">HSC 1st Year</option>
-                    <option value="HSC 2nd Year" className="bg-slate-900 text-white">HSC 2nd Year</option>
-                  </select>
-                  <GraduationCap className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-            </div>
-
-            {/* Batch Assignment */}
-            <div>
-              <label
-                htmlFor="reg-batch"
-                className="text-xs font-bold text-slate-300 block mb-1.5 tracking-wide"
-              >
-                Batch Designation
-              </label>
-              <div className="relative">
-                <input
-                  id="reg-batch"
-                  type="text"
-                  value={batchNo}
-                  onChange={(e) => setBatchNo(e.target.value)}
-                  placeholder="e.g. Batch 01"
-                  className="azs-input pl-10 text-sm"
-                />
-                <Users className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="azs-btn-cyan mt-2 w-full py-3.5 text-sm font-extrabold group"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-teal-900" />
-                  <span>Creating Account...</span>
-                </>
-              ) : (
-                <>
-                  <span>Complete Student Registration</span>
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Sign In Redirect Link */}
-          <div className="text-center pt-4 border-t border-slate-800/80">
-            <p className="text-xs text-slate-400">
-              Already have an account?{" "}
-              <Link
-                href="/login"
-                className="text-indigo-400 font-bold hover:text-indigo-300 hover:underline transition-colors"
-              >
-                Sign in to portal ↗
-              </Link>
-            </p>
-          </div>
         </motion.div>
-      </div>
+      </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 w-full py-4 px-6 text-center border-t border-slate-800/80 bg-[#040810]/80 backdrop-blur-md">
-        <p className="text-xs text-slate-400">
-          © {currentYear} AZS: The Catalyst · Developed with ❤️ by{" "}
-          <a
-            href="https://www.linkedin.com/in/sajedul-islam-data/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-bold text-cyan-400 hover:text-cyan-300 transition-colors"
-          >
-            Mir Mohammad Sajedul Islam
-          </a>
-        </p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

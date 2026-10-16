@@ -65,7 +65,7 @@ export default function EduTrackAiChat({
         {
             role: "assistant",
             content:
-                "আসসালামু আলাইকুম! আমি **AZS AI Academic Tutor**। ফিজিক্স, কেমিস্ট্রি কিংবা উচ্চতর গণিতের যেকোনো সমীকরণ, প্রমাণ ও গাণিতিক সমস্যার জন্য যেকোনো প্রশ্ন করতে পারো।",
+                "আসসালামু আলাইকুম! আমি **AZS AI Academic Tutor**। ফিজিক্স, কেমিস্ট্রি এর কোনো সমীকরণ, প্রমাণ ও গাণিতিক সমস্যার জন্য যেকোনো প্রশ্ন করতে পারো।",
         },
     ]);
     const [input, setInput] = useState<string>("");

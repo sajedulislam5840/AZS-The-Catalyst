@@ -1,20 +1,107 @@
 @import "katex/dist/katex.min.css";
 @import "tailwindcss";
 
+/* ============================================
+   AZS: The Catalyst — Design Tokens
+   ============================================ */
 :root {
-  --background: #0B0F19;
-  --foreground: #f8fafc;
+  /* Core surfaces */
+  --background: #060a12;
+  --background-elevated: #0a0f1a;
+  --foreground: #f1f5f9;
+  --muted: #94a3b8;
+  --dim: #64748b;
+
+  /* Brand */
   --azs-cyan: #22d3ee;
+  --azs-cyan-dim: rgba(34, 211, 238, 0.15);
   --azs-indigo: #6366f1;
+  --azs-indigo-dim: rgba(99, 102, 241, 0.18);
+  --azs-violet: #8b5cf6;
+  --azs-violet-dim: rgba(139, 92, 246, 0.15);
+  --azs-emerald: #34d399;
+  --azs-amber: #fbbf24;
+  --azs-rose: #f472b6;
+
+  /* Glass & borders */
+  --glass: rgba(15, 23, 42, 0.55);
+  --glass-border: rgba(148, 163, 184, 0.12);
+  --glass-border-hover: rgba(34, 211, 238, 0.35);
+  --card: rgba(15, 23, 42, 0.65);
+
+  /* Shadows / glows */
+  --glow-cyan: 0 0 40px rgba(34, 211, 238, 0.25);
+  --glow-indigo: 0 0 40px rgba(99, 102, 241, 0.3);
+  --glow-violet: 0 0 50px rgba(139, 92, 246, 0.22);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-dim: var(--dim);
+
+  --color-azs-cyan: var(--azs-cyan);
+  --color-azs-indigo: var(--azs-indigo);
+  --color-azs-violet: var(--azs-violet);
+  --color-azs-emerald: var(--azs-emerald);
+  --color-azs-amber: var(--azs-amber);
+  --color-azs-rose: var(--azs-rose);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Motion tokens */
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-glow: pulse-glow 3s ease-in-out infinite;
+  --animate-shimmer: shimmer 2.5s linear infinite;
+  --animate-fade-up: fade-up 0.6s ease-out both;
+  --animate-spin-slow: spin 12s linear infinite;
 }
 
+/* ============================================
+   Keyframes
+   ============================================ */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.55; filter: blur(28px); }
+  50% { opacity: 0.9; filter: blur(36px); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes border-spin {
+  to { --angle: 360deg; }
+}
+
+/* ============================================
+   Base
+   ============================================ */
 html {
   scroll-behavior: smooth;
 }
@@ -23,10 +110,12 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 ::selection {
-  background: rgba(99, 102, 241, 0.45);
+  background: rgba(99, 102, 241, 0.5);
   color: #fff;
 }
 
@@ -38,80 +127,30 @@ button {
 }
 
 :focus-visible {
-  outline: 2px solid #818cf8;
-  outline-offset: 2px;
+  outline: 2px solid var(--azs-cyan);
+  outline-offset: 3px;
 }
 
+/* ============================================
+   Scrollbar
+   ============================================ */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #0b101d;
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: linear-gradient(180deg, #334155, #1e293b);
   border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
-}
-
-.azs-input {
-  width: 100%;
-  border-radius: 0.75rem;
-  border: 1px solid rgb(51 65 85 / 0.85);
-  background: #0f172a;
-  padding: 0.7rem 0.9rem;
-  font-size: 0.875rem;
-  color: #fff;
-}
-
-.azs-input::placeholder {
-  color: #64748b;
-}
-
-.azs-input:focus {
-  outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgb(99 102 241 / 0.2);
-}
-
-.azs-btn-primary {
-  display: inline-flex;
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 0.75rem;
-  background: #4f46e5;
-  padding: 0.8rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #fff;
-  box-shadow: 0 10px 24px rgb(79 70 229 / 0.28);
-  transition: background 0.15s ease, transform 0.15s ease;
-}
-
-.azs-btn-primary:hover:not(:disabled) {
-  background: #6366f1;
-}
-
-.azs-btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.azs-grid-bg {
-  background-color: #0B0F19;
-  background-image:
-    radial-gradient(ellipse 90% 55% at 50% -15%, rgba(99, 102, 241, 0.22), transparent),
-    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px);
-  background-size: auto, 40px 40px, 40px 40px;
+  background: linear-gradient(180deg, var(--azs-indigo), var(--azs-cyan));
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -121,3 +160,343 @@ button {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ============================================
+   Background Systems
+   ============================================ */
+
+/* Deep grid + ambient aurora (default page bg) */
+.azs-grid-bg {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse 100% 70% at 50% -20%, rgba(99, 102, 241, 0.28), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(34, 211, 238, 0.1), transparent 50%),
+    radial-gradient(ellipse 50% 35% at 10% 60%, rgba(139, 92, 246, 0.08), transparent 50%),
+    linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+  background-size: auto, auto, auto, 48px 48px, 48px 48px;
+  background-attachment: fixed;
+}
+
+/* Soft mesh orbs (place as absolute decorative layers) */
+.azs-orb {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  filter: blur(60px);
+  animation: pulse-glow 5s ease-in-out infinite;
+}
+.azs-orb-cyan {
+  background: rgba(34, 211, 238, 0.35);
+}
+.azs-orb-indigo {
+  background: rgba(99, 102, 241, 0.4);
+}
+.azs-orb-violet {
+  background: rgba(139, 92, 246, 0.35);
+}
+
+/* ============================================
+   Glass / Cards
+   ============================================ */
+.azs-glass {
+  background: var(--glass);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-card);
+}
+
+.azs-glass-hover {
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease,
+    background 0.25s ease;
+}
+.azs-glass-hover:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow: var(--shadow-card), var(--glow-cyan);
+  background: rgba(15, 23, 42, 0.72);
+  transform: translateY(-2px);
+}
+
+.azs-card {
+  border-radius: 1.25rem;
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-card);
+}
+
+/* Gradient border card (premium) */
+.azs-card-glow {
+  position: relative;
+  border-radius: 1.25rem;
+  background: var(--card);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+.azs-card-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(34, 211, 238, 0.5),
+    rgba(99, 102, 241, 0.15),
+    rgba(139, 92, 246, 0.45)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ============================================
+   Typography helpers
+   ============================================ */
+.azs-gradient-text {
+  background: linear-gradient(
+    135deg,
+    #22d3ee 0%,
+    #818cf8 45%,
+    #c084fc 100%
+  );
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gradient-shift 8s ease infinite;
+}
+
+.azs-gradient-text-static {
+  background: linear-gradient(135deg, #22d3ee, #818cf8 50%, #a78bfa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ============================================
+   Form Controls
+   ============================================ */
+.azs-input {
+  width: 100%;
+  border-radius: 0.875rem;
+  border: 1px solid rgba(51, 65, 85, 0.9);
+  background: rgba(15, 23, 42, 0.85);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: #fff;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.azs-input::placeholder {
+  color: #64748b;
+}
+
+.azs-input:hover {
+  border-color: rgba(99, 102, 241, 0.45);
+}
+
+.azs-input:focus {
+  outline: none;
+  border-color: var(--azs-indigo);
+  background: rgba(15, 23, 42, 0.95);
+  box-shadow:
+    0 0 0 3px rgba(99, 102, 241, 0.22),
+    0 0 24px rgba(99, 102, 241, 0.12);
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+.azs-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  border-radius: 0.875rem;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #7c3aed 100%);
+  background-size: 180% 180%;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #fff;
+  border: 1px solid rgba(165, 180, 252, 0.25);
+  box-shadow:
+    0 10px 28px rgba(79, 70, 229, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background-position 0.3s ease,
+    filter 0.2s ease;
+}
+
+.azs-btn-primary:hover:not(:disabled) {
+  background-position: 100% 50%;
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 36px rgba(99, 102, 241, 0.45),
+    0 0 28px rgba(34, 211, 238, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  filter: brightness(1.06);
+}
+
+.azs-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.azs-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+}
+
+/* Secondary / ghost */
+.azs-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.875rem;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  backdrop-filter: blur(8px);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.azs-btn-ghost:hover {
+  border-color: rgba(34, 211, 238, 0.4);
+  background: rgba(34, 211, 238, 0.08);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(34, 211, 238, 0.1);
+}
+
+/* Cyan CTA variant */
+.azs-btn-cyan {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.875rem;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #042f2e;
+  background: linear-gradient(135deg, #22d3ee, #67e8f9);
+  border: 1px solid rgba(165, 243, 252, 0.4);
+  box-shadow: 0 10px 28px rgba(34, 211, 238, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.azs-btn-cyan:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 36px rgba(34, 211, 238, 0.45);
+  filter: brightness(1.05);
+}
+
+/* ============================================
+   Badges / chips
+   ============================================ */
+.azs-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.7);
+  color: #cbd5e1;
+}
+
+.azs-badge-cyan {
+  border-color: rgba(34, 211, 238, 0.35);
+  background: rgba(34, 211, 238, 0.1);
+  color: #67e8f9;
+}
+
+.azs-badge-indigo {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.12);
+  color: #a5b4fc;
+}
+
+.azs-badge-emerald {
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(52, 211, 153, 0.1);
+  color: #6ee7b7;
+}
+
+/* ============================================
+   Dividers / accents
+   ============================================ */
+.azs-divider {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(148, 163, 184, 0.25),
+    transparent
+  );
+}
+
+.azs-shine {
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.08) 45%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+}
+
+/* ============================================
+   Utility motion classes
+   ============================================ */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+.animate-fade-up {
+  animation: fade-up 0.6s ease-out both;
+}
+
+/* Stagger helpers (set style={{ animationDelay }}) */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }

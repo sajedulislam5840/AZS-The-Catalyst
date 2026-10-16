@@ -4,7 +4,6 @@ import React, {
   useState,
   useEffect,
   useMemo,
-  useRef,
   FormEvent,
   Suspense,
 } from "react";
@@ -17,7 +16,6 @@ import {
   Bot,
   LogOut,
   Flame,
-  CheckCircle2,
   Calendar as CalendarIcon,
   Search,
   ExternalLink,
@@ -26,21 +24,15 @@ import {
   ChevronRight,
   Bell,
   Sparkles,
-  BookOpen,
-  CalendarCheck,
   SearchX,
   X,
   Plus,
   Trash2,
   Clock,
-  Play,
   FileEdit,
   Download,
   ChevronDown,
-  ChevronUp,
   Eye,
-  MessageSquare,
-  Send,
   MessageCircle,
   Globe,
   Video,
@@ -55,14 +47,8 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import EduTrackAiChat from "@/components/EduTrackAiChat";
-
-// --- Professional Teacher Social Config ---
-const TEACHER_SOCIAL = {
-  name: "AZS RAZON SIR",
-  whatsapp: "https://wa.me/8801916201426",
-  facebook: "https://www.facebook.com/razon.sikdar.1",
-  youtube: "https://www.youtube.com/@AZSChemistry",
-};
+import SiteFooter from "@/components/SiteFooter";
+import { TEACHER } from "@/lib/social";
 
 const BACKEND_URL = (
   process.env.NEXT_PUBLIC_API_URL ||
@@ -172,7 +158,10 @@ function DashboardContent() {
     "dashboard" | "lectures" | "materials" | "ai"
   >("dashboard");
   const [mounted, setMounted] = useState(false);
-  const [currentYear, setCurrentYear] = useState(2025);
+
+  // Vibrant Loading Screen Sequence
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
   // Mobile Sidebar Drawer State
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -220,7 +209,6 @@ function DashboardContent() {
 
   const [calendarViewDate, setCalendarViewDate] = useState<Date | null>(null);
   const [todayKey, setTodayKey] = useState<string>("");
-  const [tomorrowKey, setTomorrowKey] = useState<string>("");
   const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
   const [selectedDateForPlan, setSelectedDateForPlan] = useState<string | null>(
     null
@@ -234,10 +222,21 @@ function DashboardContent() {
     return `${year}-${m}-${d}`;
   };
 
-  // --- MOBILE BACK BUTTON GUARD & HISTORY MANAGEMENT ---
+  // --- MOBILE BACK BUTTON GUARD & INITIALIZATION ---
   useEffect(() => {
     setMounted(true);
-    setCurrentYear(new Date().getFullYear());
+
+    // Catalyst Initiation Progress Bar Sequence
+    const interval = setInterval(() => {
+      setLoadingProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => setIsInitializing(false), 300);
+          return 100;
+        }
+        return prev + 20;
+      });
+    }, 150);
 
     if (typeof window !== "undefined") {
       window.history.pushState(null, "", window.location.href);
@@ -253,6 +252,7 @@ function DashboardContent() {
       };
       window.addEventListener("popstate", handlePopState);
       return () => {
+        clearInterval(interval);
         window.removeEventListener("popstate", handlePopState);
       };
     }
@@ -268,15 +268,6 @@ function DashboardContent() {
       now.getDate()
     );
     setTodayKey(todayStr);
-
-    const tmrw = new Date(now);
-    tmrw.setDate(tmrw.getDate() + 1);
-    const tmrwStr = formatDateKey(
-      tmrw.getFullYear(),
-      tmrw.getMonth(),
-      tmrw.getDate()
-    );
-    setTomorrowKey(tmrwStr);
 
     const token =
       localStorage.getItem("token") || localStorage.getItem("access_token");
@@ -437,7 +428,7 @@ function DashboardContent() {
     }, 600);
   };
 
-  // --- CHAPTER-WISE GROUPING LOGIC FOR BACKEND DATA ---
+  // --- CHAPTER-WISE GROUPING LOGIC ---
   const chaptersBySubject = useMemo(() => {
     const physicsMap: Record<string, VideoLecture[]> = {};
     const chemistryMap: Record<string, VideoLecture[]> = {};
@@ -526,18 +517,8 @@ function DashboardContent() {
   };
 
   const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
   ];
 
   const currentYearCalendar = calendarViewDate
@@ -545,7 +526,7 @@ function DashboardContent() {
     : 2025;
   const currentMonthCalendar = calendarViewDate
     ? calendarViewDate.getMonth()
-    : 9;
+    : 0;
   const currentMonthTitle = `${monthNames[currentMonthCalendar]} ${currentYearCalendar}`;
 
   const daysInMonth = new Date(
@@ -657,15 +638,49 @@ function DashboardContent() {
 
   if (!mounted) return null;
 
-  return (
-    <div className="min-h-screen azs-grid-bg text-slate-100 flex flex-col font-sans antialiased relative overflow-x-hidden selection:bg-indigo-500/30">
-      {/* Ambient glow orbs */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
-        <div className="azs-orb azs-orb-indigo top-[-120px] left-[10%] h-[420px] w-[420px] opacity-25" />
-        <div className="azs-orb azs-orb-cyan bottom-[10%] right-[-80px] h-[360px] w-[360px] opacity-20" />
-        <div className="azs-orb azs-orb-violet top-[40%] left-[-100px] h-[300px] w-[300px] opacity-15" />
+  // --- CATALYST INITIALIZATION LOADING SCREEN ---
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F5] flex flex-col items-center justify-center p-6 font-sans selection:bg-blue-100">
+        <div className="max-w-sm w-full space-y-8 text-center">
+          <div className="w-20 h-20 mx-auto rounded-3xl bg-white border border-[#E6E1D8] shadow-lg flex items-center justify-center p-3 animate-pulse">
+            <img
+              src="/logo.png"
+              alt="AZS Logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-black text-[#1E3A8A] tracking-tight">
+              Igniting Catalyst Engine...
+            </h1>
+            <p className="text-xs font-semibold text-slate-500">
+              Synchronizing academic deck &amp; progress telemetry
+            </p>
+          </div>
+          <div className="w-full bg-[#E6E1D8] h-2.5 rounded-full overflow-hidden p-0.5">
+            <motion.div
+              className="h-full bg-gradient-to-r from-[#1E3A8A] via-[#0369A1] to-[#047857] rounded-full"
+              initial={{ width: "0%" }}
+              animate={{ width: `${loadingProgress}%` }}
+              transition={{ ease: "easeOut" }}
+            />
+          </div>
+        </div>
       </div>
+    );
+  }
 
+  return (
+    <div
+      className={`min-h-screen bg-[#FAF8F5] text-slate-900 flex flex-col font-sans antialiased relative overflow-x-hidden selection:bg-blue-100 transition-colors duration-700 ${
+        activeNav === "lectures" && selectedSubjectTab === "PHYSICS"
+          ? "bg-sky-50/20"
+          : activeNav === "lectures" && selectedSubjectTab === "CHEMISTRY"
+          ? "bg-emerald-50/20"
+          : ""
+      }`}
+    >
       {/* SUBJECT TRANSITION OVERLAY */}
       <AnimatePresence>
         {activeTransition && (
@@ -674,7 +689,7 @@ function DashboardContent() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-[80] bg-[#060a12]/92 backdrop-blur-xl flex flex-col items-center justify-center"
+            className="fixed inset-0 z-[80] bg-[#FAF8F5]/95 backdrop-blur-md flex flex-col items-center justify-center"
           >
             {activeTransition === "PHYSICS" ? (
               <motion.div
@@ -684,21 +699,17 @@ function DashboardContent() {
                 className="flex flex-col items-center space-y-6"
               >
                 <div className="relative w-28 h-28 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border border-indigo-400/30 animate-ping" />
-                  <div className="absolute inset-3 rounded-full border border-cyan-400/20" />
-                  <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-400/60 flex items-center justify-center shadow-[0_0_40px_rgba(99,102,241,0.45)]">
-                    <Atom
-                      className="w-8 h-8 text-indigo-300"
-                      style={{ animation: "spin 6s linear infinite" }}
-                    />
+                  <div className="absolute inset-0 rounded-full border-2 border-sky-300 animate-ping" />
+                  <div className="w-16 h-16 rounded-2xl bg-sky-100 border border-sky-300 flex items-center justify-center shadow-lg shadow-sky-500/10">
+                    <Atom className="w-8 h-8 text-[#0369A1] animate-spin" />
                   </div>
                 </div>
-                <div className="text-center space-y-1.5">
-                  <span className="text-[10px] font-mono tracking-[0.25em] text-indigo-400 uppercase">
-                    Quantum Core Protocol
+                <div className="text-center space-y-1">
+                  <span className="text-[10px] font-mono tracking-widest text-[#0369A1] uppercase font-bold">
+                    Quantum Sector
                   </span>
-                  <h3 className="text-lg font-extrabold text-white tracking-wide">
-                    Initializing Physics Matrix...
+                  <h3 className="text-lg font-black text-[#1E3A8A]">
+                    Activating Physics Engine...
                   </h3>
                 </div>
               </motion.div>
@@ -710,18 +721,17 @@ function DashboardContent() {
                 className="flex flex-col items-center space-y-6"
               >
                 <div className="relative w-28 h-28 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border border-amber-400/30 animate-ping" />
-                  <div className="absolute inset-3 rounded-full border border-orange-400/20" />
-                  <div className="w-16 h-16 rounded-2xl bg-amber-600/20 border border-amber-400/60 flex items-center justify-center shadow-[0_0_40px_rgba(245,158,11,0.45)]">
-                    <FlaskConical className="w-8 h-8 text-amber-300 animate-bounce" />
+                  <div className="absolute inset-0 rounded-full border-2 border-emerald-300 animate-ping" />
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-100 border border-emerald-300 flex items-center justify-center shadow-lg shadow-emerald-500/10">
+                    <FlaskConical className="w-8 h-8 text-[#047857] animate-bounce" />
                   </div>
                 </div>
-                <div className="text-center space-y-1.5">
-                  <span className="text-[10px] font-mono tracking-[0.25em] text-amber-400 uppercase">
-                    Synthesis Lab Protocol
+                <div className="text-center space-y-1">
+                  <span className="text-[10px] font-mono tracking-widest text-[#047857] uppercase font-bold">
+                    Synthesis Sector
                   </span>
-                  <h3 className="text-lg font-extrabold text-white tracking-wide">
-                    Loading Chemistry Vault...
+                  <h3 className="text-lg font-black text-[#1E3A8A]">
+                    Opening Chemistry Vault...
                   </h3>
                 </div>
               </motion.div>
@@ -730,10 +740,8 @@ function DashboardContent() {
         )}
       </AnimatePresence>
 
-      {/* === PART 2 CONTINUES HERE (sidebar, header, main panels) === */}
-
-                  <div className="flex-1 flex min-w-0 relative z-10">
-        {/* 1. MOBILE SIDEBAR OVERLAY BACKDROP */}
+      <div className="flex-1 flex min-w-0 relative z-10">
+        {/* MOBILE SIDEBAR OVERLAY BACKDROP */}
         <AnimatePresence>
           {isMobileSidebarOpen && (
             <motion.div
@@ -741,52 +749,49 @@ function DashboardContent() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileSidebarOpen(false)}
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 md:hidden"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 md:hidden"
             />
           )}
         </AnimatePresence>
 
-        {/* 1. LEFT SIDEBAR */}
+        {/* LEFT SIDEBAR (Nord Cream) */}
         <aside
-          className={`fixed md:static inset-y-0 left-0 z-50 w-72 azs-glass border-r border-slate-800/80 p-5 flex flex-col justify-between shrink-0 shadow-2xl transition-transform duration-300 ease-in-out ${
+          className={`fixed md:static inset-y-0 left-0 z-50 w-72 bg-white border-r border-[#E6E1D8] p-5 flex flex-col justify-between shrink-0 shadow-2xl md:shadow-none transition-transform duration-300 ease-in-out ${
             isMobileSidebarOpen
               ? "translate-x-0"
               : "-translate-x-full md:translate-x-0"
           }`}
         >
-          <div className="space-y-7">
-            {/* Brand */}
+          <div className="space-y-6">
+            {/* Brand Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3 px-1">
-                <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-900 border border-cyan-500/30 shadow-[0_0_18px_rgba(34,211,238,0.15)] flex items-center justify-center shrink-0 p-1.5">
+                <div className="w-12 h-12 rounded-2xl bg-[#FAF8F5] border border-[#E6E1D8] shadow-sm flex items-center justify-center shrink-0 p-2">
                   <img
                     src="/logo.png"
                     alt="AZS Logo"
                     className="w-full h-full object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = "none";
-                    }}
                   />
                 </div>
                 <div>
-                  <span className="font-extrabold text-sm tracking-tight text-white block leading-tight">
+                  <span className="font-black text-base text-[#1E3A8A] block leading-tight">
                     AZS
                   </span>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-cyan-400 block">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#0369A1] block">
                     The Catalyst
                   </span>
                 </div>
               </div>
               <button
                 onClick={() => setIsMobileSidebarOpen(false)}
-                className="md:hidden text-slate-400 hover:text-white p-1.5 rounded-xl bg-slate-900/80 border border-slate-800"
+                className="md:hidden text-slate-400 hover:text-slate-700 p-2 rounded-xl bg-slate-50 border border-[#E6E1D8]"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Nav */}
-            <nav className="space-y-1.5">
+            {/* Navigation Options */}
+            <nav className="space-y-2">
               {(
                 [
                   {
@@ -800,17 +805,17 @@ function DashboardContent() {
                     label: "Video Lectures",
                     icon: PlayCircle,
                     extra: (
-                      <span className="ml-auto text-[10px] bg-slate-800/90 text-slate-300 px-2 py-0.5 rounded-md font-mono border border-slate-700/50">
+                      <span className="ml-auto text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono border border-[#E6E1D8]">
                         {videos.length}
                       </span>
                     ),
                   },
                   {
                     id: "materials" as const,
-                    label: "Study Sheets (PDF)",
+                    label: "Study Sheets",
                     icon: FileText,
                     extra: (
-                      <span className="ml-auto text-[10px] bg-slate-800/90 text-slate-300 px-2 py-0.5 rounded-md font-mono border border-slate-700/50">
+                      <span className="ml-auto text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono border border-[#E6E1D8]">
                         {materials.length}
                       </span>
                     ),
@@ -820,7 +825,7 @@ function DashboardContent() {
                     label: "AI Tutor Core",
                     icon: Bot,
                     extra: (
-                      <span className="ml-auto text-[10px] azs-badge-cyan px-2 py-0.5 rounded-md font-bold">
+                      <span className="ml-auto text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md font-bold">
                         Online
                       </span>
                     ),
@@ -835,19 +840,19 @@ function DashboardContent() {
                     if (id === "dashboard") setSearchQuery("");
                     setIsMobileSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                  className={`w-full flex items-center space-x-3 px-4 min-h-[48px] rounded-xl text-sm font-bold transition-all ${
                     activeNav === id
-                      ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-600/30 border border-indigo-400/20"
-                      : "text-slate-400 hover:text-white hover:bg-slate-900/80 border border-transparent"
+                      ? "bg-[#1E3A8A] text-white shadow-lg shadow-blue-900/10"
+                      : "text-slate-600 hover:text-[#1E3A8A] hover:bg-slate-50 border border-transparent"
                   }`}
                 >
                   <Icon
-                    className={`w-4 h-4 ${
+                    className={`w-5 h-5 ${
                       activeNav === id
                         ? "text-white"
                         : id === "ai"
-                          ? "text-cyan-400"
-                          : ""
+                        ? "text-[#0369A1]"
+                        : "text-slate-400"
                     }`}
                   />
                   <span>{label}</span>
@@ -857,67 +862,59 @@ function DashboardContent() {
             </nav>
           </div>
 
-          {/* Instructor uplink + profile */}
-          <div className="pt-5 border-t border-slate-800/80 space-y-4 mb-1">
-            <div className="azs-card-glow rounded-2xl p-4 text-white relative overflow-hidden group">
-              <div className="absolute -right-6 -top-6 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-all duration-500" />
-
-              <div className="relative z-10 space-y-3">
+          {/* Academic Instructor Uplink & Student Card */}
+          <div className="pt-5 border-t border-[#E6E1D8] space-y-4">
+            <div className="bg-[#FAF8F5] border border-[#E6E1D8] rounded-2xl p-4 relative overflow-hidden">
+              <div className="relative z-10 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="azs-badge azs-badge-indigo text-[9px]">
-                    Academic Guide
+                  <span className="text-[10px] font-bold text-[#1E3A8A] uppercase tracking-wider bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                    Academic Mentor
                   </span>
-                  <span
-                    className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]"
-                    title="Active"
-                  />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
 
                 <div>
-                  <h4 className="text-sm font-extrabold text-white tracking-tight">
-                    {TEACHER_SOCIAL.name}
+                  <h4 className="text-sm font-black text-slate-900 tracking-tight">
+                    {TEACHER.name}
                   </h4>
-                  <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                    Physics &amp; Chemistry Lead
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    Physics &amp; Chemistry Specialist
                   </p>
                 </div>
 
                 <div className="grid grid-cols-3 gap-1.5 pt-1">
                   <a
-                    href={TEACHER_SOCIAL.whatsapp}
+                    href={TEACHER.whatsapp}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.04] hover:bg-emerald-500/20 hover:border-emerald-500/40 border border-white/10 rounded-xl transition-all group/btn"
-                    title="WhatsApp Direct"
+                    className="flex flex-col items-center justify-center py-2 px-1 bg-white hover:bg-emerald-50 border border-[#E6E1D8] rounded-xl transition-colors"
                   >
-                    <MessageCircle className="w-4 h-4 text-emerald-400 mb-1 group-hover/btn:scale-110 transition-transform" />
-                    <span className="text-[9px] font-semibold text-slate-300 group-hover/btn:text-white">
+                    <MessageCircle className="w-4 h-4 text-emerald-600 mb-1" />
+                    <span className="text-[9px] font-bold text-slate-700">
                       WhatsApp
                     </span>
                   </a>
 
                   <a
-                    href={TEACHER_SOCIAL.facebook}
+                    href={TEACHER.facebook}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.04] hover:bg-blue-500/20 hover:border-blue-500/40 border border-white/10 rounded-xl transition-all group/btn"
-                    title="Facebook Profile"
+                    className="flex flex-col items-center justify-center py-2 px-1 bg-white hover:bg-blue-50 border border-[#E6E1D8] rounded-xl transition-colors"
                   >
-                    <Globe className="w-4 h-4 text-blue-400 mb-1 group-hover/btn:scale-110 transition-transform" />
-                    <span className="text-[9px] font-semibold text-slate-300 group-hover/btn:text-white">
+                    <Globe className="w-4 h-4 text-blue-600 mb-1" />
+                    <span className="text-[9px] font-bold text-slate-700">
                       Facebook
                     </span>
                   </a>
 
                   <a
-                    href={TEACHER_SOCIAL.youtube}
+                    href={TEACHER.youtube}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-col items-center justify-center py-2 px-1 bg-white/[0.04] hover:bg-rose-500/20 hover:border-rose-500/40 border border-white/10 rounded-xl transition-all group/btn"
-                    title="YouTube Channel"
+                    className="flex flex-col items-center justify-center py-2 px-1 bg-white hover:bg-rose-50 border border-[#E6E1D8] rounded-xl transition-colors"
                   >
-                    <Video className="w-4 h-4 text-rose-400 mb-1 group-hover/btn:scale-110 transition-transform" />
-                    <span className="text-[9px] font-semibold text-slate-300 group-hover/btn:text-white">
+                    <Video className="w-4 h-4 text-rose-600 mb-1" />
+                    <span className="text-[9px] font-bold text-slate-700">
                       YouTube
                     </span>
                   </a>
@@ -925,192 +922,150 @@ function DashboardContent() {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-800/80 space-y-3">
-              <div className="flex items-center space-x-3 px-2">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500/20 to-cyan-500/10 border border-indigo-500/30 flex items-center justify-center font-extrabold text-cyan-300 text-xs shadow-sm shrink-0">
-                  {userProfile.full_name.charAt(0).toUpperCase()}
-                </div>
-                <div className="overflow-hidden">
-                  <p className="text-xs font-bold text-white truncate">
-                    {userProfile.full_name}
-                  </p>
-                  <p className="text-[10px] text-slate-400 font-medium truncate">
-                    {userProfile.batch_no ||
-                      userProfile.email ||
-                      "Registered Student"}
-                  </p>
-                </div>
+            <div className="pt-2 flex items-center justify-between gap-2">
+              <div className="overflow-hidden">
+                <p className="text-xs font-black text-slate-900 truncate">
+                  {userProfile.full_name}
+                </p>
+                <p className="text-[10px] text-slate-500 font-semibold truncate">
+                  {userProfile.batch_no || "General Batch"}
+                </p>
               </div>
 
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition"
+                className="p-2.5 rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors"
+                title="Sign Out"
               >
                 <LogOut className="w-4 h-4" />
-                <span>Sign Out</span>
               </button>
             </div>
           </div>
         </aside>
 
-        {/* 2. MAIN WORKSPACE */}
+        {/* MAIN WORKSPACE */}
         <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative">
-          {/* Top Header */}
-          <header className="h-16 sm:h-18 bg-[#060a12]/80 backdrop-blur-xl border-b border-slate-800/80 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 gap-3">
+          {/* Top Header Bar */}
+          <header className="h-16 sm:h-20 bg-white/80 backdrop-blur-md border-b border-[#E6E1D8] px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 gap-3">
             <div className="flex items-center gap-3 flex-1 max-w-md">
               <button
                 onClick={() => setIsMobileSidebarOpen(true)}
-                className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 hover:text-white hover:border-cyan-500/30 flex md:hidden items-center justify-center shrink-0 transition"
-                title="Open Menu"
+                className="w-12 h-12 rounded-xl bg-[#FAF8F5] border border-[#E6E1D8] text-slate-600 flex md:hidden items-center justify-center shrink-0"
               >
                 <Menu className="w-5 h-5" />
               </button>
 
-              <div className="w-9 h-9 rounded-xl overflow-hidden bg-slate-900 border border-indigo-500/30 shadow-sm hidden sm:flex md:hidden items-center justify-center shrink-0 p-1">
-                <img
-                  src="/logo.png"
-                  alt="Logo"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Search topic or chapter..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="azs-input pl-10 pr-9 py-2.5 text-sm"
+                  className="w-full h-12 pl-11 pr-9 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1]"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
-              <div className="flex items-center space-x-1.5 px-3 py-1.5 azs-badge-emerald rounded-full text-xs font-bold">
-                <Flame className="w-3.5 h-3.5 text-amber-400" />
-                <span className="hidden sm:inline text-emerald-300">
-                  Streak Active
-                </span>
+            <div className="flex items-center space-x-3 shrink-0">
+              <div className="hidden sm:flex items-center space-x-2 px-3.5 h-10 bg-amber-50 border border-amber-200 rounded-full text-xs font-bold text-amber-800">
+                <Flame className="w-4 h-4 text-amber-500" />
+                <span>Streak Active</span>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-slate-900/80 text-slate-300 border border-slate-800 relative hover:border-cyan-500/30 hover:text-white transition cursor-pointer">
-                <Bell className="w-4 h-4" />
+              <div className="w-12 h-12 rounded-xl bg-[#FAF8F5] border border-[#E6E1D8] flex items-center justify-center relative text-slate-600">
+                <Bell className="w-5 h-5" />
                 {notice && (
-                  <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 animate-ping" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 absolute top-3 right-3 animate-ping" />
                 )}
               </div>
             </div>
           </header>
 
-          {/* SUBSCRIPTION EXPIRED / EXPIRING BANNER */}
+          {/* SUBSCRIPTION EXPIRED / EXPIRING ALERT */}
           {(isExpired || isExpiringSoon) && (
             <div
-              className={`px-5 sm:px-6 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-xl gap-3 ${
+              className={`px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b ${
                 isExpired
-                  ? "bg-gradient-to-r from-rose-950 via-rose-900/90 to-slate-950 border-b border-rose-500/40 text-rose-200"
-                  : "bg-gradient-to-r from-amber-950 via-orange-950/90 to-slate-950 border-b border-amber-500/40 text-amber-200"
+                  ? "bg-rose-50 border-rose-200 text-rose-900"
+                  : "bg-amber-50 border-amber-200 text-amber-900"
               }`}
             >
               <div className="flex items-center space-x-3">
-                <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                    isExpired
-                      ? "bg-rose-500/20 text-rose-400"
-                      : "bg-amber-500/20 text-amber-400"
-                  }`}
-                >
-                  <ShieldAlert className="w-5 h-5 animate-pulse" />
-                </div>
+                <ShieldAlert className="w-6 h-6 text-rose-600 shrink-0" />
                 <div>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-white">
+                  <h4 className="text-xs font-bold uppercase tracking-wider">
                     {isExpired
-                      ? "Subscription Expired — Streaming & Materials Locked"
+                      ? "Subscription Expired — Content Locked"
                       : `Payment Reminder: ${daysLeft} ${
                           daysLeft === 1 ? "Day" : "Days"
                         } Remaining`}
                   </h4>
-                  <p className="text-[11px] text-slate-300 mt-0.5">
+                  <p className="text-xs text-slate-600 mt-0.5">
                     {isExpired
-                      ? "Your coaching pass has expired. Video streaming and PDF handouts are locked until payment is cleared."
-                      : "Your coaching pass is due for renewal soon. Complete payment to avoid interruption."}
+                      ? "Your coaching pass has ended. Streaming and materials are locked until payment is cleared."
+                      : "Please renew your account subscription before expiration to avoid interruption."}
                   </p>
                 </div>
               </div>
 
               <a
-                href={TEACHER_SOCIAL.whatsapp}
+                href={TEACHER.whatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shrink-0 ${
-                  isExpired
-                    ? "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30"
-                    : "bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/30"
-                }`}
+                className="w-full sm:w-auto h-12 px-6 bg-[#1E3A8A] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shrink-0 shadow-md"
               >
-                <CreditCard className="w-3.5 h-3.5" />
+                <CreditCard className="w-4 h-4" />
                 <span>Pay / Renew via WhatsApp</span>
               </a>
             </div>
           )}
 
-          {/* Notice strip */}
+          {/* Notice Banner Strip */}
           {notice && (
-            <div className="bg-gradient-to-r from-amber-600/90 to-orange-600/90 text-white px-5 sm:px-6 py-2.5 flex items-center space-x-3 shadow-md border-b border-amber-400/20">
-              <span className="px-2 py-0.5 rounded-md bg-black/30 text-amber-200 font-black text-[10px] tracking-wider uppercase shrink-0">
+            <div className="bg-[#1E3A8A] text-white px-6 py-3 flex items-center space-x-3 shadow-inner">
+              <span className="px-2 py-0.5 rounded bg-white/20 text-white font-black text-[10px] uppercase">
                 Notice
               </span>
-              <p className="text-xs font-bold text-white flex-1 truncate">
+              <p className="text-xs font-semibold flex-1 truncate">
                 {notice.content}
               </p>
             </div>
           )}
 
-          <main className="p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6 sm:space-y-8 flex-1 pb-28 md:pb-12 relative z-10">
+          <main className="p-4 sm:p-8 max-w-6xl w-full mx-auto space-y-8 flex-1 pb-28 md:pb-12 relative z-10">
             {/* EXPIRED LOCK CARD */}
             {isExpired && (
-              <div className="azs-card-glow rounded-3xl p-8 sm:p-12 shadow-2xl text-center space-y-6">
-                <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto shadow-[0_0_30px_rgba(244,63,94,0.15)]">
+              <div className="bg-white border border-[#E6E1D8] rounded-3xl p-8 sm:p-12 text-center space-y-6 shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 mx-auto">
                   <Lock className="w-8 h-8" />
                 </div>
                 <div className="space-y-2 max-w-lg mx-auto">
-                  <h2 className="text-xl sm:text-2xl font-black text-white">
-                    System Access Notice: Payment Required
+                  <h2 className="text-2xl font-black text-[#1E3A8A]">
+                    Access Restricted
                   </h2>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                    Your 30-day subscription period has ended. As a result,{" "}
-                    <span className="text-rose-400 font-bold">
-                      video lecture streaming and study material downloads are
-                      currently locked
-                    </span>
-                    .
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    Please contact{" "}
-                    <span className="font-bold text-white">AZS Razon Sir</span>{" "}
-                    to clear your coaching fees and renew your account.
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    Your student subscription has expired. Video streaming and
+                    PDF study handouts are currently locked.
                   </p>
                 </div>
-
-                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <a
-                    href={TEACHER_SOCIAL.whatsapp}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-600/30"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Contact Sir on WhatsApp</span>
-                  </a>
-                </div>
+                <a
+                  href={TEACHER.whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-12 px-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold items-center gap-2 shadow-md"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Contact Academic Guide on WhatsApp</span>
+                </a>
               </div>
             )}
 
@@ -1119,55 +1074,38 @@ function DashboardContent() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <div>
-                    <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-                      <Search className="w-5 h-5 text-cyan-400" />
-                      <span>
-                        Search Results for &ldquo;{searchQuery}&rdquo;
-                      </span>
+                    <h2 className="text-2xl font-black text-[#1E3A8A] flex items-center gap-2">
+                      <Search className="w-6 h-6 text-[#0369A1]" />
+                      <span>Results for &ldquo;{searchQuery}&rdquo;</span>
                     </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-500 mt-1">
                       Found {filteredVideos.length} lectures and{" "}
                       {filteredMaterials.length} study sheets.
                     </p>
                   </div>
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="text-xs font-bold text-slate-300 hover:text-white bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-xl transition hover:border-cyan-500/30"
+                    className="h-10 px-4 bg-white border border-[#E6E1D8] rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50"
                   >
                     Clear Search
                   </button>
                 </div>
 
                 {!hasSearchResults ? (
-                  <div className="azs-card rounded-3xl p-12 sm:p-16 text-center space-y-4">
-                    <div className="w-16 h-16 rounded-full bg-slate-900 text-slate-500 mx-auto flex items-center justify-center border border-slate-800">
-                      <SearchX className="w-8 h-8" />
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-base font-extrabold text-white">
-                        No Results Found
-                      </h3>
-                      <p className="text-xs text-slate-400 max-w-md mx-auto">
-                        We couldn&apos;t find any lectures or study sheets
-                        matching &ldquo;{searchQuery}&rdquo;.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setSearchQuery("")}
-                      className="azs-btn-primary w-auto px-5 py-2.5 text-xs inline-flex"
-                    >
-                      Reset &amp; View All Content
-                    </button>
+                  <div className="bg-white border border-[#E6E1D8] rounded-3xl p-12 text-center space-y-4">
+                    <SearchX className="w-12 h-12 text-slate-400 mx-auto" />
+                    <p className="text-sm font-bold text-slate-700">
+                      No matching academic material found.
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-8">
                     {filteredVideos.length > 0 && (
                       <div className="space-y-4">
-                        <h3 className="text-sm font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
-                          <PlayCircle className="w-4 h-4 text-cyan-400" />
+                        <h3 className="text-xs font-bold text-[#1E3A8A] uppercase tracking-wider">
                           Video Lectures ({filteredVideos.length})
                         </h3>
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                           {filteredVideos.map((vid) => {
                             const embedUrl = getYouTubeEmbedUrl(
                               vid.youtube_url || vid.video_url || ""
@@ -1177,147 +1115,40 @@ function DashboardContent() {
                             return (
                               <div
                                 key={vid.id}
-                                id={`lecture-card-${vid.id}`}
-                                className={`azs-card azs-glass-hover rounded-2xl overflow-hidden flex flex-col justify-between ${
-                                  isWatched
-                                    ? "border-emerald-500/40 ring-1 ring-emerald-500/20"
-                                    : ""
-                                }`}
+                                className="bg-white border border-[#E6E1D8] rounded-2xl overflow-hidden flex flex-col justify-between shadow-sm"
                               >
                                 <div>
-                                  <div className="aspect-video w-full bg-slate-950 relative">
-                                    {embedUrl ? (
-                                      <iframe
-                                        src={embedUrl}
-                                        title={
-                                          vid.topic || vid.title || "Lecture"
-                                        }
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                        allowFullScreen
-                                        className="w-full h-full border-none"
-                                      />
-                                    ) : (
-                                      <div className="h-full flex items-center justify-center text-xs text-slate-500">
-                                        Invalid Video Link
-                                      </div>
-                                    )}
+                                  <div className="aspect-video bg-slate-900">
+                                    <iframe
+                                      src={embedUrl}
+                                      title={vid.topic || "Lecture"}
+                                      className="w-full h-full border-none"
+                                      allowFullScreen
+                                    />
                                   </div>
-
                                   <div className="p-5 space-y-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-900 text-slate-300 border border-slate-800">
-                                        Lecture #{vid.lecture_no}
-                                      </span>
-                                      <span
-                                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                                          vid.subject === "PHYSICS"
-                                            ? "azs-badge-indigo"
-                                            : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
-                                        }`}
-                                      >
-                                        {vid.subject}
-                                      </span>
-                                    </div>
-
-                                    <h4 className="font-extrabold text-sm text-white line-clamp-2">
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-[#E6E1D8]">
+                                      Lec #{vid.lecture_no} · {vid.subject}
+                                    </span>
+                                    <h4 className="font-bold text-sm text-slate-900 line-clamp-2">
                                       {vid.topic || vid.title}
                                     </h4>
-                                    <p className="text-xs text-slate-400">
+                                    <p className="text-xs text-slate-500">
                                       {vid.chapter}
                                     </p>
                                   </div>
                                 </div>
-
                                 <div className="p-5 pt-0">
                                   <button
                                     onClick={() => toggleWatchStatus(vid.id)}
-                                    className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${
+                                    className={`w-full h-12 rounded-xl text-xs font-bold ${
                                       isWatched
-                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                                        : "azs-btn-primary"
+                                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                        : "bg-[#1E3A8A] text-white"
                                     }`}
                                   >
-                                    <span>
-                                      {isWatched
-                                        ? "✓ Completed"
-                                        : "Mark as Watched"}
-                                    </span>
+                                    {isWatched ? "✓ Watched" : "Mark as Watched"}
                                   </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {filteredMaterials.length > 0 && (
-                      <div className="space-y-4">
-                        <h3 className="text-sm font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-violet-400" />
-                          Study Materials ({filteredMaterials.length})
-                        </h3>
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                          {filteredMaterials.map((mat) => {
-                            const rawFileUrl =
-                              mat.pdf_url || mat.file_url || "";
-                            const drivePreviewLink =
-                              getDrivePreviewUrl(rawFileUrl);
-
-                            return (
-                              <div
-                                key={mat.id}
-                                className="azs-card azs-glass-hover rounded-2xl p-5 flex flex-col justify-between space-y-4"
-                              >
-                                <div className="space-y-3">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span
-                                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                                        mat.subject === "PHYSICS"
-                                          ? "azs-badge-indigo"
-                                          : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
-                                      }`}
-                                    >
-                                      {mat.subject}
-                                    </span>
-                                    <span className="text-[11px] text-slate-400 font-medium truncate">
-                                      {mat.chapter}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex items-start space-x-3">
-                                    <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-300 font-bold text-[10px] shrink-0">
-                                      PDF
-                                    </div>
-                                    <div>
-                                      <h4 className="font-extrabold text-sm text-white leading-snug">
-                                        {mat.title}
-                                      </h4>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    onClick={() => {
-                                      setPreviewPdfUrl(drivePreviewLink);
-                                      setPreviewPdfTitle(mat.title);
-                                    }}
-                                    className="flex-1 py-2.5 azs-btn-primary text-xs"
-                                  >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    <span>Preview</span>
-                                  </button>
-
-                                  <a
-                                    href={rawFileUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-2.5 bg-slate-900/80 hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800 hover:border-cyan-500/30"
-                                    title="Open in new tab / Download"
-                                  >
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                  </a>
                                 </div>
                               </div>
                             );
@@ -1330,1039 +1161,718 @@ function DashboardContent() {
               </div>
             )}
 
-            {/* === PART 3 CONTINUES HERE (dashboard home, lectures, materials, AI, calendar) === */}
-                                                {/* VIEW: DASHBOARD OVERVIEW (EXPLORATION DECK) */}
-                        {!isExpired && !isSearchActive && activeNav === "dashboard" && (
-                            <motion.div 
-                                initial={{ opacity: 0, y: 15 }} 
-                                animate={{ opacity: 1, y: 0 }} 
-                                exit={{ opacity: 0 }}
-                                className="space-y-6"
-                            >
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                    <div>
-                                        <h2 className="text-xl font-black text-white tracking-tight flex items-center gap-3">
-                                            <span className="azs-gradient-text">Command Center</span>
-                                            <span className="azs-badge-cyan animate-pulse">
-                                                Online
-                                            </span>
-                                        </h2>
-                                        <p className="text-xs text-slate-400 mt-1">Welcome back, <strong className="text-white">{userProfile.full_name}</strong>. Select an exploration deck below.</p>
-                                    </div>
-                                </div>
-
-                                {/* IMMERSIVE SUBJECT EXPLORATION LAUNCHPAD */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <motion.div
-                                        whileHover={{ y: -4 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => handleSubjectTransition("PHYSICS")}
-                                        className="group relative bg-gradient-to-br from-indigo-950/40 via-[#060a12]/80 to-[#060a12] rounded-3xl p-8 border border-indigo-500/20 hover:border-indigo-400/50 shadow-2xl cursor-pointer overflow-hidden flex flex-col justify-between h-52 transition-all duration-300"
-                                    >
-                                        {/* Animated Background Elements */}
-                                        <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-indigo-600/20 rounded-full blur-3xl group-hover:bg-indigo-500/30 transition-all duration-700 animate-pulse-glow" />
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-shimmer" />
-
-                                        <div className="space-y-3 relative z-10">
-                                            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)] group-hover:scale-110 transition-transform duration-300">
-                                                <Atom className="w-6 h-6 animate-spin" style={{ animationDuration: "12s" }} />
-                                            </div>
-                                            <div>
-                                                <span className="text-[10px] font-mono uppercase tracking-widest text-indigo-400 font-bold">Sector 01</span>
-                                                <h3 className="text-2xl font-black text-white tracking-tight mt-0.5 group-hover:text-indigo-50 transition-colors">Physics Engine</h3>
-                                            </div>
-                                        </div>
-
-                                        <div className="relative z-10 flex items-center justify-between pt-4 border-t border-indigo-500/20">
-                                            <span className="text-xs font-bold text-indigo-300 group-hover:translate-x-1 transition-transform flex items-center gap-1.5">
-                                                <span>Engage Physics Deck</span>
-                                                <ExternalLink className="w-3.5 h-3.5" />
-                                            </span>
-                                            <span className="text-[10px] font-mono text-indigo-200/50 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/10">
-                                                {Object.keys(chaptersBySubject.PHYSICS).length} Chapters
-                                            </span>
-                                        </div>
-                                    </motion.div>
-
-                                    <motion.div
-                                        whileHover={{ y: -4 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => handleSubjectTransition("CHEMISTRY")}
-                                        className="group relative bg-gradient-to-br from-amber-950/40 via-[#060a12]/80 to-[#060a12] rounded-3xl p-8 border border-amber-500/20 hover:border-amber-400/50 shadow-2xl cursor-pointer overflow-hidden flex flex-col justify-between h-52 transition-all duration-300"
-                                    >
-                                        <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-amber-600/20 rounded-full blur-3xl group-hover:bg-amber-500/30 transition-all duration-700 animate-pulse-glow" style={{ animationDelay: '1s' }} />
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-shimmer" />
-
-                                        <div className="space-y-3 relative z-10">
-                                            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)] group-hover:scale-110 transition-transform duration-300">
-                                                <FlaskConical className="w-6 h-6 animate-bounce" style={{ animationDuration: '3s' }} />
-                                            </div>
-                                            <div>
-                                                <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold">Sector 02</span>
-                                                <h3 className="text-2xl font-black text-white tracking-tight mt-0.5 group-hover:text-amber-50 transition-colors">Chemistry Synthesis</h3>
-                                            </div>
-                                        </div>
-
-                                        <div className="relative z-10 flex items-center justify-between pt-4 border-t border-amber-500/20">
-                                            <span className="text-xs font-bold text-amber-300 group-hover:translate-x-1 transition-transform flex items-center gap-1.5">
-                                                <span>Activate Chemistry Hub</span>
-                                                <ExternalLink className="w-3.5 h-3.5" />
-                                            </span>
-                                            <span className="text-[10px] font-mono text-amber-200/50 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/10">
-                                                {Object.keys(chaptersBySubject.CHEMISTRY).length} Chapters
-                                            </span>
-                                        </div>
-                                    </motion.div>
-                                </div>
-
-                                {/* STATISTICS & CALENDAR */}
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pt-4">
-                                    <div className="lg:col-span-7 space-y-6">
-                                        <h3 className="text-sm font-bold text-white uppercase tracking-wider">Telemetry & Progress</h3>
-
-                                        <div className="grid grid-cols-3 gap-4">
-                                            {[
-                                                { label: "Lectures Completed", value: completedCount, color: "text-cyan-400" },
-                                                { label: "Chapters Active", value: chapterStats.length, color: "text-indigo-400" },
-                                                { label: "Syllabus Coverage", value: `${completionPercentage}%`, color: "text-violet-400" }
-                                            ].map((stat, i) => (
-                                                <motion.div 
-                                                    key={i}
-                                                    initial={{ opacity: 0, scale: 0.9 }}
-                                                    animate={{ opacity: 1, scale: 1 }}
-                                                    transition={{ delay: i * 0.1 }}
-                                                    className="azs-card azs-glass p-5 flex flex-col justify-between items-center text-center group"
-                                                >
-                                                    <p className={`text-2xl sm:text-3xl font-black ${stat.color} drop-shadow-md group-hover:scale-110 transition-transform`}>{stat.value}</p>
-                                                    <p className="text-[10px] sm:text-xs font-semibold text-slate-400 mt-2 uppercase tracking-wide">{stat.label}</p>
-                                                </motion.div>
-                                            ))}
-                                        </div>
-
-                                        <div className="space-y-4 pt-2">
-                                            <div className="flex items-center justify-between">
-                                                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Recommended Lectures</h3>
-                                                <button
-                                                    onClick={() => { setActiveNav("lectures"); setSelectedChapter(null); }}
-                                                    className="text-[11px] font-bold text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 transition-colors"
-                                                >
-                                                    View Vault <ArrowRight className="w-3 h-3" />
-                                                </button>
-                                            </div>
-
-                                            <div className="space-y-3">
-                                                {videos.slice(0, 4).map((v, i) => {
-                                                    const isDone = watchedVideos.includes(v.id);
-                                                    return (
-                                                        <motion.div
-                                                            key={v.id}
-                                                            initial={{ opacity: 0, x: -10 }}
-                                                            animate={{ opacity: 1, x: 0 }}
-                                                            transition={{ delay: i * 0.05 }}
-                                                            className="azs-card azs-glass-hover p-4 flex items-center justify-between group"
-                                                        >
-                                                            <div className="flex items-center space-x-4">
-                                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${
-                                                                    v.subject === "PHYSICS"
-                                                                        ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:bg-indigo-500/20"
-                                                                        : "bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:bg-amber-500/20"
-                                                                    }`}
-                                                                >
-                                                                    #{v.lecture_no}
-                                                                </div>
-                                                                <div>
-                                                                    <h4 className="text-sm font-bold text-white line-clamp-1 group-hover:text-cyan-100 transition-colors">
-                                                                        {v.topic || v.title}
-                                                                    </h4>
-                                                                    <p className="text-[11px] text-slate-400 mt-0.5">{v.chapter}</p>
-                                                                </div>
-                                                            </div>
-
-                                                            <button
-                                                                onClick={() => toggleWatchStatus(v.id)}
-                                                                className={`text-xs font-bold px-3.5 py-1.5 rounded-lg border transition-all shrink-0 ${
-                                                                    isDone
-                                                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
-                                                                    : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white"
-                                                                    }`}
-                                                            >
-                                                                {isDone ? "✓ Done" : "Watch"}
-                                                            </button>
-                                                        </motion.div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="lg:col-span-5 space-y-6">
-                                        <motion.div 
-                                            initial={{ opacity: 0, scale: 0.95 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            className="azs-card azs-glass p-6 space-y-5"
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <h4 className="text-sm font-extrabold text-white tracking-wide">{currentMonthTitle}</h4>
-                                                    <p className="text-[10px] text-slate-400 mt-0.5">Click any date to schedule a study plan</p>
-                                                </div>
-                                                <div className="flex items-center space-x-1.5 bg-white/5 p-1 rounded-xl border border-white/5">
-                                                    <button
-                                                        onClick={handlePrevMonth}
-                                                        className="p-1.5 rounded-lg hover:bg-white/10 text-slate-300 transition-colors"
-                                                        title="Previous Month"
-                                                    >
-                                                        <ChevronLeft className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={handleNextMonth}
-                                                        className="p-1.5 rounded-lg hover:bg-white/10 text-slate-300 transition-colors"
-                                                        title="Next Month"
-                                                    >
-                                                        <ChevronRight className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-7 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                                <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
-                                            </div>
-
-                                            <div className="grid grid-cols-7 text-center text-xs gap-y-2 gap-x-1 font-semibold">
-                                                {Array.from({ length: startDayOfMonth }).map((_, i) => (
-                                                    <span key={`empty-${i}`} className="text-slate-800">
-                                                        -
-                                                    </span>
-                                                ))}
-                                                {Array.from({ length: daysInMonth }).map((_, i) => {
-                                                    const dayNum = i + 1;
-                                                    const dateKey = formatDateKey(currentYearCalendar, currentMonthCalendar, dayNum);
-                                                    const isToday = dateKey === todayKey;
-                                                    const hasPlans = studyPlans.some((p) => p.dateKey === dateKey);
-
-                                                    return (
-                                                        <div key={dayNum} className="flex flex-col items-center">
-                                                            <button
-                                                                onClick={() => setSelectedDateForPlan(dateKey)}
-                                                                className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all relative ${
-                                                                    isToday
-                                                                    ? "bg-gradient-to-br from-cyan-500 to-indigo-600 text-white shadow-[0_0_15px_rgba(34,211,238,0.4)]"
-                                                                    : "text-slate-300 hover:bg-white/10 hover:text-white"
-                                                                    }`}
-                                                            >
-                                                                <span>{dayNum}</span>
-                                                                {hasPlans && (
-                                                                    <span
-                                                                        className={`w-1.5 h-1.5 rounded-full absolute -bottom-1 shadow-sm ${
-                                                                            isToday ? "bg-white" : "bg-cyan-400"
-                                                                        }`}
-                                                                    />
-                                                                )}
-                                                            </button>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </motion.div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {/* VIEW: CHAPTER-WISE VIDEO LECTURES & MATERIALS */}
-                        {!isExpired && !isSearchActive && activeNav === "lectures" && (
-                            <motion.div 
-                                initial={{ opacity: 0, y: 15 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0 }}
-                                className="space-y-6"
-                            >
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div>
-                                        <h2 className="text-xl font-black text-white flex items-center gap-3">
-                                            <AnimatePresence>
-                                                {selectedChapter && (
-                                                    <motion.button
-                                                        initial={{ opacity: 0, scale: 0.8 }}
-                                                        animate={{ opacity: 1, scale: 1 }}
-                                                        exit={{ opacity: 0, scale: 0.8 }}
-                                                        onClick={() => setSelectedChapter(null)}
-                                                        className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10"
-                                                        title="Back to Chapters"
-                                                    >
-                                                        <ArrowLeft className="w-4 h-4" />
-                                                    </motion.button>
-                                                )}
-                                            </AnimatePresence>
-                                            <span className="azs-gradient-text">
-                                                {selectedChapter ? `Chapter: ${selectedChapter}` : "Video Lectures Vault"}
-                                            </span>
-                                        </h2>
-                                        <p className="text-xs text-slate-400 mt-1">
-                                            {selectedChapter
-                                                ? "Select a lecture below to start streaming or take personal notes."
-                                                : "Select a chapter below to view categorized lectures."}
-                                        </p>
-                                    </div>
-
-                                    {!selectedChapter && (
-                                        <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/10 backdrop-blur-md">
-                                            <button
-                                                onClick={() => setSelectedSubjectTab("PHYSICS")}
-                                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                                                    selectedSubjectTab === "PHYSICS"
-                                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/25"
-                                                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                                                    }`}
-                                            >
-                                                <Atom className="w-3.5 h-3.5" />
-                                                <span>Physics</span>
-                                            </button>
-                                            <button
-                                                onClick={() => setSelectedSubjectTab("CHEMISTRY")}
-                                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                                                    selectedSubjectTab === "CHEMISTRY"
-                                                    ? "bg-amber-600 text-white shadow-lg shadow-amber-500/25"
-                                                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                                                    }`}
-                                            >
-                                                <FlaskConical className="w-3.5 h-3.5" />
-                                                <span>Chemistry</span>
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {!selectedChapter && (
-                                    <motion.div layout>
-                                        {Object.keys(currentSubjectChapters).length === 0 ? (
-                                            <div className="azs-card azs-glass rounded-3xl p-16 text-center text-slate-400 text-xs space-y-4">
-                                                <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-2">
-                                                    <FolderOpen className="w-8 h-8 text-slate-500" />
-                                                </div>
-                                                <p className="font-bold text-slate-300 text-sm">No chapters found for {selectedSubjectTab}.</p>
-                                                <p className="text-slate-500 max-w-sm mx-auto">Lectures uploaded by admin will automatically appear categorized here.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                {Object.entries(currentSubjectChapters).map(([chName, chVideos], idx) => {
-                                                    const chMaterials = materialsByChapter[chName] || [];
-                                                    const completedInCh = chVideos.filter(v => watchedVideos.includes(v.id)).length;
-                                                    const chProgress = chVideos.length > 0 ? Math.round((completedInCh / chVideos.length) * 100) : 0;
-                                                    const isPhysics = selectedSubjectTab === "PHYSICS";
-
-                                                    return (
-                                                        <motion.div
-                                                            key={chName}
-                                                            initial={{ opacity: 0, y: 15 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            transition={{ delay: idx * 0.05 }}
-                                                            onClick={() => setSelectedChapter(chName)}
-                                                            className="group azs-card azs-glass-hover rounded-3xl p-6 cursor-pointer flex flex-col justify-between space-y-6 relative overflow-hidden"
-                                                        >
-                                                            {/* Hover Ambient Glow */}
-                                                            <div className={`absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${isPhysics ? 'bg-indigo-500/20' : 'bg-amber-500/20'}`} />
-
-                                                            <div className="space-y-4 relative z-10">
-                                                                <div className="flex items-center justify-between">
-                                                                    <div className={`w-10 h-10 rounded-xl border flex items-center justify-center font-bold text-xs shadow-inner ${
-                                                                        isPhysics ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                                                                    }`}>
-                                                                        <FolderOpen className="w-4 h-4" />
-                                                                    </div>
-                                                                    <span className="text-[10px] font-mono text-slate-300 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 backdrop-blur-sm">
-                                                                        {chVideos.length} Lec | {chMaterials.length} PDF
-                                                                    </span>
-                                                                </div>
-
-                                                                <div>
-                                                                    <h3 className="text-base font-black text-white group-hover:text-cyan-300 transition-colors leading-snug">
-                                                                        {chName}
-                                                                    </h3>
-                                                                    <p className="text-[10px] text-slate-400 uppercase font-bold mt-1.5 tracking-wider flex items-center gap-1.5">
-                                                                        {isPhysics ? <Atom className="w-3 h-3 text-indigo-400" /> : <FlaskConical className="w-3 h-3 text-amber-400" />}
-                                                                        {selectedSubjectTab} Sector
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="space-y-3 relative z-10 pt-4 border-t border-white/10">
-                                                                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400">
-                                                                    <span>Completion</span>
-                                                                    <span className="font-mono text-slate-200">{completedInCh}/{chVideos.length} ({chProgress}%)</span>
-                                                                </div>
-                                                                <div className="w-full bg-black/40 h-2 rounded-full overflow-hidden border border-white/5">
-                                                                    <div className={`h-full rounded-full transition-all duration-700 relative overflow-hidden ${isPhysics ? 'bg-gradient-to-r from-indigo-600 to-cyan-400' : 'bg-gradient-to-r from-amber-600 to-yellow-400'}`} style={{ width: `${chProgress}%` }}>
-                                                                        <div className="absolute inset-0 bg-white/20 w-full animate-shimmer" />
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </motion.div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </motion.div>
-                                )}
-
-                                {selectedChapter && (
-                                    <motion.div 
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        className="space-y-6"
-                                    >
-                                        {/* Horizontal Swipeable Chapter Carousel on Mobile */}
-                                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
-                                            {Object.keys(currentSubjectChapters).map((ch) => (
-                                                <button
-                                                    key={ch}
-                                                    onClick={() => setSelectedChapter(ch)}
-                                                    className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-[0.98] ${
-                                                        selectedChapter === ch
-                                                            ? "bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-lg shadow-cyan-500/20 border border-transparent"
-                                                            : "bg-white/5 text-slate-400 hover:text-white border border-white/10 hover:bg-white/10"
-                                                    }`}
-                                                >
-                                                    {ch}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                            {(currentSubjectChapters[selectedChapter] || []).map((vid, i) => {
-                                                const embedUrl = getYouTubeEmbedUrl(vid.youtube_url || vid.video_url || "");
-                                                const isWatched = watchedVideos.includes(vid.id);
-                                                const isNotesOpen = openNotesId === vid.id;
-                                                const hasNotes = Boolean(lectureNotes[vid.id]?.trim());
-
-                                                return (
-                                                    <motion.div
-                                                        key={vid.id}
-                                                        initial={{ opacity: 0, y: 15 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        transition={{ delay: i * 0.05 }}
-                                                        id={`lecture-card-${vid.id}`}
-                                                        className={`azs-card azs-glass rounded-2xl overflow-hidden transition-all duration-300 flex flex-col justify-between ${
-                                                            isWatched ? "border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]" : ""
-                                                        }`}
-                                                    >
-                                                        <div>
-                                                            <div className="aspect-video w-full bg-black relative border-b border-white/10 group">
-                                                                {embedUrl ? (
-                                                                    <iframe
-                                                                        src={embedUrl}
-                                                                        title={vid.topic || vid.title || "Lecture"}
-                                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                                        allowFullScreen
-                                                                        className="w-full h-full border-none"
-                                                                    />
-                                                                ) : (
-                                                                    <div className="h-full flex items-center justify-center text-xs text-slate-500">
-                                                                        Invalid Video Link
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            <div className="p-5 space-y-3">
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-white/10 text-slate-300 border border-white/10">
-                                                                        Lecture #{vid.lecture_no}
-                                                                    </span>
-                                                                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md border ${
-                                                                        vid.subject === "PHYSICS" ? "bg-indigo-500/10 text-indigo-300 border-indigo-500/20" : "bg-amber-500/10 text-amber-300 border-amber-500/20"
-                                                                    }`}>
-                                                                        {vid.subject}
-                                                                    </span>
-                                                                </div>
-
-                                                                <h3 className="font-black text-sm text-white line-clamp-2 leading-tight">
-                                                                    {vid.topic || vid.title}
-                                                                </h3>
-                                                                <p className="text-[11px] font-medium text-slate-400">{vid.chapter}</p>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="p-5 pt-0 space-y-3">
-                                                            <div className="border border-white/10 rounded-xl overflow-hidden bg-black/40 transition-colors hover:border-white/20">
-                                                                <button
-                                                                    onClick={() => setOpenNotesId(isNotesOpen ? null : vid.id)}
-                                                                    className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-bold text-slate-300 hover:bg-white/5 transition-colors"
-                                                                >
-                                                                    <div className="flex items-center gap-2">
-                                                                        <FileEdit className="w-3.5 h-3.5 text-cyan-400" />
-                                                                        <span>My Notes</span>
-                                                                        {hasNotes && (
-                                                                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)] animate-pulse" />
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                                                                        {saveStatus[vid.id] && (
-                                                                            <span className="text-emerald-400 font-semibold text-[10px]">Saved!</span>
-                                                                        )}
-                                                                        <motion.div animate={{ rotate: isNotesOpen ? 180 : 0 }}>
-                                                                            <ChevronDown className="w-3.5 h-3.5" />
-                                                                        </motion.div>
-                                                                    </div>
-                                                                </button>
-
-                                                                <AnimatePresence>
-                                                                    {isNotesOpen && (
-                                                                        <motion.div
-                                                                            initial={{ height: 0, opacity: 0 }}
-                                                                            animate={{ height: "auto", opacity: 1 }}
-                                                                            exit={{ height: 0, opacity: 0 }}
-                                                                            className="overflow-hidden"
-                                                                        >
-                                                                            <div className="p-3 bg-white/5 border-t border-white/10 space-y-3">
-                                                                                <textarea
-                                                                                    rows={4}
-                                                                                    placeholder="Jot down key formulas, tips, or timestamps here..."
-                                                                                    value={lectureNotes[vid.id] || ""}
-                                                                                    onChange={(e) => handleNoteChange(vid.id, e.target.value)}
-                                                                                    className="azs-input resize-none text-[11px] p-2.5 w-full bg-black/50"
-                                                                                />
-
-                                                                                <div className="flex items-center justify-between">
-                                                                                    <button
-                                                                                        onClick={() => handleAddTimestampTag(vid.id)}
-                                                                                        className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors"
-                                                                                    >
-                                                                                        <Clock className="w-3 h-3" />
-                                                                                        <span>+ Tag Timestamp</span>
-                                                                                    </button>
-
-                                                                                    {hasNotes && (
-                                                                                        <button
-                                                                                            onClick={() => handleExportNotes(vid)}
-                                                                                            className="text-[10px] font-bold text-slate-300 hover:text-white flex items-center gap-1 transition-colors"
-                                                                                            title="Download as TXT file"
-                                                                                        >
-                                                                                            <Download className="w-3 h-3" />
-                                                                                            <span>Export</span>
-                                                                                        </button>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-                                                                        </motion.div>
-                                                                    )}
-                                                                </AnimatePresence>
-                                                            </div>
-
-                                                            <button
-                                                                onClick={() => toggleWatchStatus(vid.id)}
-                                                                className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2 ${
-                                                                    isWatched
-                                                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20"
-                                                                    : "azs-btn-primary"
-                                                                    }`}
-                                                            >
-                                                                <span>{isWatched ? "✓ Completed" : "Mark as Watched"}</span>
-                                                            </button>
-                                                        </div>
-                                                    </motion.div>
-                                                );
-                                            })}
-                                        </div>
-
-                                        {/* CHAPTER-WISE STUDY SHEETS / PDF MATERIALS */}
-                                        {(materialsByChapter[selectedChapter] || []).length > 0 && (
-                                            <div className="space-y-5 pt-8 mt-4 border-t border-white/10">
-                                                <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                                                    <FileText className="w-4 h-4 text-cyan-400" />
-                                                    Study Sheets & Handouts
-                                                </h3>
-                                                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                    {(materialsByChapter[selectedChapter] || []).map((mat, idx) => {
-                                                        const rawFileUrl = mat.pdf_url || mat.file_url || "";
-                                                        const drivePreviewLink = getDrivePreviewUrl(rawFileUrl);
-
-                                                        return (
-                                                            <motion.div
-                                                                key={mat.id}
-                                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                                animate={{ opacity: 1, scale: 1 }}
-                                                                transition={{ delay: idx * 0.1 }}
-                                                                className="azs-card azs-glass-hover rounded-2xl p-5 flex flex-col justify-between space-y-5 group"
-                                                            >
-                                                                <div className="space-y-4">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/10 text-slate-300 border border-white/10">
-                                                                            {mat.subject}
-                                                                        </span>
-                                                                        <span className="text-[10px] text-slate-400 font-medium truncate max-w-[120px]">{mat.chapter}</span>
-                                                                    </div>
-
-                                                                    <div className="flex items-start space-x-3">
-                                                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500/20 to-orange-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 font-black text-[10px] shrink-0 group-hover:scale-110 transition-transform shadow-[0_0_10px_rgba(244,63,94,0.1)]">
-                                                                            PDF
-                                                                        </div>
-                                                                        <div>
-                                                                            <h3 className="font-bold text-sm text-white leading-tight group-hover:text-cyan-200 transition-colors line-clamp-2">{mat.title}</h3>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="flex items-center gap-2 pt-2 border-t border-white/5">
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setPreviewPdfUrl(drivePreviewLink);
-                                                                            setPreviewPdfTitle(mat.title);
-                                                                        }}
-                                                                        className="flex-1 azs-btn-cyan text-xs py-2.5 rounded-xl flex items-center justify-center space-x-1.5"
-                                                                    >
-                                                                        <Eye className="w-3.5 h-3.5" />
-                                                                        <span>Preview</span>
-                                                                    </button>
-
-                                                                    <a
-                                                                        href={rawFileUrl}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-colors border border-white/10 flex items-center justify-center"
-                                                                        title="Open in new tab / Download"
-                                                                    >
-                                                                        <ExternalLink className="w-4 h-4" />
-                                                                    </a>
-                                                                </div>
-                                                            </motion.div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </motion.div>
-                                )}
-                            </motion.div>
-                        )}
-
-                                               {/* VIEW: STUDY MATERIALS (PDF TAB DIRECT) */}
-                        {!isExpired && !isSearchActive && activeNav === "materials" && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 15 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0 }}
-                                className="space-y-6"
-                            >
-                                <div>
-                                    <h2 className="text-xl font-black tracking-tight">
-                                        <span className="azs-gradient-text">Study Materials & Handouts</span>
-                                    </h2>
-                                    <p className="text-xs text-slate-400 mt-1">
-                                        All downloadable PDFs and problem sheets categorized by chapters.
-                                    </p>
-                                </div>
-
-                                {materials.length === 0 ? (
-                                    <div className="azs-card azs-glass rounded-3xl p-16 text-center space-y-4">
-                                        <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto">
-                                            <FileText className="w-8 h-8 text-slate-500" />
-                                        </div>
-                                        <p className="font-bold text-slate-300 text-sm">No study sheets uploaded yet.</p>
-                                        <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                                            PDFs and handouts added by admin will appear here automatically.
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {materials.map((mat, idx) => {
-                                            const rawFileUrl = mat.pdf_url || mat.file_url || "";
-                                            const drivePreviewLink = getDrivePreviewUrl(rawFileUrl);
-                                            const isPhysics = mat.subject === "PHYSICS";
-
-                                            return (
-                                                <motion.div
-                                                    key={mat.id}
-                                                    initial={{ opacity: 0, y: 12 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ delay: idx * 0.04 }}
-                                                    className="azs-card azs-glass-hover rounded-2xl p-5 flex flex-col justify-between space-y-5 group relative overflow-hidden"
-                                                >
-                                                    <div
-                                                        className={`absolute -top-8 -right-8 w-28 h-28 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${
-                                                            isPhysics ? "bg-indigo-500/20" : "bg-amber-500/20"
-                                                        }`}
-                                                    />
-
-                                                    <div className="space-y-4 relative z-10">
-                                                        <div className="flex items-center justify-between gap-2">
-                                                            <span
-                                                                className={`text-[10px] font-bold px-2.5 py-1 rounded-md border ${
-                                                                    isPhysics
-                                                                        ? "bg-indigo-500/10 text-indigo-300 border-indigo-500/20"
-                                                                        : "bg-amber-500/10 text-amber-300 border-amber-500/20"
-                                                                }`}
-                                                            >
-                                                                {mat.subject}
-                                                            </span>
-                                                            <span className="text-[10px] text-slate-400 font-medium truncate max-w-[140px]">
-                                                                {mat.chapter}
-                                                            </span>
-                                                        </div>
-
-                                                        <div className="flex items-start space-x-3">
-                                                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500/20 to-orange-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 font-black text-[10px] shrink-0 group-hover:scale-110 transition-transform shadow-[0_0_12px_rgba(244,63,94,0.15)]">
-                                                                PDF
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <h3 className="font-bold text-sm text-white leading-snug group-hover:text-cyan-200 transition-colors line-clamp-2">
-                                                                    {mat.title}
-                                                                </h3>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex items-center gap-2 pt-2 border-t border-white/5 relative z-10">
-                                                        <button
-                                                            onClick={() => {
-                                                                setPreviewPdfUrl(drivePreviewLink);
-                                                                setPreviewPdfTitle(mat.title);
-                                                            }}
-                                                            className="flex-1 azs-btn-cyan text-xs py-2.5 rounded-xl flex items-center justify-center space-x-1.5"
-                                                        >
-                                                            <Eye className="w-3.5 h-3.5" />
-                                                            <span>Preview</span>
-                                                        </button>
-
-                                                        <a
-                                                            href={rawFileUrl}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-colors border border-white/10 flex items-center justify-center"
-                                                            title="Open in new tab / Download"
-                                                        >
-                                                            <ExternalLink className="w-4 h-4" />
-                                                        </a>
-                                                    </div>
-                                                </motion.div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </motion.div>
-                        )}
-
-                        {/* VIEW: INTEGRATED AI TUTOR (FULL PAGE) */}
-                        {!isExpired && !isSearchActive && activeNav === "ai" && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 12 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0 }}
-                                className="h-[calc(100vh-140px)] min-h-[640px] rounded-3xl overflow-hidden border border-white/10 azs-glass shadow-2xl relative"
-                            >
-                                <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5" />
-                                <div className="relative h-full z-10">
-                                    <EduTrackAiChat isEmbedded={true} />
-                                </div>
-                            </motion.div>
-                        )}
-                    </main>
-
-                    {/* DEVELOPER CREDIT FOOTER */}
-                    <footer className="w-full py-6 px-6 text-center border-t border-white/5 bg-[#060a12]/80 backdrop-blur-xl mt-auto">
-                        <div className="max-w-7xl mx-auto flex flex-col items-center justify-center space-y-2">
-                            <div className="flex md:hidden items-center justify-center space-x-2 text-xs text-slate-300 font-bold mb-1">
-                                <span className="text-cyan-400/90">Academic Guide:</span>
-                                <a
-                                    href={TEACHER_SOCIAL.whatsapp}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition-colors"
-                                >
-                                    {TEACHER_SOCIAL.name}
-                                </a>
-                            </div>
-
-                            <p className="text-xs text-slate-400 font-medium tracking-wide">
-                                © {currentYear} AZS: The Catalyst • Developed with ❤️ by{" "}
-                                <a
-                                    href="https://www.linkedin.com/in/sajedul-islam-data/"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="font-bold text-cyan-400 hover:text-cyan-300 hover:underline transition-colors inline-flex items-center gap-1"
-                                >
-                                    Mir Mohammad Sajedul Islam
-                                    <ExternalLink className="w-3 h-3 inline" />
-                                </a>
-                            </p>
-                        </div>
-                    </footer>
+            {/* VIEW: DASHBOARD OVERVIEW COMMAND DECK */}
+            {!isExpired && !isSearchActive && activeNav === "dashboard" && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-8"
+              >
+                <div>
+                  <h1 className="text-2xl font-black text-[#1E3A8A]">
+                    Academic Command Deck
+                  </h1>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Welcome back,{" "}
+                    <strong className="text-slate-900">
+                      {userProfile.full_name}
+                    </strong>
+                    . Select a subject launchpad below.
+                  </p>
                 </div>
-            </div>
 
-            {/* FLOATING AI CHAT BUTTON & POPUP WIDGET */}
-            {!isExpired && activeNav !== "ai" && (
-                <>
-                    {!isFloatingChatOpen ? (
-                        <div className="fixed bottom-20 md:bottom-6 right-4 md:right-5 z-40">
-                            <motion.button
-                                initial={{ scale: 0.8, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                whileHover={{ scale: 1.06 }}
-                                whileTap={{ scale: 0.94 }}
-                                onClick={() => setIsFloatingChatOpen(true)}
-                                className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white rounded-full shadow-[0_0_30px_rgba(99,102,241,0.45)] flex items-center justify-center transition-all group relative border border-white/20"
-                                title="Ask AI Tutor"
-                            >
-                                <span className="absolute inset-0 rounded-full bg-indigo-400/30 animate-ping opacity-40" />
-                                <Bot className="w-7 h-7 text-white relative z-10" />
-                                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 border-2 border-[#060a12] rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                            </motion.button>
+                {/* Subject Launchpads */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Physics Launcher */}
+                  <div
+                    onClick={() => handleSubjectTransition("PHYSICS")}
+                    className="group bg-white border border-sky-200 hover:border-[#0369A1] rounded-3xl p-8 cursor-pointer shadow-sm hover:shadow-md transition-all flex flex-col justify-between min-h-[220px] relative overflow-hidden"
+                  >
+                    <div className="space-y-3 relative z-10">
+                      <div className="w-14 h-14 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-[#0369A1]">
+                        <Atom className="w-7 h-7 animate-spin" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-[#0369A1] uppercase tracking-widest">
+                          Sector 01
+                        </span>
+                        <h3 className="text-2xl font-black text-[#1E3A8A]">
+                          Physics Engine
+                        </h3>
+                      </div>
+                    </div>
+                    <div className="pt-4 border-t border-sky-100 flex items-center justify-between text-xs font-bold text-[#0369A1]">
+                      <span>Open Physics Vault</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+
+                  {/* Chemistry Launcher */}
+                  <div
+                    onClick={() => handleSubjectTransition("CHEMISTRY")}
+                    className="group bg-white border border-emerald-200 hover:border-[#047857] rounded-3xl p-8 cursor-pointer shadow-sm hover:shadow-md transition-all flex flex-col justify-between min-h-[220px] relative overflow-hidden"
+                  >
+                    <div className="space-y-3 relative z-10">
+                      <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#047857]">
+                        <FlaskConical className="w-7 h-7 animate-bounce" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-[#047857] uppercase tracking-widest">
+                          Sector 02
+                        </span>
+                        <h3 className="text-2xl font-black text-[#1E3A8A]">
+                          Chemistry Lab
+                        </h3>
+                      </div>
+                    </div>
+                    <div className="pt-4 border-t border-emerald-100 flex items-center justify-between text-xs font-bold text-[#047857]">
+                      <span>Open Chemistry Hub</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress Stats & Calendar */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                  <div className="lg:col-span-7 space-y-6">
+                    <h3 className="text-xs font-bold text-[#1E3A8A] uppercase tracking-wider">
+                      Academic Telemetry
+                    </h3>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      {[
+                        {
+                          label: "Completed",
+                          value: completedCount,
+                          color: "text-[#0369A1]",
+                        },
+                        {
+                          label: "Chapters",
+                          value: chapterStats.length,
+                          color: "text-[#1E3A8A]",
+                        },
+                        {
+                          label: "Coverage",
+                          value: `${completionPercentage}%`,
+                          color: "text-[#047857]",
+                        },
+                      ].map((stat, i) => (
+                        <div
+                          key={i}
+                          className="bg-white border border-[#E6E1D8] p-5 rounded-2xl text-center shadow-sm"
+                        >
+                          <p className={`text-2xl font-black ${stat.color}`}>
+                            {stat.value}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">
+                            {stat.label}
+                          </p>
                         </div>
-                    ) : (
-                        <EduTrackAiChat isOpen={true} onClose={() => setIsFloatingChatOpen(false)} />
-                    )}
-                </>
+                      ))}
+                    </div>
+
+                    <div className="bg-white border border-[#E6E1D8] rounded-3xl p-6 shadow-sm space-y-4">
+                      <h4 className="text-sm font-bold text-slate-900">
+                        Recommended Lectures
+                      </h4>
+                      <div className="space-y-3">
+                        {videos.slice(0, 4).map((v) => {
+                          const isDone = watchedVideos.includes(v.id);
+                          return (
+                            <div
+                              key={v.id}
+                              className="flex items-center justify-between p-3.5 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl gap-3"
+                            >
+                              <div className="flex items-center space-x-3 overflow-hidden">
+                                <div
+                                  className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                                    v.subject === "PHYSICS"
+                                      ? "bg-sky-100 text-[#0369A1]"
+                                      : "bg-emerald-100 text-[#047857]"
+                                  }`}
+                                >
+                                  #{v.lecture_no}
+                                </div>
+                                <div className="overflow-hidden">
+                                  <p className="text-xs font-bold text-slate-900 truncate">
+                                    {v.topic || v.title}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500 truncate">
+                                    {v.chapter}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={() => toggleWatchStatus(v.id)}
+                                className={`h-9 px-3 rounded-lg text-xs font-bold shrink-0 ${
+                                  isDone
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : "bg-white border border-[#E6E1D8] text-slate-700 hover:bg-slate-100"
+                                }`}
+                              >
+                                {isDone ? "✓ Done" : "Watch"}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Calendar Widget */}
+                  <div className="lg:col-span-5">
+                    <div className="bg-white border border-[#E6E1D8] rounded-3xl p-6 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-black text-[#1E3A8A]">
+                          {currentMonthTitle}
+                        </h4>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={handlePrevMonth}
+                            className="p-1.5 rounded-lg border border-[#E6E1D8] text-slate-600 hover:bg-slate-50"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={handleNextMonth}
+                            className="p-1.5 rounded-lg border border-[#E6E1D8] text-slate-600 hover:bg-slate-50"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 uppercase">
+                        <span>Su</span>
+                        <span>Mo</span>
+                        <span>Tu</span>
+                        <span>We</span>
+                        <span>Th</span>
+                        <span>Fr</span>
+                        <span>Sa</span>
+                      </div>
+
+                      <div className="grid grid-cols-7 text-center text-xs gap-1 font-semibold">
+                        {Array.from({ length: startDayOfMonth }).map((_, i) => (
+                          <span key={`empty-${i}`} className="text-slate-300">
+                            -
+                          </span>
+                        ))}
+                        {Array.from({ length: daysInMonth }).map((_, i) => {
+                          const dayNum = i + 1;
+                          const dateKey = formatDateKey(
+                            currentYearCalendar,
+                            currentMonthCalendar,
+                            dayNum
+                          );
+                          const isToday = dateKey === todayKey;
+                          const hasPlans = studyPlans.some(
+                            (p) => p.dateKey === dateKey
+                          );
+
+                          return (
+                            <button
+                              key={dayNum}
+                              onClick={() => setSelectedDateForPlan(dateKey)}
+                              className={`h-9 w-9 mx-auto flex items-center justify-center rounded-xl relative ${
+                                isToday
+                                  ? "bg-[#1E3A8A] text-white shadow-md"
+                                  : "text-slate-700 hover:bg-slate-100"
+                              }`}
+                            >
+                              <span>{dayNum}</span>
+                              {hasPlans && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#0369A1] absolute bottom-1" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             )}
 
-            {/* 3. STUDY PLANNER MODAL */}
-            <AnimatePresence>
-                {selectedDateForPlan && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4"
-                        onClick={() => setSelectedDateForPlan(null)}
-                    >
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.94, y: 12 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.96, y: 8 }}
-                            transition={{ type: "spring", stiffness: 380, damping: 28 }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="azs-card azs-glass border border-white/10 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 relative overflow-hidden"
+            {/* VIEW: CHAPTER-WISE LECTURES VAULT */}
+            {!isExpired && !isSearchActive && activeNav === "lectures" && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
+              >
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h2 className="text-2xl font-black text-[#1E3A8A] flex items-center gap-3">
+                      {selectedChapter && (
+                        <button
+                          onClick={() => setSelectedChapter(null)}
+                          className="w-10 h-10 rounded-full bg-white border border-[#E6E1D8] flex items-center justify-center text-slate-700 hover:bg-slate-50"
                         >
-                            <div className="absolute -top-20 -right-20 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+                          <ArrowLeft className="w-5 h-5" />
+                        </button>
+                      )}
+                      <span>
+                        {selectedChapter
+                          ? `Chapter: ${selectedChapter}`
+                          : "Video Lectures Vault"}
+                      </span>
+                    </h2>
+                  </div>
 
-                            <div className="flex items-center justify-between border-b border-white/10 pb-3 relative z-10">
-                                <div>
-                                    <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                                        <CalendarIcon className="w-4 h-4 text-cyan-400" />
-                                        <span>Study Planner</span>
-                                    </h3>
-                                    <p className="text-xs text-slate-400 font-mono mt-0.5">Date: {selectedDateForPlan}</p>
+                  {!selectedChapter && (
+                    <div className="flex items-center bg-white border border-[#E6E1D8] rounded-2xl p-1 shadow-sm">
+                      <button
+                        onClick={() => setSelectedSubjectTab("PHYSICS")}
+                        className={`h-10 px-5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                          selectedSubjectTab === "PHYSICS"
+                            ? "bg-[#0369A1] text-white"
+                            : "text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        <Atom className="w-4 h-4" />
+                        <span>Physics</span>
+                      </button>
+                      <button
+                        onClick={() => setSelectedSubjectTab("CHEMISTRY")}
+                        className={`h-10 px-5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                          selectedSubjectTab === "CHEMISTRY"
+                            ? "bg-[#047857] text-white"
+                            : "text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        <FlaskConical className="w-4 h-4" />
+                        <span>Chemistry</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {!selectedChapter ? (
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Object.entries(currentSubjectChapters).map(
+                      ([chName, chVideos]) => {
+                        const chMaterials = materialsByChapter[chName] || [];
+                        const completedInCh = chVideos.filter((v) =>
+                          watchedVideos.includes(v.id)
+                        ).length;
+                        const chProgress =
+                          chVideos.length > 0
+                            ? Math.round(
+                                (completedInCh / chVideos.length) * 100
+                              )
+                            : 0;
+
+                        return (
+                          <div
+                            key={chName}
+                            onClick={() => setSelectedChapter(chName)}
+                            className="bg-white border border-[#E6E1D8] hover:border-[#1E3A8A] rounded-3xl p-6 cursor-pointer shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-6"
+                          >
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-[#E6E1D8] flex items-center justify-center text-[#1E3A8A]">
+                                  <FolderOpen className="w-6 h-6" />
                                 </div>
-                                <button
-                                    onClick={() => setSelectedDateForPlan(null)}
-                                    className="p-1.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-white/10"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
+                                <span className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
+                                  {chVideos.length} Lec | {chMaterials.length} PDF
+                                </span>
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-black text-slate-900 leading-snug">
+                                  {chName}
+                                </h3>
+                              </div>
                             </div>
 
-                            <div className="space-y-2 max-h-48 overflow-y-auto pr-1 relative z-10">
-                                {studyPlans.filter((p) => p.dateKey === selectedDateForPlan).length === 0 ? (
-                                    <p className="text-xs text-slate-400 text-center py-5 bg-white/5 rounded-2xl border border-white/10">
-                                        No study plans set for this day yet.
-                                    </p>
-                                ) : (
-                                    studyPlans
-                                        .filter((p) => p.dateKey === selectedDateForPlan)
-                                        .map((p) => (
-                                            <div
-                                                key={p.id}
-                                                className="flex items-center justify-between bg-white/5 hover:bg-white/10 p-3 rounded-2xl border border-white/10 text-xs transition-colors"
-                                            >
-                                                <div className="space-y-0.5 min-w-0">
-                                                    <p className="font-bold text-white truncate">{p.title}</p>
-                                                    {p.time && (
-                                                        <p className="text-[10px] text-cyan-400/80 font-mono">{p.time}</p>
-                                                    )}
-                                                </div>
-                                                <button
-                                                    onClick={() => handleDeletePlan(p.id)}
-                                                    className="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors shrink-0"
-                                                    title="Remove plan"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        ))
-                                )}
-                            </div>
-
-                            <form onSubmit={handleAddPlan} className="space-y-3 pt-2 border-t border-white/10 relative z-10">
-                                <label className="text-xs font-bold text-slate-300 block">Add Goal / Revision Plan</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. Complete Reflection of Light CQ-01"
-                                    value={newPlanTitle}
-                                    onChange={(e) => setNewPlanTitle(e.target.value)}
-                                    className="azs-input w-full rounded-2xl px-4 py-2.5 text-xs"
+                            <div className="space-y-2 pt-4 border-t border-[#E6E1D8]">
+                              <div className="flex justify-between text-xs font-bold text-slate-600">
+                                <span>Completion</span>
+                                <span>{chProgress}%</span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-[#1E3A8A] rounded-full"
+                                  style={{ width: `${chProgress}%` }}
                                 />
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Target Time (e.g. 8:00 PM)"
-                                        value={newPlanTime}
-                                        onChange={(e) => setNewPlanTime(e.target.value)}
-                                        className="azs-input flex-1 rounded-2xl px-4 py-2 text-xs"
-                                    />
-                                    <button
-                                        type="submit"
-                                        className="azs-btn-primary px-4 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 shrink-0"
-                                    >
-                                        <Plus className="w-3.5 h-3.5" />
-                                        <span>Save Plan</span>
-                                    </button>
-                                </div>
-                            </form>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* 4. PDF IN-APP PREVIEW MODAL */}
-            <AnimatePresence>
-                {previewPdfUrl && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-[#060a12]/85 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-6"
-                        onClick={() => setPreviewPdfUrl(null)}
-                    >
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.96, y: 16 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.98, y: 8 }}
-                            transition={{ type: "spring", stiffness: 340, damping: 30 }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="azs-glass border border-white/10 rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl"
-                        >
-                            <div className="px-5 sm:px-6 py-4 bg-white/[0.03] border-b border-white/10 flex items-center justify-between gap-3">
-                                <div className="flex items-center space-x-3 min-w-0">
-                                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-500/20 to-orange-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center font-black text-[10px] shrink-0">
-                                        PDF
-                                    </div>
-                                    <div className="min-w-0">
-                                        <h3 className="text-sm font-extrabold text-white leading-tight truncate">
-                                            {previewPdfTitle || "Document Preview"}
-                                        </h3>
-                                        <p className="text-[10px] text-slate-400">AZS: The Catalyst — Document Reader</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center space-x-2 shrink-0">
-                                    <a
-                                        href={previewPdfUrl.replace("/preview", "/view")}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-white/10"
-                                    >
-                                        <ExternalLink className="w-3.5 h-3.5" />
-                                        <span className="hidden sm:inline">Open in Drive</span>
-                                    </a>
-                                    <button
-                                        onClick={() => setPreviewPdfUrl(null)}
-                                        className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors border border-white/10"
-                                    >
-                                        <X className="w-5 h-5" />
-                                    </button>
-                                </div>
+                              </div>
                             </div>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {(currentSubjectChapters[selectedChapter] || []).map(
+                        (vid) => {
+                          const embedUrl = getYouTubeEmbedUrl(
+                            vid.youtube_url || vid.video_url || ""
+                          );
+                          const isWatched = watchedVideos.includes(vid.id);
+                          const isNotesOpen = openNotesId === vid.id;
 
-                            <div className="flex-1 w-full bg-black/60 relative">
-                                <iframe
-                                    src={previewPdfUrl}
-                                    title={previewPdfTitle}
+                          return (
+                            <div
+                              key={vid.id}
+                              className="bg-white border border-[#E6E1D8] rounded-3xl overflow-hidden shadow-sm flex flex-col justify-between"
+                            >
+                              <div>
+                                <div className="aspect-video bg-slate-900">
+                                  <iframe
+                                    src={embedUrl}
+                                    title={vid.topic || "Lecture"}
                                     className="w-full h-full border-none"
-                                    allow="autoplay"
-                                />
+                                    allowFullScreen
+                                  />
+                                </div>
+                                <div className="p-5 space-y-3">
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-[#E6E1D8]">
+                                    Lec #{vid.lecture_no} · {vid.subject}
+                                  </span>
+                                  <h3 className="font-bold text-slate-900 text-sm leading-snug">
+                                    {vid.topic || vid.title}
+                                  </h3>
+                                </div>
+                              </div>
+
+                              <div className="p-5 pt-0 space-y-3">
+                                {/* Lecture Notes Drawer */}
+                                <div className="border border-[#E6E1D8] rounded-xl overflow-hidden bg-[#FAF8F5]">
+                                  <button
+                                    onClick={() =>
+                                      setOpenNotesId(
+                                        isNotesOpen ? null : vid.id
+                                      )
+                                    }
+                                    className="w-full px-4 h-11 flex items-center justify-between text-xs font-bold text-slate-700"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <FileEdit className="w-4 h-4 text-[#0369A1]" />
+                                      <span>My Personal Notes</span>
+                                    </div>
+                                    <ChevronDown className="w-4 h-4" />
+                                  </button>
+
+                                  {isNotesOpen && (
+                                    <div className="p-3 bg-white border-t border-[#E6E1D8] space-y-3">
+                                      <textarea
+                                        rows={4}
+                                        placeholder="Write key formulas or timestamps..."
+                                        value={lectureNotes[vid.id] || ""}
+                                        onChange={(e) =>
+                                          handleNoteChange(vid.id, e.target.value)
+                                        }
+                                        className="w-full p-2.5 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl text-xs text-slate-900 outline-none"
+                                      />
+                                      <div className="flex justify-between text-[11px]">
+                                        <button
+                                          onClick={() =>
+                                            handleAddTimestampTag(vid.id)
+                                          }
+                                          className="font-bold text-[#0369A1]"
+                                        >
+                                          + Add Timestamp
+                                        </button>
+                                        <button
+                                          onClick={() => handleExportNotes(vid)}
+                                          className="font-bold text-slate-600"
+                                        >
+                                          Export TXT
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <button
+                                  onClick={() => toggleWatchStatus(vid.id)}
+                                  className={`w-full h-12 rounded-xl text-xs font-bold ${
+                                    isWatched
+                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                      : "bg-[#1E3A8A] text-white"
+                                  }`}
+                                >
+                                  {isWatched ? "✓ Completed" : "Mark as Watched"}
+                                </button>
+                              </div>
                             </div>
-                        </motion.div>
-                    </motion.div>
+                          );
+                        }
+                      )}
+                    </div>
+                  </div>
                 )}
-            </AnimatePresence>
+              </motion.div>
+            )}
 
-            {/* MOBILE STICKY BOTTOM NAVIGATION DOCK (Thumb Zone Optimized) */}
-            <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[#060a12]/92 backdrop-blur-2xl border-t border-white/10 px-2 py-2 flex items-center justify-around shadow-[0_-8px_30px_rgba(0,0,0,0.45)]">
-                <button
-                    onClick={() => {
-                        setActiveNav("dashboard");
-                        setSelectedChapter(null);
-                        setIsMobileSidebarOpen(false);
-                    }}
-                    className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all active:scale-95 ${
-                        activeNav === "dashboard"
-                            ? "text-cyan-400 font-bold bg-cyan-500/10"
-                            : "text-slate-400 hover:text-slate-200"
-                    }`}
-                >
-                    <LayoutDashboard className="w-5 h-5" />
-                    <span className="text-[10px] tracking-tight">ড্যাশবোর্ড</span>
-                </button>
+            {/* VIEW: STUDY MATERIALS PDF TAB */}
+            {!isExpired && !isSearchActive && activeNav === "materials" && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
+              >
+                <div>
+                  <h2 className="text-2xl font-black text-[#1E3A8A]">
+                    Study Materials &amp; PDFs
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Download lecture handouts and problem practice sheets.
+                  </p>
+                </div>
 
-                <button
-                    onClick={() => {
-                        setActiveNav("lectures");
-                        setSelectedChapter(null);
-                        setIsMobileSidebarOpen(false);
-                    }}
-                    className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all active:scale-95 ${
-                        activeNav === "lectures"
-                            ? "text-cyan-400 font-bold bg-cyan-500/10"
-                            : "text-slate-400 hover:text-slate-200"
-                    }`}
-                >
-                    <PlayCircle className="w-5 h-5" />
-                    <span className="text-[10px] tracking-tight">ক্লাস</span>
-                </button>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {materials.map((mat) => {
+                    const rawFileUrl = mat.pdf_url || mat.file_url || "";
+                    const drivePreviewLink = getDrivePreviewUrl(rawFileUrl);
 
-                <button
-                    onClick={() => {
-                        setActiveNav("materials");
-                        setSelectedChapter(null);
-                        setIsMobileSidebarOpen(false);
-                    }}
-                    className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all active:scale-95 ${
-                        activeNav === "materials"
-                            ? "text-cyan-400 font-bold bg-cyan-500/10"
-                            : "text-slate-400 hover:text-slate-200"
-                    }`}
-                >
-                    <FileText className="w-5 h-5" />
-                    <span className="text-[10px] tracking-tight">শিট</span>
-                </button>
+                    return (
+                      <div
+                        key={mat.id}
+                        className="bg-white border border-[#E6E1D8] rounded-3xl p-6 flex flex-col justify-between space-y-5 shadow-sm"
+                      >
+                        <div className="space-y-3">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-[#E6E1D8]">
+                            {mat.subject} · {mat.chapter}
+                          </span>
+                          <h3 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2">
+                            {mat.title}
+                          </h3>
+                        </div>
 
-                <button
-                    onClick={() => {
-                        setActiveNav("ai");
-                        setSelectedChapter(null);
-                        setIsMobileSidebarOpen(false);
-                    }}
-                    className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all active:scale-95 ${
-                        activeNav === "ai"
-                            ? "text-indigo-300 font-bold bg-indigo-500/15"
-                            : "text-slate-400 hover:text-slate-200"
-                    }`}
-                >
-                    <Bot className={`w-5 h-5 ${activeNav === "ai" ? "text-indigo-300" : "text-indigo-400/80"}`} />
-                    <span className="text-[10px] tracking-tight">AI টিউটর</span>
-                </button>
-            </nav>
+                        <div className="flex items-center gap-2 pt-2 border-t border-[#E6E1D8]">
+                          <button
+                            onClick={() => {
+                              setPreviewPdfUrl(drivePreviewLink);
+                              setPreviewPdfTitle(mat.title);
+                            }}
+                            className="flex-1 h-12 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl flex items-center justify-center gap-2"
+                          >
+                            <Eye className="w-4 h-4" /> Preview
+                          </button>
+
+                          <a
+                            href={rawFileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-12 h-12 bg-[#1E3A8A] text-white rounded-xl flex items-center justify-center shrink-0"
+                          >
+                            <Download className="w-4 h-4" />
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+
+            {/* VIEW: AI TUTOR CORE TAB */}
+            {!isExpired && !isSearchActive && activeNav === "ai" && (
+              <div className="h-[calc(100vh-140px)] min-h-[600px] rounded-3xl overflow-hidden border border-[#E6E1D8] bg-white shadow-sm">
+                <EduTrackAiChat isEmbedded={true} />
+              </div>
+            )}
+          </main>
+
+          {/* Unified Site Footer */}
+          <SiteFooter />
         </div>
-    );
+      </div>
+
+      {/* FLOATING AI CHAT WIDGET TRIGGER */}
+      {!isExpired && activeNav !== "ai" && (
+        <div className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-40">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsFloatingChatOpen(true)}
+            className="w-16 h-16 bg-[#1E3A8A] text-white rounded-full shadow-xl shadow-blue-900/20 flex items-center justify-center relative border-4 border-white"
+          >
+            <Bot className="w-7 h-7" />
+            <span className="w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full absolute top-0 right-0" />
+          </motion.button>
+        </div>
+      )}
+
+      {/* FLOATING AI POPUP MODAL */}
+      {isFloatingChatOpen && (
+        <EduTrackAiChat
+          isOpen={true}
+          onClose={() => setIsFloatingChatOpen(false)}
+        />
+      )}
+
+      {/* STUDY PLANNER MODAL */}
+      <AnimatePresence>
+        {selectedDateForPlan && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedDateForPlan(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white border border-[#E6E1D8] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5"
+            >
+              <div className="flex justify-between items-center border-b border-[#E6E1D8] pb-3">
+                <h3 className="font-bold text-slate-900 text-base">
+                  Study Planner: {selectedDateForPlan}
+                </h3>
+                <button
+                  onClick={() => setSelectedDateForPlan(null)}
+                  className="p-1 text-slate-400 hover:text-slate-700"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {studyPlans.filter((p) => p.dateKey === selectedDateForPlan)
+                  .length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-4 bg-[#FAF8F5] rounded-xl border border-[#E6E1D8]">
+                    No revision task added for this day yet.
+                  </p>
+                ) : (
+                  studyPlans
+                    .filter((p) => p.dateKey === selectedDateForPlan)
+                    .map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex justify-between items-center bg-[#FAF8F5] p-3 rounded-xl border border-[#E6E1D8] text-xs"
+                      >
+                        <div>
+                          <p className="font-bold text-slate-900">{p.title}</p>
+                          {p.time && (
+                            <p className="text-[10px] text-[#0369A1]">
+                              {p.time}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleDeletePlan(p.id)}
+                          className="text-rose-600 hover:text-rose-800 p-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                )}
+              </div>
+
+              <form onSubmit={handleAddPlan} className="space-y-3 pt-2">
+                <input
+                  type="text"
+                  required
+                  placeholder="Task title (e.g. Physics CQ Revision)"
+                  value={newPlanTitle}
+                  onChange={(e) => setNewPlanTitle(e.target.value)}
+                  className="w-full h-11 px-4 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl text-xs text-slate-900 outline-none"
+                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Target time (e.g. 8:00 PM)"
+                    value={newPlanTime}
+                    onChange={(e) => setNewPlanTime(e.target.value)}
+                    className="flex-1 h-11 px-4 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl text-xs text-slate-900 outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="h-11 px-4 bg-[#1E3A8A] text-white rounded-xl text-xs font-bold shrink-0"
+                  >
+                    Add Task
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PDF PREVIEW MODAL */}
+      <AnimatePresence>
+        {previewPdfUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setPreviewPdfUrl(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white border border-[#E6E1D8] rounded-3xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden shadow-2xl"
+            >
+              <div className="px-6 h-16 bg-[#FAF8F5] border-b border-[#E6E1D8] flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 text-sm truncate">
+                  {previewPdfTitle}
+                </h3>
+                <button
+                  onClick={() => setPreviewPdfUrl(null)}
+                  className="p-2 rounded-xl bg-white border border-[#E6E1D8] text-slate-600 hover:text-slate-900"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <iframe
+                src={previewPdfUrl}
+                title={previewPdfTitle}
+                className="w-full flex-1 border-none"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MOBILE STICKY BOTTOM NAVIGATION DOCK (48px Touch Standard) */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-[#E6E1D8] h-20 px-2 flex items-center justify-around shadow-lg">
+        {[
+          { id: "dashboard" as const, label: "Home", icon: LayoutDashboard },
+          { id: "lectures" as const, label: "Classes", icon: PlayCircle },
+          { id: "materials" as const, label: "Sheets", icon: FileText },
+          { id: "ai" as const, label: "AI Tutor", icon: Bot },
+        ].map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => {
+              setActiveNav(id);
+              setSelectedChapter(null);
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`flex flex-col items-center justify-center min-h-[48px] px-3 rounded-xl transition-all ${
+              activeNav === id
+                ? "text-[#1E3A8A] font-bold"
+                : "text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            <Icon className="w-5 h-5" />
+            <span className="text-[10px] tracking-tight mt-1">{label}</span>
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
 }
 
 export default function StudentDashboardPage() {
-    return (
-        <Suspense
-            fallback={
-                <div className="min-h-screen bg-[#060a12] flex flex-col items-center justify-center space-y-4 relative overflow-hidden">
-                    <div className="azs-orb opacity-40" />
-                    <div className="azs-orb-cyan opacity-30" style={{ top: "20%", left: "15%" }} />
-                    <div className="relative z-10 flex flex-col items-center space-y-4">
-                        <div className="w-12 h-12 border-[3px] border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin shadow-[0_0_20px_rgba(34,211,238,0.35)]" />
-                        <p className="text-xs font-bold text-slate-400 tracking-[0.2em] font-mono uppercase">
-                            Initializing Cyber Deck…
-                        </p>
-                    </div>
-                </div>
-            }
-        >
-            <DashboardContent />
-        </Suspense>
-    );
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FAF8F5] flex flex-col items-center justify-center p-6 font-sans">
+          <div className="w-12 h-12 border-4 border-[#E6E1D8] border-t-[#1E3A8A] rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
+  );
 }

@@ -16,26 +16,19 @@ import {
   Bot,
   LogOut,
   Flame,
-  Calendar as CalendarIcon,
   Search,
-  ExternalLink,
   ArrowRight,
   ChevronLeft,
   ChevronRight,
   Bell,
-  Sparkles,
   SearchX,
   X,
-  Plus,
   Trash2,
-  Clock,
   FileEdit,
   Download,
   ChevronDown,
   Eye,
   MessageCircle,
-  Globe,
-  Video,
   Atom,
   FlaskConical,
   FolderOpen,
@@ -862,67 +855,9 @@ function DashboardContent() {
             </nav>
           </div>
 
-          {/* Academic Instructor Uplink & Student Card */}
-          <div className="pt-5 border-t border-[#E6E1D8] space-y-4">
-            <div className="bg-[#FAF8F5] border border-[#E6E1D8] rounded-2xl p-4 relative overflow-hidden">
-              <div className="relative z-10 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-[#1E3A8A] uppercase tracking-wider bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
-                    Academic Mentor
-                  </span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-black text-slate-900 tracking-tight">
-                    {TEACHER.name}
-                  </h4>
-                  <p className="text-[10px] text-slate-500 font-medium">
-                    Physics &amp; Chemistry Specialist
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-3 gap-1.5 pt-1">
-                  <a
-                    href={TEACHER.whatsapp}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex flex-col items-center justify-center py-2 px-1 bg-white hover:bg-emerald-50 border border-[#E6E1D8] rounded-xl transition-colors"
-                  >
-                    <MessageCircle className="w-4 h-4 text-emerald-600 mb-1" />
-                    <span className="text-[9px] font-bold text-slate-700">
-                      WhatsApp
-                    </span>
-                  </a>
-
-                  <a
-                    href={TEACHER.facebook}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex flex-col items-center justify-center py-2 px-1 bg-white hover:bg-blue-50 border border-[#E6E1D8] rounded-xl transition-colors"
-                  >
-                    <Globe className="w-4 h-4 text-blue-600 mb-1" />
-                    <span className="text-[9px] font-bold text-slate-700">
-                      Facebook
-                    </span>
-                  </a>
-
-                  <a
-                    href={TEACHER.youtube}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex flex-col items-center justify-center py-2 px-1 bg-white hover:bg-rose-50 border border-[#E6E1D8] rounded-xl transition-colors"
-                  >
-                    <Video className="w-4 h-4 text-rose-600 mb-1" />
-                    <span className="text-[9px] font-bold text-slate-700">
-                      YouTube
-                    </span>
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 flex items-center justify-between gap-2">
+          {/* Student Card & Logout */}
+          <div className="pt-5 border-t border-[#E6E1D8]">
+            <div className="flex items-center justify-between gap-2">
               <div className="overflow-hidden">
                 <p className="text-xs font-black text-slate-900 truncate">
                   {userProfile.full_name}
@@ -934,7 +869,7 @@ function DashboardContent() {
 
               <button
                 onClick={handleLogout}
-                className="p-2.5 rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors border border-rose-100 shrink-0"
                 title="Sign Out"
               >
                 <LogOut className="w-4 h-4" />

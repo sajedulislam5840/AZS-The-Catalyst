@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -13,18 +13,49 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AZS: The Catalyst",
+  title: {
+    default: "AZS: The Catalyst",
+    template: "%s · AZS: The Catalyst",
+  },
   description:
     "Physics and Chemistry coaching platform with lectures, study sheets, progress tracking, and an AI academic tutor.",
+  keywords: [
+    "AZS",
+    "EdTech",
+    "Physics",
+    "Chemistry",
+    "AI Tutor",
+    "Coaching",
+  ],
+  authors: [{ name: "AZS" }],
+  openGraph: {
+    title: "AZS: The Catalyst",
+    description:
+      "AI-powered Physics & Chemistry coaching — lectures, progress, and an academic tutor.",
+    type: "website",
+  },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export const viewport: Viewport = {
+  themeColor: "#060a12",
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1,
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans bg-background text-foreground antialiased">
+        {children}
+      </body>
     </html>
   );
 }

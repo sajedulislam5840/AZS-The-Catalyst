@@ -11,13 +11,14 @@ import {
   Sparkles,
   ArrowRight,
   CheckCircle2,
-  Zap,
-  ShieldCheck,
   GraduationCap,
-  BrainCircuit,
   MessageSquare,
-  BarChart3,
+  MessageCircle,
+  ExternalLink,
+  Globe,
 } from "lucide-react";
+import SiteFooter from "@/components/SiteFooter";
+import { DEVELOPER, TEACHER } from "@/lib/social";
 
 const features = [
   {
@@ -25,85 +26,72 @@ const features = [
     title: "Lecture Streaming",
     text: "Physics and Chemistry classes organized by chapter, topic, and difficulty — ready to watch on any device.",
     badge: "HD Streaming",
-    gradient: "from-cyan-500/20 to-blue-500/10",
-    iconColor: "text-cyan-400",
+    subject: "physics" as const,
   },
   {
     icon: BookOpen,
     title: "Curated Study Sheets",
     text: "Comprehensive PDF handouts, formula sheets, and past paper solutions searchable by topic.",
     badge: "PDF Downloads",
-    gradient: "from-violet-500/20 to-indigo-500/10",
-    iconColor: "text-violet-400",
+    subject: "chemistry" as const,
   },
   {
     icon: Bot,
     title: "24/7 AI Academic Tutor",
     text: "Ask doubts in Bangla or English — complete with mathematical steps, formulas, and conceptual breakdowns.",
     badge: "Instant Doubt Solver",
-    gradient: "from-indigo-500/20 to-purple-500/10",
-    iconColor: "text-indigo-400",
+    subject: "physics" as const,
   },
   {
     icon: Sparkles,
     title: "Smart Progress Planner",
     text: "Track completed lectures, monitor chapter mastery, and auto-schedule daily revision milestones.",
     badge: "Analytics Driven",
-    gradient: "from-emerald-500/20 to-teal-500/10",
-    iconColor: "text-emerald-400",
+    subject: "chemistry" as const,
   },
 ];
 
 const trustBadges = [
   "SSC & HSC Curriculum",
-  "Bilingual AI Support (Bangla & English)",
+  "Bilingual AI (Bangla & English)",
   "Real-time Lecture Progress",
-  "Instant Step-by-Step Solutions",
+  "Step-by-Step Solutions",
 ];
 
 export default function Home() {
-  const currentYear = 2025;
-
   return (
-    <main className="azs-grid-bg relative min-h-screen text-slate-100 overflow-hidden selection:bg-indigo-500/30">
-      {/* Ambient background glow orbs */}
-      <div className="azs-orb azs-orb-indigo top-[-100px] left-1/2 -translate-x-1/2 h-[450px] w-[600px] opacity-40" />
-      <div className="azs-orb azs-orb-cyan top-[300px] right-[-100px] h-[350px] w-[350px] opacity-25" />
-      <div className="azs-orb azs-orb-violet bottom-[200px] left-[-100px] h-[400px] w-[400px] opacity-20" />
-
-      {/* Navigation Bar */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl border-b border-slate-800/60 bg-[#060a12]/75">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-8">
-          <Link href="/" className="flex items-center gap-3.5 group">
-            <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-900/90 p-1 shadow-lg shadow-cyan-950/30 transition-transform group-hover:scale-105">
+    <main className="azs-grid-bg relative min-h-screen text-foreground overflow-x-hidden">
+      {/* ── Sticky Nav ── */}
+      <header className="sticky top-0 z-50 border-b border-[#E6E1D8] bg-[#FAF8F5]/90 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link href="/" className="flex items-center gap-3 min-w-0 group">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center overflow-hidden rounded-xl border border-[#E6E1D8] bg-white shadow-sm shrink-0">
               <img
                 src="/logo.png"
                 alt="AZS logo"
-                className="h-full w-full object-contain"
+                className="h-full w-full object-contain p-1"
               />
-              <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <div>
-              <p className="text-base font-black tracking-tight text-white flex items-center gap-1.5">
+            <div className="min-w-0">
+              <p className="text-sm sm:text-base font-extrabold tracking-tight text-[#1E3A8A] truncate">
                 AZS: The Catalyst
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
               </p>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-400/90">
-                Science Coaching Ecosystem
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] truncate">
+                Science Coaching
               </p>
             </div>
           </Link>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Link
               href="/login"
-              className="azs-btn-ghost px-4 py-2 text-xs sm:text-sm font-semibold"
+              className="azs-btn-ghost !w-auto min-h-[44px] px-3.5 sm:px-5 text-xs sm:text-sm"
             >
               Sign In
             </Link>
             <Link
               href="/register"
-              className="azs-btn-primary px-4 py-2 text-xs sm:text-sm shadow-indigo-600/30"
+              className="azs-btn-primary !w-auto min-h-[44px] px-3.5 sm:px-5 text-xs sm:text-sm"
             >
               <span>Join Batch</span>
               <ArrowRight className="h-3.5 w-3.5" />
@@ -112,206 +100,193 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative mx-auto flex w-full max-w-7xl flex-col items-center px-4 pt-12 pb-16 text-center sm:px-8 sm:pt-20 sm:pb-24">
-        {/* Animated Badge Pill */}
+      {/* ── Hero ── */}
+      <section className="relative mx-auto flex w-full max-w-6xl flex-col items-center px-4 pt-10 pb-14 text-center sm:px-6 sm:pt-16 sm:pb-20">
         <motion.div
-          initial={{ opacity: 0, y: -15 }}
+          initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-950/40 px-4 py-1.5 text-xs font-bold text-cyan-300 backdrop-blur-md shadow-lg shadow-cyan-950/40"
+          transition={{ duration: 0.35 }}
+          className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#E6E1D8] bg-white px-3.5 py-1.5 text-[11px] sm:text-xs font-bold text-[#1E3A8A] shadow-sm"
         >
-          <Atom className="h-4 w-4 animate-spin-slow text-cyan-400" />
-          <span>Physics &amp; Chemistry Coaching Platform</span>
-          <FlaskConical className="h-4 w-4 text-violet-400" />
+          <Atom className="h-3.5 w-3.5 text-[#0369A1]" />
+          <span>Physics &amp; Chemistry Coaching</span>
+          <FlaskConical className="h-3.5 w-3.5 text-[#047857]" />
         </motion.div>
 
-        {/* Main Headline */}
         <motion.h1
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="max-w-4xl text-4xl font-extrabold tracking-tight text-white sm:text-6xl sm:leading-[1.12]"
+          transition={{ duration: 0.4, delay: 0.05 }}
+          className="max-w-3xl text-3xl font-extrabold tracking-tight text-[#1E293B] sm:text-5xl sm:leading-[1.15]"
         >
           Master Science with{" "}
-          <span className="azs-gradient-text">Interactive Lectures</span> &amp;{" "}
-          <span className="text-white underline decoration-cyan-400/40 underline-offset-8">
-            AI Guidance
-          </span>
+          <span className="text-[#1E3A8A]">Interactive Lectures</span>
+          {" & "}
+          <span className="text-[#047857]">AI Guidance</span>
         </motion.h1>
 
-        {/* Hero Paragraph */}
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="mt-6 max-w-2xl text-base leading-relaxed text-slate-300 sm:text-lg"
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="mt-4 max-w-2xl text-sm leading-relaxed text-[#64748B] sm:text-base"
         >
-          The complete academic portal for SSC and HSC students. Stream chapter-wise video classes, download structured study sheets, track your progress, and solve doubts 24/7 with your personal AI academic tutor.
+          The complete academic portal for SSC and HSC students. Stream chapter-wise
+          classes, download study sheets, track progress, and solve doubts 24/7 with
+          your AI academic tutor — built for phone and tablet first.
         </motion.p>
 
-        {/* Hero CTA Buttons */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="mt-8 flex w-full max-w-md flex-col gap-3.5 sm:max-w-none sm:flex-row sm:justify-center"
+          transition={{ duration: 0.4, delay: 0.15 }}
+          className="mt-7 flex w-full max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center"
         >
           <Link
             href="/register"
-            className="azs-btn-cyan px-7 py-3.5 text-sm sm:text-base font-extrabold group"
+            className="azs-btn-primary min-h-[48px] px-6 text-sm sm:text-base !w-full sm:!w-auto"
           >
             <span>Create Student Account</span>
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
             href="/login"
-            className="azs-btn-ghost px-7 py-3.5 text-sm sm:text-base font-bold border-slate-700/80 bg-slate-900/60 hover:bg-slate-800/80"
+            className="azs-btn-ghost min-h-[48px] px-6 text-sm sm:text-base !w-full sm:!w-auto"
           >
-            <span>Sign in to Portal</span>
+            Sign in to Portal
           </Link>
         </motion.div>
 
-        {/* Trust Chips Bar */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="mt-12 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-xs text-slate-400 font-medium"
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="mt-9 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-[#64748B] font-medium"
         >
           {trustBadges.map((badge) => (
-            <div key={badge} className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            <div key={badge} className="flex items-center gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-[#047857] shrink-0" />
               <span>{badge}</span>
             </div>
           ))}
         </motion.div>
 
-        {/* Interactive AI Tutor & Portal Product Mockup Card */}
+        {/* Product preview — cream paper mock */}
         <motion.div
-          initial={{ opacity: 0, y: 40 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.5 }}
-          className="relative mt-14 w-full max-w-5xl rounded-2xl p-1 bg-gradient-to-b from-slate-700/60 via-slate-800/40 to-slate-900/80 shadow-2xl shadow-black/80"
+          transition={{ duration: 0.45, delay: 0.25 }}
+          className="relative mt-12 w-full max-w-5xl"
         >
-          <div className="overflow-hidden rounded-xl border border-slate-800 bg-[#0a0f1d] p-4 sm:p-6 text-left">
-            {/* Window Top Controls Bar */}
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-5">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-rose-500/80" />
-                <div className="h-3 w-3 rounded-full bg-amber-500/80" />
-                <div className="h-3 w-3 rounded-full bg-emerald-500/80" />
-                <span className="ml-2 text-xs font-mono text-slate-400">
+          <div className="overflow-hidden rounded-2xl border border-[#E6E1D8] bg-white shadow-[0_8px_30px_-8px_rgba(30,41,59,0.12)] text-left">
+            {/* Window chrome */}
+            <div className="flex items-center justify-between border-b border-[#E6E1D8] bg-[#F3EFE8]/80 px-4 py-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="h-2.5 w-2.5 rounded-full bg-[#F87171]" />
+                <div className="h-2.5 w-2.5 rounded-full bg-[#FBBF24]" />
+                <div className="h-2.5 w-2.5 rounded-full bg-[#34D399]" />
+                <span className="ml-2 text-[10px] sm:text-xs font-mono text-[#64748B] truncate">
                   azs-catalyst.app / student-portal
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="azs-badge azs-badge-emerald">
-                  ● Live System Active
-                </span>
-              </div>
+              <span className="azs-badge azs-badge-emerald shrink-0 hidden xs:inline-flex sm:inline-flex">
+                Live
+              </span>
             </div>
 
-            {/* Mock Dashboard Grid Preview */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Left Column: AI Tutor Chat Mock */}
-              <div className="lg:col-span-2 rounded-xl border border-slate-800/90 bg-[#0d1424] p-4 sm:p-5 flex flex-col justify-between space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 sm:p-5">
+              {/* AI mock */}
+              <div className="lg:col-span-2 rounded-xl border border-[#E6E1D8] bg-[#FAF8F5] p-4 flex flex-col space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#E6E1D8]">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1E3A8A]/10 text-[#1E3A8A] border border-[#1E3A8A]/15 shrink-0">
                       <Bot className="h-4 w-4" />
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-white">AZS Academic AI Tutor</p>
-                      <p className="text-[10px] text-slate-400">Physics &amp; Chemistry Doubt Solver</p>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#1E293B]">AZS Academic AI Tutor</p>
+                      <p className="text-[10px] text-[#64748B]">Physics &amp; Chemistry · Bangla / English</p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/40">
-                    GPT-4o Academic
+                  <span className="text-[10px] font-bold text-[#0369A1] bg-[#0369A1]/10 px-2 py-0.5 rounded-md border border-[#0369A1]/15 shrink-0">
+                    AI Solver
                   </span>
                 </div>
 
-                {/* Chat Bubbles */}
-                <div className="space-y-3 font-sans text-xs">
-                  {/* User Query */}
+                <div className="space-y-3 text-xs">
                   <div className="flex justify-end">
-                    <div className="rounded-xl bg-indigo-600/90 px-3.5 py-2 text-white max-w-[85%] shadow-md">
+                    <div className="rounded-2xl rounded-br-md bg-[#1E3A8A] px-3.5 py-2.5 text-white max-w-[88%] shadow-sm">
                       Explain Snell&apos;s Law of Refraction with formula in Bangla.
                     </div>
                   </div>
 
-                  {/* AI Response */}
-                  <div className="flex gap-2.5 items-start">
-                    <div className="h-6 w-6 rounded-full bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center shrink-0 mt-0.5">
-                      <Sparkles className="h-3 w-3 text-cyan-400" />
+                  <div className="flex gap-2 items-start">
+                    <div className="h-7 w-7 rounded-full bg-[#047857]/10 border border-[#047857]/20 flex items-center justify-center shrink-0 mt-0.5">
+                      <Sparkles className="h-3 w-3 text-[#047857]" />
                     </div>
-                    <div className="rounded-xl bg-slate-900 border border-slate-800 p-3 text-slate-200 space-y-1.5 max-w-[90%]">
-                      <p className="font-semibold text-cyan-300">প্রতিসরণের স্নেলের সূত্র (Snell&apos;s Law):</p>
-                      <p className="text-slate-300 leading-relaxed">
-                        আলোর প্রতিসরণের ক্ষেত্রে, নির্দিষ্ট দুটি মাধ্যম এবং নির্দিষ্ট রঙের আলোর জন্য প্রতিসরণ কোণের সাইন (sin r) ও আপাতন কোণের সাইন (sin i) এর অনুপাত সর্বদা ধ্রুবক থাকে।
+                    <div className="rounded-2xl rounded-bl-md bg-white border border-[#E6E1D8] p-3 text-[#1E293B] space-y-1.5 max-w-[90%] shadow-sm">
+                      <p className="font-semibold text-[#0369A1]">
+                        প্রতিসরণের স্নেলের সূত্র (Snell&apos;s Law):
                       </p>
-                      <div className="rounded bg-slate-950 p-2 font-mono text-cyan-400 border border-slate-800 my-1">
-                        n₁ · sin(θ₁) = n₂ · sin(r)
+                      <p className="text-[#64748B] leading-relaxed">
+                        আলোর প্রতিসরণের ক্ষেত্রে, নির্দিষ্ট দুটি মাধ্যম এবং নির্দিষ্ট রঙের আলোর জন্য
+                        প্রতিসরণ কোণের সাইন (sin r) ও আপতন কোণের সাইন (sin i) এর অনুপাত সর্বদা ধ্রুবক থাকে।
+                      </p>
+                      <div className="rounded-lg bg-[#F3EFE8] p-2 font-mono text-[#1E3A8A] border border-[#E6E1D8] text-[11px]">
+                        n₁ · sin(θ₁) = n₂ · sin(θ₂)
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Input Bar Mock */}
-                <div className="flex gap-2 pt-2">
-                  <div className="azs-input text-xs py-2 flex items-center justify-between text-slate-500 cursor-not-allowed">
-                    <span>Ask a doubt in Bangla or English...</span>
-                    <MessageSquare className="h-3.5 w-3.5 text-slate-600" />
-                  </div>
+                <div className="azs-input text-xs !min-h-[44px] flex items-center justify-between text-[#94A3B8] pointer-events-none">
+                  <span>Ask a doubt in Bangla or English…</span>
+                  <MessageSquare className="h-3.5 w-3.5" />
                 </div>
               </div>
 
-              {/* Right Column: Student Progress Widgets */}
+              {/* Progress widgets */}
               <div className="space-y-3">
-                {/* Active Chapter Card */}
-                <div className="rounded-xl border border-slate-800 bg-[#0d1424] p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                <div className="rounded-xl border border-[#E6E1D8] bg-white p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-2 gap-2">
+                    <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
                       Current Chapter
                     </span>
-                    <span className="azs-badge azs-badge-cyan">Physics</span>
+                    <span className="azs-badge azs-badge-physics">Physics</span>
                   </div>
-                  <p className="text-xs font-extrabold text-white">
+                  <p className="text-sm font-extrabold text-[#1E293B]">
                     Chapter 4: Work, Power &amp; Energy
                   </p>
                   <div className="mt-3 space-y-1.5">
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-slate-400">Lectures Completed</span>
-                      <span className="text-cyan-400 font-mono font-bold">4 / 5 (80%)</span>
+                      <span className="text-[#64748B]">Lectures</span>
+                      <span className="text-[#0369A1] font-mono font-bold">4 / 5 · 80%</span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
-                      <div className="h-full w-[80%] rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500" />
+                    <div className="h-2 w-full rounded-full bg-[#F3EFE8] overflow-hidden border border-[#E6E1D8]">
+                      <div className="h-full w-[80%] rounded-full bg-[#0369A1]" />
                     </div>
                   </div>
                 </div>
 
-                {/* Quick Stats Grid */}
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-xl border border-slate-800 bg-[#0d1424] p-3 text-center">
-                    <p className="text-lg font-black text-white">12</p>
-                    <p className="text-[10px] text-slate-400">Chapters Unlocked</p>
+                  <div className="rounded-xl border border-[#E6E1D8] bg-[#FAF8F5] p-3 text-center">
+                    <p className="text-lg font-black text-[#1E3A8A]">12</p>
+                    <p className="text-[10px] text-[#64748B]">Chapters</p>
                   </div>
-                  <div className="rounded-xl border border-slate-800 bg-[#0d1424] p-3 text-center">
-                    <p className="text-lg font-black text-emerald-400">24/7</p>
-                    <p className="text-[10px] text-slate-400">AI Doubts Solved</p>
+                  <div className="rounded-xl border border-[#E6E1D8] bg-[#FAF8F5] p-3 text-center">
+                    <p className="text-lg font-black text-[#047857]">24/7</p>
+                    <p className="text-[10px] text-[#64748B]">AI Tutor</p>
                   </div>
                 </div>
 
-                {/* Study Sheet Quick Action */}
-                <div className="rounded-xl border border-slate-800 bg-gradient-to-br from-indigo-950/40 to-slate-900 p-3.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <BookOpen className="h-4 w-4 text-violet-400" />
-                    <div>
-                      <p className="text-xs font-bold text-white">Formula Handout PDF</p>
-                      <p className="text-[10px] text-slate-400">Ready for download</p>
+                <div className="rounded-xl border border-[#E6E1D8] bg-white p-3.5 flex items-center justify-between gap-2 shadow-sm">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <BookOpen className="h-4 w-4 text-[#047857] shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#1E293B] truncate">Formula Handout</p>
+                      <p className="text-[10px] text-[#64748B]">PDF ready</p>
                     </div>
                   </div>
-                  <span className="text-xs text-indigo-400 font-bold">PDF ↗</span>
+                  <span className="text-[11px] text-[#1E3A8A] font-bold shrink-0">PDF ↗</span>
                 </div>
               </div>
             </div>
@@ -319,92 +294,191 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* Feature Cards Grid Section */}
-      <section className="relative mx-auto w-full max-w-7xl px-4 pb-24 sm:px-8">
-        <div className="text-center mb-12">
-          <span className="azs-badge azs-badge-indigo mb-3">
-            Core Learning Features
-          </span>
-          <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
-            Everything You Need to Ace Your Exams
+      {/* ── Features ── */}
+      <section className="relative mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 sm:pb-20">
+        <div className="text-center mb-10">
+          <span className="azs-badge azs-badge-indigo mb-3">Core Features</span>
+          <h2 className="text-2xl font-extrabold text-[#1E293B] sm:text-3xl">
+            Everything you need to ace your exams
           </h2>
-          <p className="mt-2 text-sm text-slate-400 max-w-xl mx-auto">
-            Engineered specifically for SSC &amp; HSC Physics and Chemistry mastery.
+          <p className="mt-2 text-sm text-[#64748B] max-w-lg mx-auto">
+            Built for SSC &amp; HSC Physics and Chemistry — optimized for phone and tablet study.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {features.map(({ icon: Icon, title, text, badge, gradient, iconColor }, index) => (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {features.map(({ icon: Icon, title, text, badge, subject }, index) => (
             <motion.article
               key={title}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="azs-card-glow group relative rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1.5"
+              transition={{ duration: 0.35, delay: index * 0.06 }}
+              className="azs-card azs-glass-hover rounded-2xl p-5 flex flex-col h-full"
             >
-              <div className="flex flex-col h-full justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${gradient} border border-slate-700/60 transition-transform group-hover:scale-110`}>
-                      <Icon className={`h-6 w-6 ${iconColor}`} />
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-400 bg-slate-900/80 px-2.5 py-1 rounded-full border border-slate-800">
-                      {badge}
-                    </span>
-                  </div>
-
-                  <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors">
-                    {title}
-                  </h3>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                    {text}
-                  </p>
+              <div className="flex items-center justify-between mb-4 gap-2">
+                <div
+                  className={`flex h-11 w-11 items-center justify-center rounded-xl border ${
+                    subject === "physics"
+                      ? "bg-[#0369A1]/10 border-[#0369A1]/20 text-[#0369A1]"
+                      : "bg-[#047857]/10 border-[#047857]/20 text-[#047857]"
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
                 </div>
+                <span className="text-[10px] font-bold text-[#64748B] bg-[#F3EFE8] px-2.5 py-1 rounded-full border border-[#E6E1D8]">
+                  {badge}
+                </span>
+              </div>
 
-                <div className="mt-5 pt-3 border-t border-slate-800/60 flex items-center text-xs font-semibold text-indigo-400 group-hover:text-cyan-300 transition-colors">
-                  <span>Explore Feature</span>
-                  <ArrowRight className="ml-1 h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-                </div>
+              <h3 className="text-sm font-extrabold text-[#1E293B]">{title}</h3>
+              <p className="mt-2 text-xs leading-relaxed text-[#64748B] flex-1">{text}</p>
+
+              <div className="mt-4 pt-3 border-t border-[#E6E1D8] flex items-center text-xs font-bold text-[#1E3A8A]">
+                <span>Explore</span>
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
               </div>
             </motion.article>
           ))}
         </div>
       </section>
 
-      {/* Footer Banner */}
-      <footer className="relative border-t border-slate-800/80 bg-[#040810] px-4 py-8 text-center text-xs text-slate-400">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row sm:px-8">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-4 w-4 text-cyan-400" />
-            <span className="font-semibold text-slate-300">
-              AZS: The Catalyst
-            </span>
-            <span>· Academic Portal</span>
+      {/* ── Trust: Academic Guide + Developer (intentional placement) ── */}
+      <section className="relative mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6">
+        <div className="text-center mb-8">
+          <span className="azs-badge mb-3">People behind AZS</span>
+          <h2 className="text-xl sm:text-2xl font-extrabold text-[#1E293B]">
+            Mentorship &amp; engineering you can trust
+          </h2>
+          <p className="mt-2 text-sm text-[#64748B] max-w-md mx-auto">
+            Students learn with the academic guide. The platform is built and maintained by a named engineer — with open professional profiles.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+          {/* Teacher card — primary for students */}
+          <div className="azs-card rounded-2xl p-5 sm:p-6 border border-[#E6E1D8] bg-white">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] mb-3">
+              Academic Guide
+            </p>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-[#047857]/10 text-[#047857] border border-[#047857]/20 flex items-center justify-center font-black text-sm shrink-0">
+                AZS
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-extrabold text-[#1E3A8A]">{TEACHER.name}</h3>
+                <p className="text-xs text-[#64748B] mt-0.5">{TEACHER.role}</p>
+              </div>
+            </div>
+            <p className="text-xs text-[#64748B] leading-relaxed mb-4">
+              Batch guidance, class updates, and subscription support. Prefer WhatsApp for the fastest reply on mobile.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={TEACHER.whatsapp}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-[48px] px-4 rounded-xl bg-[#047857] hover:bg-[#065f46] text-white text-xs font-bold transition flex items-center gap-2 active:scale-[0.98]"
+              >
+                <MessageCircle className="w-4 h-4" />
+                WhatsApp
+              </a>
+              <a
+                href={TEACHER.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-[48px] px-4 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E293B] text-xs font-bold transition flex items-center gap-2 border border-[#E6E1D8] active:scale-[0.98]"
+              >
+                Facebook
+                <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+              </a>
+              <a
+                href={TEACHER.youtube}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-[48px] px-4 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E293B] text-xs font-bold transition flex items-center gap-2 border border-[#E6E1D8] active:scale-[0.98]"
+              >
+                YouTube
+                <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+              </a>
+            </div>
           </div>
 
-          <p className="text-slate-400">
-            © {currentYear} AZS: The Catalyst · Engineered by{" "}
-            <a
-              href="https://www.linkedin.com/in/sajedul-islam-data/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-bold text-cyan-400 hover:text-cyan-300 transition-colors"
-            >
-              Mir Mohammad Sajedul Islam
-            </a>
-          </p>
+          {/* Developer card — credibility */}
+          <div className="azs-card rounded-2xl p-5 sm:p-6 border border-[#E6E1D8] bg-white">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] mb-3">
+              Platform Developer
+            </p>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-[#1E3A8A]/10 text-[#1E3A8A] border border-[#1E3A8A]/20 flex items-center justify-center font-black text-xs shrink-0">
+                DEV
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-extrabold text-[#1E3A8A]">{DEVELOPER.name}</h3>
+                <p className="text-xs text-[#64748B] mt-0.5">{DEVELOPER.role}</p>
+              </div>
+            </div>
+            <p className="text-xs text-[#64748B] leading-relaxed mb-4">
+              Product design, full-stack engineering, and continuous improvements. Connect via LinkedIn, review code on GitHub, or visit the portfolio.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={DEVELOPER.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-[48px] px-4 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E293B] text-xs font-bold transition flex items-center gap-2 border border-[#E6E1D8] active:scale-[0.98]"
+              >
+                LinkedIn
+                <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+              </a>
+              <a
+                href={DEVELOPER.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-[48px] px-4 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E293B] text-xs font-bold transition flex items-center gap-2 border border-[#E6E1D8] active:scale-[0.98]"
+              >
+                GitHub
+                <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+              </a>
+              <a
+                href={DEVELOPER.portfolio}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-[48px] px-4 rounded-xl bg-[#1E3A8A] hover:bg-[#1E40AF] text-white text-xs font-bold transition flex items-center gap-2 active:scale-[0.98]"
+              >
+                <Globe className="w-3.5 h-3.5" />
+                Portfolio
+              </a>
+            </div>
+          </div>
+        </div>
 
-          <div className="flex gap-4">
-            <Link href="/login" className="hover:text-slate-200">
+        {/* Quick auth strip */}
+        <div className="mt-6 rounded-2xl border border-[#E6E1D8] bg-[#F3EFE8]/80 px-4 py-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm text-[#1E293B] font-semibold">
+            <GraduationCap className="w-4 h-4 text-[#1E3A8A]" />
+            <span>Ready to join the batch?</span>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Link
+              href="/login"
+              className="min-h-[44px] px-4 rounded-xl bg-white border border-[#E6E1D8] text-xs font-bold text-[#1E293B] flex items-center hover:bg-[#FAF8F5] transition"
+            >
               Student Sign In
             </Link>
-            <Link href="/register" className="hover:text-slate-200">
-              New Batch Registration
+            <Link
+              href="/register"
+              className="min-h-[44px] px-4 rounded-xl bg-[#1E3A8A] text-white text-xs font-bold flex items-center gap-1.5 hover:bg-[#1E40AF] transition"
+            >
+              New Registration
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         </div>
-      </footer>
+      </section>
+
+      {/* ── Shared professional footer (teacher + developer links) ── */}
+      <SiteFooter />
     </main>
   );
 }

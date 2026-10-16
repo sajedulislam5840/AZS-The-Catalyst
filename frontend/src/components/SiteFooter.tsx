@@ -4,7 +4,7 @@ import React from "react";
 import { DEVELOPER, TEACHER } from "@/lib/social";
 import { ExternalLink, MessageCircle, Globe } from "lucide-react";
 
-// Inline brand SVGs to ensure build safety across all lucide-react versions
+// Inline brand SVGs for type-safe builds across all lucide-react versions
 const FacebookIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
     <path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" />
@@ -41,7 +41,8 @@ export default function SiteFooter({ compact = false }: SiteFooterProps) {
       <div className="max-w-6xl mx-auto space-y-6">
         {/* TOP SECTION: ACADEMIC GUIDE & DEVELOPER CREDITS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-[#E6E1D8]">
-          {/* TEACHER/MENTOR COLUMN */}
+          
+          {/* ACADEMIC GUIDE / TEACHER COLUMN */}
           <div className="space-y-3">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
               Academic Guidance & Mentorship
@@ -59,7 +60,7 @@ export default function SiteFooter({ compact = false }: SiteFooterProps) {
             </div>
 
             {/* TEACHER SOCIAL LINKS */}
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex items-center gap-2 pt-1 flex-wrap">
               <a
                 href={TEACHER.whatsapp}
                 target="_blank"
@@ -92,7 +93,7 @@ export default function SiteFooter({ compact = false }: SiteFooterProps) {
             </div>
           </div>
 
-          {/* DEVELOPER COLUMN */}
+          {/* PLATFORM DEVELOPER COLUMN */}
           <div className="space-y-3 md:text-right md:flex md:flex-col md:items-end">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
               Platform Architecture & Engineering
@@ -109,37 +110,57 @@ export default function SiteFooter({ compact = false }: SiteFooterProps) {
               </div>
             </div>
 
-            {/* DEVELOPER SOCIAL & PORTFOLIO LINKS */}
-            <div className="flex items-center gap-2 pt-1">
+            {/* DEVELOPER SOCIAL, CONTACT & PORTFOLIO LINKS */}
+            <div className="flex items-center gap-2 pt-1 flex-wrap md:justify-end">
+              <a
+                href={DEVELOPER.portfolio}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#1E3A8A] hover:bg-[#1E40AF] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95"
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>Portfolio</span>
+                <ExternalLink className="w-3 h-3 opacity-70" />
+              </a>
+
               <a
                 href={DEVELOPER.linkedin}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] px-3 py-2 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E3A8A] text-xs font-bold transition flex items-center gap-1.5 border border-[#E6E1D8] active:scale-95"
+                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#0369A1] transition flex items-center justify-center active:scale-95 border border-[#E6E1D8]"
+                title="Developer LinkedIn"
               >
-                <LinkedinIcon className="w-3.5 h-3.5 fill-[#0369A1]" />
-                <span>LinkedIn</span>
+                <LinkedinIcon className="w-4 h-4 fill-[#0369A1]" />
               </a>
 
               <a
                 href={DEVELOPER.github}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] px-3 py-2 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E293B] text-xs font-bold transition flex items-center gap-1.5 border border-[#E6E1D8] active:scale-95"
+                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E293B] transition flex items-center justify-center active:scale-95 border border-[#E6E1D8]"
+                title="Developer GitHub"
               >
-                <GithubIcon className="w-3.5 h-3.5 fill-[#1E293B]" />
-                <span>GitHub</span>
+                <GithubIcon className="w-4 h-4 fill-[#1E293B]" />
               </a>
 
               <a
-                href={DEVELOPER.portfolio}
+                href={DEVELOPER.whatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] px-3 py-2 rounded-xl bg-[#1E3A8A] hover:bg-[#1E40AF] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#047857] transition flex items-center justify-center active:scale-95 border border-[#E6E1D8]"
+                title="Developer WhatsApp"
               >
-                <Globe className="w-3.5 h-3.5" />
-                <span>Portfolio</span>
-                <ExternalLink className="w-3 h-3 opacity-70" />
+                <MessageCircle className="w-4 h-4 text-[#047857]" />
+              </a>
+
+              <a
+                href={DEVELOPER.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E3A8A] transition flex items-center justify-center active:scale-95 border border-[#E6E1D8]"
+                title="Developer Facebook"
+              >
+                <FacebookIcon className="w-4 h-4 fill-[#1E3A8A]" />
               </a>
             </div>
           </div>

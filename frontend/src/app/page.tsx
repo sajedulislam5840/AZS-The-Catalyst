@@ -62,7 +62,7 @@ const trustBadges = [
 ];
 
 export default function Home() {
-  const currentYear = new Date().getFullYear();
+  const currentYear = 2025;
 
   return (
     <main className="azs-grid-bg relative min-h-screen text-slate-100 overflow-hidden selection:bg-indigo-500/30">

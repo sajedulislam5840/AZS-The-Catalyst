@@ -20,7 +20,7 @@ export const DEVELOPER: DeveloperInfo = {
   role: "Platform Architect & Lead Developer",
   linkedin: "https://www.linkedin.com/in/sajedul-islam-data/",
   github: "https://github.com/sajedulislam5840",
-  portfolio: "https://sajedulislam5840.github.io",
+  portfolio: "https://sajedulislam5840.github.io/portfolio/",
 };
 
 export const TEACHER: TeacherInfo = {

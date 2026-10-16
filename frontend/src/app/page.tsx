@@ -13,12 +13,8 @@ import {
   CheckCircle2,
   GraduationCap,
   MessageSquare,
-  MessageCircle,
-  ExternalLink,
-  Globe,
 } from "lucide-react";
 import SiteFooter from "@/components/SiteFooter";
-import { DEVELOPER, TEACHER } from "@/lib/social";
 
 const features = [
   {
@@ -341,143 +337,37 @@ export default function Home() {
             </motion.article>
           ))}
         </div>
-      </section>
 
-      {/* ── Trust: Academic Guide + Developer (intentional placement) ── */}
-      <section className="relative mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6">
-        <div className="text-center mb-8">
-          <span className="azs-badge mb-3">People behind AZS</span>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-[#1E293B]">
-            Mentorship &amp; engineering you can trust
-          </h2>
-          <p className="mt-2 text-sm text-[#64748B] max-w-md mx-auto">
-            Students learn with the academic guide. The platform is built and maintained by a named engineer — with open professional profiles.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-          {/* Teacher card — primary for students */}
-          <div className="azs-card rounded-2xl p-5 sm:p-6 border border-[#E6E1D8] bg-white">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] mb-3">
-              Academic Guide
-            </p>
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-[#047857]/10 text-[#047857] border border-[#047857]/20 flex items-center justify-center font-black text-sm shrink-0">
-                AZS
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-base font-extrabold text-[#1E3A8A]">{TEACHER.name}</h3>
-                <p className="text-xs text-[#64748B] mt-0.5">{TEACHER.role}</p>
-              </div>
+        {/* Quick Join Strip */}
+        <div className="mt-12 rounded-2xl border border-[#E6E1D8] bg-white p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3 text-[#1E293B]">
+            <div className="w-10 h-10 rounded-xl bg-[#1E3A8A]/10 text-[#1E3A8A] flex items-center justify-center shrink-0">
+              <GraduationCap className="w-5 h-5" />
             </div>
-            <p className="text-xs text-[#64748B] leading-relaxed mb-4">
-              Batch guidance, class updates, and subscription support. Prefer WhatsApp for the fastest reply on mobile.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <a
-                href={TEACHER.whatsapp}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-h-[48px] px-4 rounded-xl bg-[#047857] hover:bg-[#065f46] text-white text-xs font-bold transition flex items-center gap-2 active:scale-[0.98]"
-              >
-                <MessageCircle className="w-4 h-4" />
-                WhatsApp
-              </a>
-              <a
-                href={TEACHER.facebook}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-h-[48px] px-4 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E293B] text-xs font-bold transition flex items-center gap-2 border border-[#E6E1D8] active:scale-[0.98]"
-              >
-                Facebook
-                <ExternalLink className="w-3.5 h-3.5 opacity-60" />
-              </a>
-              <a
-                href={TEACHER.youtube}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-h-[48px] px-4 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E293B] text-xs font-bold transition flex items-center gap-2 border border-[#E6E1D8] active:scale-[0.98]"
-              >
-                YouTube
-                <ExternalLink className="w-3.5 h-3.5 opacity-60" />
-              </a>
+            <div>
+              <h4 className="text-sm font-extrabold">Ready to start studying?</h4>
+              <p className="text-xs text-[#64748B]">Enroll in the current batch or log in to your account.</p>
             </div>
           </div>
-
-          {/* Developer card — credibility */}
-          <div className="azs-card rounded-2xl p-5 sm:p-6 border border-[#E6E1D8] bg-white">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] mb-3">
-              Platform Developer
-            </p>
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-[#1E3A8A]/10 text-[#1E3A8A] border border-[#1E3A8A]/20 flex items-center justify-center font-black text-xs shrink-0">
-                DEV
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-base font-extrabold text-[#1E3A8A]">{DEVELOPER.name}</h3>
-                <p className="text-xs text-[#64748B] mt-0.5">{DEVELOPER.role}</p>
-              </div>
-            </div>
-            <p className="text-xs text-[#64748B] leading-relaxed mb-4">
-              Product design, full-stack engineering, and continuous improvements. Connect via LinkedIn, review code on GitHub, or visit the portfolio.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <a
-                href={DEVELOPER.linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-h-[48px] px-4 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E293B] text-xs font-bold transition flex items-center gap-2 border border-[#E6E1D8] active:scale-[0.98]"
-              >
-                LinkedIn
-                <ExternalLink className="w-3.5 h-3.5 opacity-60" />
-              </a>
-              <a
-                href={DEVELOPER.github}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-h-[48px] px-4 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E293B] text-xs font-bold transition flex items-center gap-2 border border-[#E6E1D8] active:scale-[0.98]"
-              >
-                GitHub
-                <ExternalLink className="w-3.5 h-3.5 opacity-60" />
-              </a>
-              <a
-                href={DEVELOPER.portfolio}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-h-[48px] px-4 rounded-xl bg-[#1E3A8A] hover:bg-[#1E40AF] text-white text-xs font-bold transition flex items-center gap-2 active:scale-[0.98]"
-              >
-                <Globe className="w-3.5 h-3.5" />
-                Portfolio
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick auth strip */}
-        <div className="mt-6 rounded-2xl border border-[#E6E1D8] bg-[#F3EFE8]/80 px-4 py-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm text-[#1E293B] font-semibold">
-            <GraduationCap className="w-4 h-4 text-[#1E3A8A]" />
-            <span>Ready to join the batch?</span>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-2">
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
             <Link
               href="/login"
-              className="min-h-[44px] px-4 rounded-xl bg-white border border-[#E6E1D8] text-xs font-bold text-[#1E293B] flex items-center hover:bg-[#FAF8F5] transition"
+              className="azs-btn-ghost !w-auto flex-1 sm:flex-none min-h-[44px] px-4 text-xs font-bold"
             >
-              Student Sign In
+              Sign In
             </Link>
             <Link
               href="/register"
-              className="min-h-[44px] px-4 rounded-xl bg-[#1E3A8A] text-white text-xs font-bold flex items-center gap-1.5 hover:bg-[#1E40AF] transition"
+              className="azs-btn-primary !w-auto flex-1 sm:flex-none min-h-[44px] px-5 text-xs font-bold"
             >
-              New Registration
+              <span>Join Batch</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         </div>
       </section>
 
-      {/* ── Shared professional footer (teacher + developer links) ── */}
+      {/* ── Single Unified Site Footer ── */}
       <SiteFooter />
     </main>
   );

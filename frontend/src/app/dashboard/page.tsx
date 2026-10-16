@@ -21,6 +21,7 @@ import {
   Calendar as CalendarIcon,
   Search,
   ExternalLink,
+  ArrowRight,
   ChevronLeft,
   ChevronRight,
   Bell,

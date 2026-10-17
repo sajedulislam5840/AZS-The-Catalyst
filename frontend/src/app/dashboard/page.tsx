@@ -109,21 +109,28 @@ interface StudyPlan {
 }
 
 function getYouTubeEmbedUrl(url: string) {
-  if (!url) return "";
-  try {
-    let videoId = "";
-    if (url.includes("youtu.be/")) {
-      videoId = url.split("youtu.be/")[1]?.split("?")[0] || "";
-    } else if (url.includes("youtube.com/watch")) {
-      const urlParams = new URLSearchParams(url.split("?")[1]);
-      videoId = urlParams.get("v") || "";
-    } else if (url.includes("youtube.com/embed/")) {
-      videoId = url.split("youtube.com/embed/")[1]?.split("?")[0] || "";
+    if (!url) return "";
+    try {
+        let videoId = "";
+        const trimmedUrl = url.trim();
+        
+        if (trimmedUrl.includes("youtu.be/")) {
+            videoId = trimmedUrl.split("youtu.be/")[1]?.split("?")[0]?.split("&")[0] || "";
+        } else if (trimmedUrl.includes("youtube.com/watch")) {
+            const urlParams = new URLSearchParams(trimmedUrl.split("?")[1]);
+            videoId = urlParams.get("v") || "";
+        } else if (trimmedUrl.includes("youtube.com/embed/")) {
+            videoId = trimmedUrl.split("youtube.com/embed/")[1]?.split("?")[0]?.split("&")[0] || "";
+        } else if (trimmedUrl.includes("youtube.com/shorts/")) {
+            videoId = trimmedUrl.split("youtube.com/shorts/")[1]?.split("?")[0]?.split("&")[0] || "";
+        } else if (trimmedUrl.length === 11 && !trimmedUrl.includes("/")) {
+            videoId = trimmedUrl;
+        }
+
+        return videoId ? `https://www.youtube.com/embed/${videoId}` : trimmedUrl;
+    } catch {
+        return url;
     }
-    return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
-  } catch {
-    return url;
-  }
 }
 
 function getDrivePreviewUrl(url: string) {

@@ -109,28 +109,30 @@ interface StudyPlan {
 }
 
 function getYouTubeEmbedUrl(url: string) {
-    if (!url) return "";
-    try {
-        let videoId = "";
-        const trimmedUrl = url.trim();
-        
-        if (trimmedUrl.includes("youtu.be/")) {
-            videoId = trimmedUrl.split("youtu.be/")[1]?.split("?")[0]?.split("&")[0] || "";
-        } else if (trimmedUrl.includes("youtube.com/watch")) {
-            const urlParams = new URLSearchParams(trimmedUrl.split("?")[1]);
-            videoId = urlParams.get("v") || "";
-        } else if (trimmedUrl.includes("youtube.com/embed/")) {
-            videoId = trimmedUrl.split("youtube.com/embed/")[1]?.split("?")[0]?.split("&")[0] || "";
-        } else if (trimmedUrl.includes("youtube.com/shorts/")) {
-            videoId = trimmedUrl.split("youtube.com/shorts/")[1]?.split("?")[0]?.split("&")[0] || "";
-        } else if (trimmedUrl.length === 11 && !trimmedUrl.includes("/")) {
-            videoId = trimmedUrl;
-        }
+  if (!url) return "";
+  try {
+    let videoId = "";
+    const trimmedUrl = url.trim();
 
-        return videoId ? `https://www.youtube.com/embed/${videoId}` : trimmedUrl;
-    } catch {
-        return url;
+    if (trimmedUrl.includes("youtu.be/")) {
+      videoId = trimmedUrl.split("youtu.be/")[1]?.split("?")[0]?.split("&")[0] || "";
+    } else if (trimmedUrl.includes("youtube.com/watch")) {
+      const urlParams = new URLSearchParams(trimmedUrl.split("?")[1]);
+      videoId = urlParams.get("v") || "";
+    } else if (trimmedUrl.includes("youtube.com/embed/")) {
+      videoId = trimmedUrl.split("youtube.com/embed/")[1]?.split("?")[0]?.split("&")[0] || "";
+    } else if (trimmedUrl.includes("youtube.com/shorts/")) {
+      videoId = trimmedUrl.split("youtube.com/shorts/")[1]?.split("?")[0]?.split("&")[0] || "";
+    } else if (trimmedUrl.includes("youtube.com/live/")) {
+      videoId = trimmedUrl.split("youtube.com/live/")[1]?.split("?")[0]?.split("&")[0] || "";
+    } else if (trimmedUrl.length === 11 && !trimmedUrl.includes("/")) {
+      videoId = trimmedUrl;
     }
+
+    return videoId ? `https://www.youtube.com/embed/${videoId}` : trimmedUrl;
+  } catch {
+    return url;
+  }
 }
 
 function getDrivePreviewUrl(url: string) {
@@ -342,8 +344,8 @@ function DashboardContent() {
       if (res.data) {
         const isAdmin = Boolean(
           res.data.is_admin ||
-            String(res.data.role).toUpperCase() === "ADMIN" ||
-            res.data.email === "rabbi@edutrack.com"
+          String(res.data.role).toUpperCase() === "ADMIN" ||
+          res.data.email === "rabbi@edutrack.com"
         );
 
         if (isAdmin) {
@@ -673,13 +675,12 @@ function DashboardContent() {
 
   return (
     <div
-      className={`min-h-screen bg-[#FAF8F5] text-slate-900 flex flex-col font-sans antialiased relative overflow-x-hidden selection:bg-blue-100 transition-colors duration-700 ${
-        activeNav === "lectures" && selectedSubjectTab === "PHYSICS"
+      className={`min-h-screen bg-[#FAF8F5] text-slate-900 flex flex-col font-sans antialiased relative overflow-x-hidden selection:bg-blue-100 transition-colors duration-700 ${activeNav === "lectures" && selectedSubjectTab === "PHYSICS"
           ? "bg-sky-50/20"
           : activeNav === "lectures" && selectedSubjectTab === "CHEMISTRY"
-          ? "bg-emerald-50/20"
-          : ""
-      }`}
+            ? "bg-emerald-50/20"
+            : ""
+        }`}
     >
       {/* SUBJECT TRANSITION OVERLAY */}
       <AnimatePresence>
@@ -756,11 +757,10 @@ function DashboardContent() {
 
         {/* LEFT SIDEBAR (Nord Cream) */}
         <aside
-          className={`fixed md:static inset-y-0 left-0 z-50 w-72 bg-white border-r border-[#E6E1D8] p-5 flex flex-col justify-between shrink-0 shadow-2xl md:shadow-none transition-transform duration-300 ease-in-out ${
-            isMobileSidebarOpen
+          className={`fixed md:static inset-y-0 left-0 z-50 w-72 bg-white border-r border-[#E6E1D8] p-5 flex flex-col justify-between shrink-0 shadow-2xl md:shadow-none transition-transform duration-300 ease-in-out ${isMobileSidebarOpen
               ? "translate-x-0"
               : "-translate-x-full md:translate-x-0"
-          }`}
+            }`}
         >
           <div className="space-y-6">
             {/* Brand Header */}
@@ -840,20 +840,18 @@ function DashboardContent() {
                     if (id === "dashboard") setSearchQuery("");
                     setIsMobileSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center space-x-3 px-4 min-h-[48px] rounded-xl text-sm font-bold transition-all ${
-                    activeNav === id
+                  className={`w-full flex items-center space-x-3 px-4 min-h-[48px] rounded-xl text-sm font-bold transition-all ${activeNav === id
                       ? "bg-[#1E3A8A] text-white shadow-lg shadow-blue-900/10"
                       : "text-slate-600 hover:text-[#1E3A8A] hover:bg-slate-50 border border-transparent"
-                  }`}
+                    }`}
                 >
                   <Icon
-                    className={`w-5 h-5 ${
-                      activeNav === id
+                    className={`w-5 h-5 ${activeNav === id
                         ? "text-white"
                         : id === "ai"
-                        ? "text-[#0369A1]"
-                        : "text-slate-400"
-                    }`}
+                          ? "text-[#0369A1]"
+                          : "text-slate-400"
+                      }`}
                   />
                   <span>{label}</span>
                   {extra}
@@ -935,11 +933,10 @@ function DashboardContent() {
           {/* SUBSCRIPTION EXPIRED / EXPIRING ALERT */}
           {(isExpired || isExpiringSoon) && (
             <div
-              className={`px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b ${
-                isExpired
+              className={`px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b ${isExpired
                   ? "bg-rose-50 border-rose-200 text-rose-900"
                   : "bg-amber-50 border-amber-200 text-amber-900"
-              }`}
+                }`}
             >
               <div className="flex items-center space-x-3">
                 <ShieldAlert className="w-6 h-6 text-rose-600 shrink-0" />
@@ -947,9 +944,8 @@ function DashboardContent() {
                   <h4 className="text-xs font-bold uppercase tracking-wider">
                     {isExpired
                       ? "Subscription Expired — Content Locked"
-                      : `Payment Reminder: ${daysLeft} ${
-                          daysLeft === 1 ? "Day" : "Days"
-                        } Remaining`}
+                      : `Payment Reminder: ${daysLeft} ${daysLeft === 1 ? "Day" : "Days"
+                      } Remaining`}
                   </h4>
                   <p className="text-xs text-slate-600 mt-0.5">
                     {isExpired
@@ -1083,11 +1079,10 @@ function DashboardContent() {
                                 <div className="p-5 pt-0">
                                   <button
                                     onClick={() => toggleWatchStatus(vid.id)}
-                                    className={`w-full h-12 rounded-xl text-xs font-bold ${
-                                      isWatched
+                                    className={`w-full h-12 rounded-xl text-xs font-bold ${isWatched
                                         ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                         : "bg-[#1E3A8A] text-white"
-                                    }`}
+                                      }`}
                                   >
                                     {isWatched ? "✓ Watched" : "Mark as Watched"}
                                   </button>
@@ -1227,11 +1222,10 @@ function DashboardContent() {
                             >
                               <div className="flex items-center space-x-3 overflow-hidden">
                                 <div
-                                  className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                                    v.subject === "PHYSICS"
+                                  className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${v.subject === "PHYSICS"
                                       ? "bg-sky-100 text-[#0369A1]"
                                       : "bg-emerald-100 text-[#047857]"
-                                  }`}
+                                    }`}
                                 >
                                   #{v.lecture_no}
                                 </div>
@@ -1247,11 +1241,10 @@ function DashboardContent() {
 
                               <button
                                 onClick={() => toggleWatchStatus(v.id)}
-                                className={`h-9 px-3 rounded-lg text-xs font-bold shrink-0 ${
-                                  isDone
+                                className={`h-9 px-3 rounded-lg text-xs font-bold shrink-0 ${isDone
                                     ? "bg-emerald-100 text-emerald-800"
                                     : "bg-white border border-[#E6E1D8] text-slate-700 hover:bg-slate-100"
-                                }`}
+                                  }`}
                               >
                                 {isDone ? "✓ Done" : "Watch"}
                               </button>
@@ -1317,11 +1310,10 @@ function DashboardContent() {
                             <button
                               key={dayNum}
                               onClick={() => setSelectedDateForPlan(dateKey)}
-                              className={`h-9 w-9 mx-auto flex items-center justify-center rounded-xl relative ${
-                                isToday
+                              className={`h-9 w-9 mx-auto flex items-center justify-center rounded-xl relative ${isToday
                                   ? "bg-[#1E3A8A] text-white shadow-md"
                                   : "text-slate-700 hover:bg-slate-100"
-                              }`}
+                                }`}
                             >
                               <span>{dayNum}</span>
                               {hasPlans && (
@@ -1367,22 +1359,20 @@ function DashboardContent() {
                     <div className="flex items-center bg-white border border-[#E6E1D8] rounded-2xl p-1 shadow-sm">
                       <button
                         onClick={() => setSelectedSubjectTab("PHYSICS")}
-                        className={`h-10 px-5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                          selectedSubjectTab === "PHYSICS"
+                        className={`h-10 px-5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${selectedSubjectTab === "PHYSICS"
                             ? "bg-[#0369A1] text-white"
                             : "text-slate-600 hover:bg-slate-50"
-                        }`}
+                          }`}
                       >
                         <Atom className="w-4 h-4" />
                         <span>Physics</span>
                       </button>
                       <button
                         onClick={() => setSelectedSubjectTab("CHEMISTRY")}
-                        className={`h-10 px-5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                          selectedSubjectTab === "CHEMISTRY"
+                        className={`h-10 px-5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${selectedSubjectTab === "CHEMISTRY"
                             ? "bg-[#047857] text-white"
                             : "text-slate-600 hover:bg-slate-50"
-                        }`}
+                          }`}
                       >
                         <FlaskConical className="w-4 h-4" />
                         <span>Chemistry</span>
@@ -1402,8 +1392,8 @@ function DashboardContent() {
                         const chProgress =
                           chVideos.length > 0
                             ? Math.round(
-                                (completedInCh / chVideos.length) * 100
-                              )
+                              (completedInCh / chVideos.length) * 100
+                            )
                             : 0;
 
                         return (
@@ -1531,11 +1521,10 @@ function DashboardContent() {
 
                                 <button
                                   onClick={() => toggleWatchStatus(vid.id)}
-                                  className={`w-full h-12 rounded-xl text-xs font-bold ${
-                                    isWatched
+                                  className={`w-full h-12 rounded-xl text-xs font-bold ${isWatched
                                       ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                       : "bg-[#1E3A8A] text-white"
-                                  }`}
+                                    }`}
                                 >
                                   {isWatched ? "✓ Completed" : "Mark as Watched"}
                                 </button>
@@ -1790,11 +1779,10 @@ function DashboardContent() {
               setSelectedChapter(null);
               setIsMobileSidebarOpen(false);
             }}
-            className={`flex flex-col items-center justify-center min-h-[48px] px-3 rounded-xl transition-all ${
-              activeNav === id
+            className={`flex flex-col items-center justify-center min-h-[48px] px-3 rounded-xl transition-all ${activeNav === id
                 ? "text-[#1E3A8A] font-bold"
                 : "text-slate-400 hover:text-slate-600"
-            }`}
+              }`}
           >
             <Icon className="w-5 h-5" />
             <span className="text-[10px] tracking-tight mt-1">{label}</span>

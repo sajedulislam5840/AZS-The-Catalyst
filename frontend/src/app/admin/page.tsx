@@ -221,12 +221,16 @@ export default function AdminPage() {
   const sortedAndFilteredLectures = useMemo(() => {
     return lectures
       .filter((lec) => {
+        const lecSubj = (lec.subject || "").trim().toLowerCase();
+        const filtSubj = filterVideoSubject.trim().toLowerCase();
         const matchSubj =
-          filterVideoSubject === "ALL" ||
-          lec.subject.toLowerCase() === filterVideoSubject.toLowerCase();
+          filterVideoSubject === "ALL" || lecSubj === filtSubj;
+
+        const lecChap = (lec.chapter || "").trim().toLowerCase();
+        const filtChap = filterVideoChapter.trim().toLowerCase();
         const matchChap =
-          filterVideoChapter === "ALL" ||
-          lec.chapter.toLowerCase() === filterVideoChapter.toLowerCase();
+          filterVideoChapter === "ALL" || lecChap === filtChap;
+
         return matchSubj && matchChap;
       })
       .sort((a, b) => a.lecture_no - b.lecture_no);
@@ -677,33 +681,30 @@ export default function AdminPage() {
           <div className="order-3 w-full lg:order-none lg:w-auto flex items-center space-x-1.5 bg-[#0F172A]/20 p-1.5 rounded-2xl border border-white/20 overflow-x-auto">
             <button
               onClick={() => setActiveTab("students")}
-              className={`flex items-center gap-2 px-4 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-colors ${
-                activeTab === "students"
+              className={`flex items-center gap-2 px-4 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-colors ${activeTab === "students"
                   ? "bg-white text-[#1E3A8A] shadow-sm"
                   : "text-white/80 hover:text-white hover:bg-white/10"
-              }`}
+                }`}
             >
               <Users className="w-4 h-4" />
               <span>Batch & Fees</span>
             </button>
             <button
               onClick={() => setActiveTab("video")}
-              className={`flex items-center gap-2 px-4 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-colors ${
-                activeTab === "video"
+              className={`flex items-center gap-2 px-4 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-colors ${activeTab === "video"
                   ? "bg-white text-[#1E3A8A] shadow-sm"
                   : "text-white/80 hover:text-white hover:bg-white/10"
-              }`}
+                }`}
             >
               <Video className="w-4 h-4" />
               <span>Lectures</span>
             </button>
             <button
               onClick={() => setActiveTab("sheet")}
-              className={`flex items-center gap-2 px-4 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-colors ${
-                activeTab === "sheet"
+              className={`flex items-center gap-2 px-4 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-colors ${activeTab === "sheet"
                   ? "bg-white text-[#1E3A8A] shadow-sm"
                   : "text-white/80 hover:text-white hover:bg-white/10"
-              }`}
+                }`}
             >
               <FileText className="w-4 h-4" />
               <span>Materials</span>
@@ -861,11 +862,10 @@ export default function AdminPage() {
               <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
                 <button
                   onClick={() => setSelectedBatch("ALL")}
-                  className={`flex items-center gap-2 px-3.5 min-h-[44px] text-xs font-bold rounded-xl transition-colors ${
-                    selectedBatch === "ALL"
+                  className={`flex items-center gap-2 px-3.5 min-h-[44px] text-xs font-bold rounded-xl transition-colors ${selectedBatch === "ALL"
                       ? "bg-[#1E3A8A] text-white shadow-sm"
                       : "text-[#64748B] hover:text-[#1E3A8A] hover:bg-[#FAF8F5]"
-                  }`}
+                    }`}
                 >
                   <Users className="w-3.5 h-3.5" />
                   <span>All Batches</span>
@@ -885,11 +885,10 @@ export default function AdminPage() {
                     <button
                       key={batchName}
                       onClick={() => setSelectedBatch(batchName)}
-                      className={`flex items-center gap-2 px-3.5 min-h-[44px] text-xs font-bold rounded-xl transition-colors shrink-0 ${
-                        selectedBatch.toLowerCase() === batchName.toLowerCase()
+                      className={`flex items-center gap-2 px-3.5 min-h-[44px] text-xs font-bold rounded-xl transition-colors shrink-0 ${selectedBatch.toLowerCase() === batchName.toLowerCase()
                           ? "bg-[#1E3A8A] text-white shadow-sm"
                           : "text-[#64748B] hover:text-[#1E3A8A] hover:bg-[#FAF8F5]"
-                      }`}
+                        }`}
                     >
                       <span>{batchName}</span>
                       <span className="px-1.5 py-0.5 bg-[#FAF8F5] border border-[#E6E1D8] rounded-full text-[10px] text-[#334155] font-mono">
@@ -1334,11 +1333,10 @@ export default function AdminPage() {
 
                           <button
                             onClick={() => handleToggleLecturePublish(lec.id)}
-                            className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-xs font-semibold border transition-colors ${
-                              lec.is_published === false
+                            className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-xs font-semibold border transition-colors ${lec.is_published === false
                                 ? "bg-amber-50 border-amber-200 text-amber-800"
                                 : "bg-white border-[#E6E1D8] text-[#334155] hover:text-[#0F172A]"
-                            }`}
+                              }`}
                             title={
                               lec.is_published === false ? "Publish" : "Unpublish"
                             }
@@ -1399,11 +1397,10 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() => setUploadMode("file")}
-                  className={`flex-1 min-h-[44px] text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5 transition-colors ${
-                    uploadMode === "file"
+                  className={`flex-1 min-h-[44px] text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5 transition-colors ${uploadMode === "file"
                       ? "bg-[#1E3A8A] text-white shadow-sm"
                       : "text-[#64748B] hover:text-[#1E3A8A]"
-                  }`}
+                    }`}
                 >
                   <Upload className="w-4 h-4" />
                   <span>Upload from PC</span>
@@ -1411,11 +1408,10 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() => setUploadMode("link")}
-                  className={`flex-1 min-h-[44px] text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5 transition-colors ${
-                    uploadMode === "link"
+                  className={`flex-1 min-h-[44px] text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5 transition-colors ${uploadMode === "link"
                       ? "bg-[#1E3A8A] text-white shadow-sm"
                       : "text-[#64748B] hover:text-[#1E3A8A]"
-                  }`}
+                    }`}
                 >
                   <LinkIcon className="w-4 h-4" />
                   <span>Google Drive Link</span>
@@ -1588,11 +1584,10 @@ export default function AdminPage() {
 
                         <button
                           onClick={() => handleToggleMaterialPublish(mat.id)}
-                          className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-xs font-semibold border transition-colors ${
-                            mat.is_published === false
+                          className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-xs font-semibold border transition-colors ${mat.is_published === false
                               ? "bg-amber-50 border-amber-200 text-amber-800"
                               : "bg-white border-[#E6E1D8] text-[#334155] hover:text-[#0F172A]"
-                          }`}
+                            }`}
                           title={
                             mat.is_published === false ? "Publish" : "Unpublish"
                           }

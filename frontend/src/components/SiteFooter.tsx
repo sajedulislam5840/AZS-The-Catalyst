@@ -113,7 +113,7 @@ export default function SiteFooter({ compact = false }: SiteFooterProps) {
             {/* DEVELOPER SOCIAL, CONTACT & PORTFOLIO LINKS */}
             <div className="flex items-center gap-2 pt-1 flex-wrap md:justify-end">
               <a
-                href={DEVELOPER.portfolio}
+                href="https://sajedul-islam-portfolio.vercel.app/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#1E3A8A] hover:bg-[#1E40AF] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95"

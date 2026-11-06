@@ -142,6 +142,7 @@ def test_network_error_is_survivable(monkeypatch):
 def test_system_prompt_is_scoped():
     prompt = ai_tutor.build_system_prompt("- Lec 1: Motion", "")
     assert ai_tutor.OFF_TOPIC_MARK in prompt and "Lec 1: Motion" in prompt
+    assert "NEVER use" in prompt and "$$" in prompt and "table" in prompt  # formatting rules reach the model
     assert ai_tutor.apply_scope(ai_tutor.OFF_TOPIC_MARK) == ai_tutor.OFF_TOPIC_REPLY
     assert ai_tutor.apply_scope("ok") == "ok"
 

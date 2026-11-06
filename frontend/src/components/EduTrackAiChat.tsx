@@ -3,7 +3,9 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
+import { prepareAiMarkdown, KATEX_OPTIONS } from "@/lib/ai-markdown";
 import { isAxiosError } from "axios";
 import api from "@/lib/api";
 import {
@@ -505,10 +507,24 @@ export default function EduTrackAiChat({
 
                                         <div className="prose prose-sm max-w-none break-words leading-relaxed text-[#0F172A] prose-headings:text-[#075985] prose-a:text-[#0369A1] prose-code:text-[#CC310E] prose-pre:bg-[#F3F8FC] prose-pre:border prose-pre:border-[#D3E3EF]">
                                             <ReactMarkdown
-                                                remarkPlugins={[remarkMath]}
-                                                rehypePlugins={[rehypeKatex]}
+                                                remarkPlugins={[remarkGfm, remarkMath]}
+                                                rehypePlugins={[[rehypeKatex, KATEX_OPTIONS]]}
+                                                components={{
+                                                    // Wide tables scroll sideways on phones instead of breaking the layout
+                                                    table: ({ children }) => (
+                                                        <div className="overflow-x-auto my-3 rounded-lg border border-[#D3E3EF]">
+                                                            <table className="min-w-full text-sm">{children}</table>
+                                                        </div>
+                                                    ),
+                                                    th: ({ children }) => (
+                                                        <th className="bg-[#F3F8FC] text-[#075985] font-bold text-left px-3 py-2 border-b border-[#D3E3EF] align-top">{children}</th>
+                                                    ),
+                                                    td: ({ children }) => (
+                                                        <td className="px-3 py-2 border-b border-[#E5EEF5] align-top">{children}</td>
+                                                    ),
+                                                }}
                                             >
-                                                {msg.content}
+                                                {prepareAiMarkdown(msg.content)}
                                             </ReactMarkdown>
                                         </div>
 

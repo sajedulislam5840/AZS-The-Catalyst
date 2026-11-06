@@ -496,7 +496,10 @@ DATABASE_URL=your_database_url
 SECRET_KEY=your_secret_key
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
-AI_API_KEY=your_ai_api_key
+GROQ_API_KEY=your_groq_api_key
+# Optional: override the AI models (defaults shown)
+AI_MODEL_DEEP=openai/gpt-oss-120b
+AI_MODEL_FAST=qwen/qwen3.6-27b
 ```
 
 ### Frontend

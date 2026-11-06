@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import { isAxiosError } from "axios";
+import api from "@/lib/api";
 import {
     Send,
     X,
@@ -17,6 +19,7 @@ import {
     MessageSquare,
     Zap,
     BrainCircuit,
+    RefreshCw,
     ChevronLeft,
     Atom,
     FlaskConical,
@@ -26,6 +29,8 @@ export interface Message {
     id?: string;
     role: "user" | "assistant";
     content: string;
+    error?: boolean; // a failure notice shown in the chat, never sent to the AI
+    retryText?: string; // set when pressing Retry can help
 }
 
 export interface ChatSessionItem {
@@ -44,9 +49,29 @@ export interface EduTrackAiChatProps {
     initialPrompt?: string; // Sent once as the first question when the chat opens (used by "Ask AI" shortcuts)
 }
 
-const BACKEND_URL = (
-    process.env.NEXT_PUBLIC_API_URL || "https://edutrack-backend-qjxg.onrender.com"
-).replace(/\/$/, "");
+const MAX_PROMPT_CHARS = 2000;
+
+// Turns a failed request into a short Bangla message, and says whether trying again can help.
+function describeError(err: unknown): { text: string; retryable: boolean } {
+    if (isAxiosError(err)) {
+        if (!err.response) {
+            return {
+                text: "সার্ভারের সাথে যোগাযোগ হয়নি। সার্ভার ঘুম থেকে উঠছে হতে পারে, অথবা ইন্টারনেট সংযোগ নেই। কয়েক সেকেন্ড পর আবার চেষ্টা করো।",
+                retryable: true,
+            };
+        }
+        const { status, data } = err.response;
+        const detail = data && typeof data.detail === "string" ? data.detail : "";
+        if (status === 401) {
+            return { text: "তোমার লগইন সেশন শেষ হয়েছে। আবার লগইন করে চেষ্টা করো।", retryable: false };
+        }
+        if (status === 400 || status === 422) {
+            return { text: detail || "প্রশ্নটি পাঠানো গেল না। প্রশ্ন ছোট করে আবার লিখো।", retryable: false };
+        }
+        return { text: detail || "AI টিউটর এই মুহূর্তে উত্তর দিতে পারছে না। আবার চেষ্টা করো।", retryable: status !== 503 };
+    }
+    return { text: "কিছু একটা ভুল হয়েছে। আবার চেষ্টা করো।", retryable: true };
+}
 
 const SUGGESTED_PROMPTS = [
     {
@@ -106,72 +131,58 @@ export default function EduTrackAiChat({
         }
     }, [messages, isLoading, isOpen, scrollToBottom]);
 
-    const getAuthHeaders = (): Record<string, string> => {
-        const headers: Record<string, string> = {
-            "Content-Type": "application/json",
-        };
-        if (typeof window !== "undefined") {
-            const token = localStorage.getItem("token") || localStorage.getItem("access_token");
-            if (token) {
-                headers["Authorization"] = `Bearer ${token}`;
-            }
-        }
-        return headers;
-    };
-
     // Load Sessions List (Chat Retracking)
     const loadSessions = useCallback(async () => {
         try {
-            const res = await fetch(`${BACKEND_URL}/api/v1/ai/sessions`, {
-                headers: getAuthHeaders(),
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setSessions(Array.isArray(data) ? data : []);
-            }
+            const { data } = await api.get("/api/v1/ai/sessions");
+            setSessions(Array.isArray(data) ? data : []);
         } catch {
             // Quietly fallback for guest users
         }
     }, []);
 
     useEffect(() => {
-        if (isOpen) {
-            loadSessions();
-        }
-    }, [isOpen, loadSessions]);
+        if (!isOpen) return;
+        let cancelled = false;
+        api.get("/api/v1/ai/sessions")
+            .then(({ data }) => {
+                if (!cancelled) setSessions(Array.isArray(data) ? data : []);
+            })
+            .catch(() => {
+                // Quietly fall back when the list can't be loaded
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [isOpen]);
 
     // Load Specific Session Messages (Retrack a previous chat)
     const loadSessionHistory = async (sessionId: string) => {
         setIsLoading(true);
         try {
-            const res = await fetch(`${BACKEND_URL}/api/v1/ai/sessions/${sessionId}`, {
-                headers: getAuthHeaders(),
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setCurrentSessionId(data.id);
-                if (data.model) {
-                    setSelectedModel(data.model === "groq" ? "groq" : "deepseek");
-                }
-                if (Array.isArray(data.messages) && data.messages.length > 0) {
-                    setMessages(
-                        data.messages.map((m: any) => ({
-                            id: m.id,
-                            role: m.role,
-                            content: m.content,
-                        }))
-                    );
-                } else {
-                    setMessages([
-                        {
-                            role: "assistant",
-                            content: `**${data.title}** সেশন চালু হয়েছে। তোমার প্রশ্ন জিজ্ঞেস করো।`,
-                        },
-                    ]);
-                }
-                setIsSidebarOpen(false);
+            const { data } = await api.get(`/api/v1/ai/sessions/${sessionId}`);
+            setCurrentSessionId(data.id);
+            if (data.model) {
+                setSelectedModel(data.model === "groq" ? "groq" : "deepseek");
             }
-        } catch (err: any) {
+            if (Array.isArray(data.messages) && data.messages.length > 0) {
+                setMessages(
+                    data.messages.map((m: { id: string; role: "user" | "assistant"; content: string }) => ({
+                        id: m.id,
+                        role: m.role,
+                        content: m.content,
+                    }))
+                );
+            } else {
+                setMessages([
+                    {
+                        role: "assistant",
+                        content: `**${data.title}** সেশন চালু হয়েছে। তোমার প্রশ্ন জিজ্ঞেস করো।`,
+                    },
+                ]);
+            }
+            setIsSidebarOpen(false);
+        } catch (err) {
             console.error("Failed to load session:", err);
         } finally {
             setIsLoading(false);
@@ -195,86 +206,79 @@ export default function EduTrackAiChat({
     const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
-            const res = await fetch(`${BACKEND_URL}/api/v1/ai/sessions/${sessionId}`, {
-                method: "DELETE",
-                headers: getAuthHeaders(),
-            });
-            if (res.ok) {
-                setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-                if (currentSessionId === sessionId) {
-                    handleNewChat();
-                }
+            await api.delete(`/api/v1/ai/sessions/${sessionId}`);
+            setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+            if (currentSessionId === sessionId) {
+                handleNewChat();
             }
         } catch (err) {
             console.error("Failed to delete session:", err);
         }
     };
 
-    // Send Question
-    const handleSend = async (promptToSend?: string) => {
+    // Send Question. With `retry`, the question is already on screen: just ask again.
+    const handleSend = async (promptToSend?: string, retry = false) => {
         const text = (promptToSend || input).trim();
         if (!text || isLoading) return;
+        if (text.length > MAX_PROMPT_CHARS) {
+            setMessages((prev) => [
+                ...prev,
+                { role: "assistant", error: true, content: `⚠️ প্রশ্ন একটু ছোট করো (সর্বোচ্চ ${MAX_PROMPT_CHARS} অক্ষর)।` },
+            ]);
+            return;
+        }
 
-        const userMessage: Message = { role: "user", content: text };
-        setMessages((prev) => [...prev, userMessage]);
-        setInput("");
+        if (retry) {
+            setMessages((prev) => prev.filter((m) => !m.error));
+        } else {
+            setMessages((prev) => [...prev, { role: "user", content: text }]);
+            setInput("");
+        }
         setIsLoading(true);
 
         try {
-            // Prepare multi-turn conversation history
-            const historyPayload = messages
-                .filter((_, idx) => idx !== 0)
-                .slice(-8)
-                .map((m) => ({ role: m.role, content: m.content }));
-
-            const res = await fetch(`${BACKEND_URL}/api/v1/ai/chat`, {
-                method: "POST",
-                headers: getAuthHeaders(),
-                body: JSON.stringify({
-                    prompt: text,
-                    session_id: currentSessionId,
-                    model: selectedModel,
-                    history: historyPayload,
-                }),
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => null);
-                const detailMsg =
-                    errorData && errorData.detail
-                        ? typeof errorData.detail === "string"
-                            ? errorData.detail
-                            : JSON.stringify(errorData.detail)
-                        : `HTTP Error ${res.status}`;
-                throw new Error(detailMsg);
-            }
-
-            const data = await res.json();
-            const replyContent = data.reply || "কোনো উত্তর পাওয়া যায়নি।";
+            // The server keeps the conversation, so only the new question and session id travel.
+            // A failed request is retried by the Retry button, not silently, because the model can take a while.
+            const { data } = await api.post(
+                "/api/v1/ai/chat",
+                { prompt: text, session_id: currentSessionId, model: selectedModel },
+                { timeout: 120000, __isRetryRequest: true } as object
+            );
+            const replyContent = data.reply || "কোনো উত্তর পাওয়া যায়নি।";
 
             if (data.session_id) {
                 setCurrentSessionId(data.session_id);
             }
 
-            setMessages((prev) => [
-                ...prev,
-                { role: "assistant", content: replyContent },
-            ]);
+            setMessages((prev) => [...prev, { role: "assistant", content: replyContent }]);
 
             // Refresh sessions list in background to display new title
             loadSessions();
-        } catch (err: any) {
+        } catch (err) {
+            const { text: reason, retryable } = describeError(err);
             setMessages((prev) => [
                 ...prev,
-                {
-                    role: "assistant",
-                    content: `⚠️ এরর: ${err?.message || "সার্ভারের সাথে সংযোগ বিচ্ছিন্ন"}`,
-                },
+                { role: "assistant", error: true, content: `⚠️ ${reason}`, retryText: retryable ? text : undefined },
             ]);
         } finally {
             setIsLoading(false);
         }
     };
+
+    // Render's free server sleeps when idle. Wake it as soon as the chat opens, and explain a long wait.
+    const [isSlow, setIsSlow] = useState(false);
+    useEffect(() => {
+        if (!isOpen && !isEmbedded) return;
+        api.get("/health", { timeout: 70000, __isRetryRequest: true } as object).catch(() => {});
+    }, [isOpen, isEmbedded]);
+    useEffect(() => {
+        if (!isLoading) return;
+        const timer = setTimeout(() => setIsSlow(true), 8000);
+        return () => {
+            clearTimeout(timer);
+            setIsSlow(false);
+        };
+    }, [isLoading]);
 
     // "Ask AI" shortcuts open the chat with a ready-made question, sent exactly once.
     const initialSent = useRef(false);
@@ -356,10 +360,10 @@ export default function EduTrackAiChat({
                                     ? "bg-white text-[#075985] shadow-sm"
                                     : "text-white/80 hover:text-white hover:bg-white/10"
                             }`}
-                            title="DeepSeek R1: Advanced mathematical reasoning and step-by-step derivations"
+                            title="Deep: slower, careful step-by-step derivations"
                         >
                             <BrainCircuit className="w-3.5 h-3.5" />
-                            <span className="hidden xs:inline sm:inline">DeepSeek</span>
+                            <span className="hidden xs:inline sm:inline">Deep</span>
                         </button>
 
                         <button
@@ -370,10 +374,10 @@ export default function EduTrackAiChat({
                                     ? "bg-white text-[#0369A1] shadow-sm"
                                     : "text-white/80 hover:text-white hover:bg-white/10"
                             }`}
-                            title="Groq Fast: Ultra-fast explanations and concept guidance"
+                            title="Fast: quick explanations and concept guidance"
                         >
                             <Zap className="w-3.5 h-3.5" />
-                            <span className="hidden xs:inline sm:inline">Groq</span>
+                            <span className="hidden xs:inline sm:inline">Fast</span>
                         </button>
                     </div>
 
@@ -443,7 +447,7 @@ export default function EduTrackAiChat({
                                                     {s.title}
                                                 </p>
                                                 <span className="text-[11px] font-medium text-[#64748B]">
-                                                    {s.model === "groq" ? "⚡ Groq" : "🧠 DeepSeek"}
+                                                    {s.model === "groq" ? "⚡ Fast" : "🧠 Deep"}
                                                 </span>
                                             </div>
                                         </div>
@@ -507,6 +511,18 @@ export default function EduTrackAiChat({
                                                 {msg.content}
                                             </ReactMarkdown>
                                         </div>
+
+                                        {msg.error && msg.retryText && (
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleSend(msg.retryText, true)}
+                                                disabled={isLoading}
+                                                className="mt-3 inline-flex items-center gap-2 min-h-[44px] px-4 rounded-xl bg-[#CC310E] text-white text-sm font-bold hover:bg-[#A82809] disabled:opacity-40 transition-colors"
+                                            >
+                                                <RefreshCw className="w-4 h-4" />
+                                                আবার চেষ্টা করো
+                                            </button>
+                                        )}
 
                                         {/* Copy button */}
                                         <button
@@ -584,9 +600,11 @@ export default function EduTrackAiChat({
                                 </div>
                                 <span className="flex items-center gap-2">
                                     <Loader2 className="w-4 h-4 animate-spin text-[#0369A1]" />
-                                    {selectedModel === "deepseek"
-                                        ? "DeepSeek R1 গভীর বিশ্লেষণ করছে..."
-                                        : "Groq Fast সমাধান তৈরি করছে..."}
+                                    {isSlow
+                                        ? "সার্ভার ঘুম থেকে উঠছে, একটু অপেক্ষা করো..."
+                                        : selectedModel === "deepseek"
+                                          ? "গভীরভাবে বিশ্লেষণ করছি..."
+                                          : "দ্রুত সমাধান তৈরি করছি..."}
                                 </span>
                             </div>
                         </div>
@@ -608,10 +626,11 @@ export default function EduTrackAiChat({
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
+                        maxLength={MAX_PROMPT_CHARS}
                         placeholder={`Ask ${
                             selectedModel === "deepseek"
-                                ? "DeepSeek R1 (Math & Reasoning)"
-                                : "Groq Fast"
+                                ? "Deep (step-by-step)"
+                                : "Fast"
                         }...`}
                         className="flex-1 min-h-[48px] bg-transparent border-none outline-none text-sm sm:text-[15px] text-[#0F172A] placeholder-[#94A3B8] py-2"
                     />

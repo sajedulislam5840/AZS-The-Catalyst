@@ -1,1794 +1,716 @@
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  FormEvent,
-  Suspense,
-} from "react";
-import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  LayoutDashboard,
-  PlayCircle,
-  FileText,
-  Bot,
-  LogOut,
-  Flame,
-  Search,
-  ArrowRight,
-  ChevronLeft,
-  ChevronRight,
-  Bell,
-  SearchX,
-  X,
-  Trash2,
-  FileEdit,
-  Download,
-  ChevronDown,
-  Eye,
-  MessageCircle,
-  Atom,
-  FlaskConical,
-  FolderOpen,
-  ArrowLeft,
-  Menu,
-  ShieldAlert,
-  Lock,
-  CreditCard,
-} from "lucide-react";
-import axios from "axios";
+import { Suspense, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowLeft, ArrowRight, Atom, Bot, CreditCard, ExternalLink, FlaskConical, Loader2, Lock, Megaphone, MessageCircle, RefreshCw, SearchX, ShieldAlert, Sparkles } from "lucide-react";
 import EduTrackAiChat from "@/components/EduTrackAiChat";
 import SiteFooter from "@/components/SiteFooter";
+import GlowIcon from "@/components/ui/GlowIcon";
+import { SIMS, SimModal } from "@/components/landing/SimulationsSection";
+import BadgesGrid from "@/components/dashboard/BadgesGrid";
+import Celebration, { type CelebrationEvent } from "@/components/dashboard/Celebration";
+import ChapterCard from "@/components/dashboard/ChapterCard";
+import { MobileDock, Sidebar, TopBar } from "@/components/dashboard/Chrome";
+import ContinueCard from "@/components/dashboard/ContinueCard";
+import CountUp from "@/components/dashboard/CountUp";
+import DashBackdrop from "@/components/dashboard/DashBackdrop";
+import LectureCard from "@/components/dashboard/LectureCard";
+import MaterialCard from "@/components/dashboard/MaterialCard";
+import NoticeSheet from "@/components/dashboard/NoticeSheet";
+import PracticeLab, { ChapterSimBanner } from "@/components/dashboard/PracticeLab";
+import ProgressRing from "@/components/dashboard/ProgressRing";
+import Sheet from "@/components/dashboard/Sheet";
+import { DashboardSkeleton, GridSkeleton } from "@/components/dashboard/Skeleton";
+import StreakCard from "@/components/dashboard/StreakCard";
+import { DayPlanSheet, DueToday, StudyCalendar } from "@/components/dashboard/StudyCalendar";
+import WeeklyGoal from "@/components/dashboard/WeeklyGoal";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { useProgress } from "@/hooks/useProgress";
+import { simForChapter, type SimId } from "@/lib/chapter-sims";
+import type { Material, Subject, UserProfile, VideoLecture, View } from "@/lib/dashboard-types";
+import { getDrivePreviewUrl } from "@/lib/media";
+import {
+  badgeInputFor,
+  chapterStats,
+  completedThisWeek,
+  computeBadges,
+  computeStreak,
+  computeXp,
+  countCompleted,
+  countNotes,
+  findResume,
+  greeting,
+  levelInfo,
+  weekDots,
+  type Plan,
+} from "@/lib/progress";
 import { TEACHER } from "@/lib/social";
 
-const BACKEND_URL = (
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://edutrack-backend-qjxg.onrender.com"
-).replace(/\/$/, "");
+const ADMIN_EMAIL = "rabbi@edutrack.com";
+const VIEWS: View[] = ["dashboard", "lectures", "materials", "ai"];
+const GOAL_KEY = "azs_weekly_goal";
+const SEEN_KEY = "azs_notice_seen";
 
-const api = axios.create({
-  baseURL: BACKEND_URL,
-});
+/* ------------------------- small helpers ------------------------- */
 
-api.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const token =
-      localStorage.getItem("token") || localStorage.getItem("access_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return config;
-});
+const noopSubscribe = () => () => {};
 
-interface UserProfile {
-  id: string;
-  full_name: string;
-  email: string;
-  school?: string;
-  grade_class?: string;
-  batch_no?: string;
-  role?: string;
-  days_left?: number;
-  is_approved?: boolean;
+function readSession() {
+  const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+  if (!token) return null;
+  const role = (localStorage.getItem("user_role") || "").toUpperCase();
+  const email = (localStorage.getItem("user_email") || "").toLowerCase();
+  return {
+    role,
+    email,
+    isAdmin: role === "ADMIN" || email === ADMIN_EMAIL,
+    name: localStorage.getItem("user_name") || localStorage.getItem("student_name") || "Student",
+    batch: localStorage.getItem("batch_no") || "General Batch",
+  };
 }
 
-interface VideoLecture {
-  id: string;
-  lecture_no: number;
-  topic: string;
-  title?: string;
-  chapter: string;
-  subject: string;
-  youtube_url: string;
-  video_url?: string;
-}
-
-interface Material {
-  id: string;
-  title: string;
-  chapter: string;
-  subject: string;
-  pdf_url?: string;
-  file_url?: string;
-}
-
-interface Notice {
-  id: string;
-  content: string;
-  created_at: string;
-}
-
-interface StudyPlan {
-  id: string;
-  dateKey: string;
-  title: string;
-  time?: string;
-}
-
-function getYouTubeEmbedUrl(url: string) {
-  if (!url) return "";
+function readGoal(): number {
   try {
-    let videoId = "";
-    const trimmedUrl = url.trim();
-
-    if (trimmedUrl.includes("youtu.be/")) {
-      videoId = trimmedUrl.split("youtu.be/")[1]?.split("?")[0]?.split("&")[0] || "";
-    } else if (trimmedUrl.includes("youtube.com/watch")) {
-      const urlParams = new URLSearchParams(trimmedUrl.split("?")[1]);
-      videoId = urlParams.get("v") || "";
-    } else if (trimmedUrl.includes("youtube.com/embed/")) {
-      videoId = trimmedUrl.split("youtube.com/embed/")[1]?.split("?")[0]?.split("&")[0] || "";
-    } else if (trimmedUrl.includes("youtube.com/shorts/")) {
-      videoId = trimmedUrl.split("youtube.com/shorts/")[1]?.split("?")[0]?.split("&")[0] || "";
-    } else if (trimmedUrl.includes("youtube.com/live/")) {
-      videoId = trimmedUrl.split("youtube.com/live/")[1]?.split("?")[0]?.split("&")[0] || "";
-    } else if (trimmedUrl.length === 11 && !trimmedUrl.includes("/")) {
-      videoId = trimmedUrl;
-    }
-
-    return videoId ? `https://www.youtube.com/embed/${videoId}` : trimmedUrl;
+    const n = Number(localStorage.getItem(GOAL_KEY));
+    return Number.isInteger(n) && n >= 1 && n <= 14 ? n : 5;
   } catch {
-    return url;
+    return 5;
   }
 }
 
-function getDrivePreviewUrl(url: string) {
-  if (!url) return "";
-  try {
-    if (url.includes("drive.google.com/file/d/")) {
-      const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-      if (match && match[1]) {
-        return `https://drive.google.com/file/d/${match[1]}/preview`;
-      }
-    }
-    if (url.includes("drive.google.com/open?id=")) {
-      const id = url.split("id=")[1]?.split("&")[0];
-      if (id) return `https://drive.google.com/file/d/${id}/preview`;
-    }
-    return url;
-  } catch {
-    return url;
+function buildUrl(view: View, subject: Subject, chapter?: string | null, lecture?: string | null): string {
+  if (view === "dashboard") return window.location.pathname;
+  const q = new URLSearchParams({ view });
+  if (view === "lectures") {
+    q.set("subject", subject);
+    if (chapter) q.set("chapter", chapter);
+    if (lecture) q.set("lecture", lecture);
   }
+  return `${window.location.pathname}?${q.toString()}`;
 }
+
+const subjectKey = (s: string): Subject => (s.toUpperCase() === "CHEMISTRY" ? "CHEMISTRY" : "PHYSICS");
+
+/* ------------------------- page ------------------------- */
 
 function DashboardContent() {
   const router = useRouter();
-  const [activeNav, setActiveNav] = useState<
-    "dashboard" | "lectures" | "materials" | "ai"
-  >("dashboard");
-  const [mounted, setMounted] = useState(false);
+  const params = useSearchParams();
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
+  const session = useMemo(() => (mounted ? readSession() : null), [mounted]);
 
-  // Vibrant Loading Screen Sequence
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [loadingProgress, setLoadingProgress] = useState(0);
+  // ---- where the student is (kept in the address bar so the Back button just works)
+  const rawView = params.get("view");
+  const view: View = VIEWS.includes(rawView as View) ? (rawView as View) : "dashboard";
+  const subject: Subject = params.get("subject") === "CHEMISTRY" ? "CHEMISTRY" : "PHYSICS";
+  const chapter = params.get("chapter");
+  const focusLecture = params.get("lecture");
 
-  // Mobile Sidebar Drawer State
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-
-  // Subject & Chapter View State
-  const [selectedSubjectTab, setSelectedSubjectTab] = useState<
-    "PHYSICS" | "CHEMISTRY"
-  >("PHYSICS");
-  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
-
-  // Subject transition animation states
-  const [activeTransition, setActiveTransition] = useState<
-    "PHYSICS" | "CHEMISTRY" | null
-  >(null);
-
-  // Floating AI Chat States
-  const [isFloatingChatOpen, setIsFloatingChatOpen] = useState(false);
-
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    id: "",
-    full_name: "Student",
-    email: "",
-    school: "",
-    grade_class: "",
-    batch_no: "Registered Student",
-    role: "STUDENT",
-    days_left: 30,
-    is_approved: true,
-  });
-
-  const [videos, setVideos] = useState<VideoLecture[]>([]);
-  const [materials, setMaterials] = useState<Material[]>([]);
-  const [notice, setNotice] = useState<Notice | null>(null);
-  const [watchedVideos, setWatchedVideos] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const [openNotesId, setOpenNotesId] = useState<string | null>(null);
-  const [lectureNotes, setLectureNotes] = useState<Record<string, string>>({});
-  const [saveStatus, setSaveStatus] = useState<Record<string, boolean>>({});
-
-  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
-  const [previewPdfTitle, setPreviewPdfTitle] = useState<string>("");
-
-  const [calendarViewDate, setCalendarViewDate] = useState<Date | null>(null);
-  const [todayKey, setTodayKey] = useState<string>("");
-  const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
-  const [selectedDateForPlan, setSelectedDateForPlan] = useState<string | null>(
-    null
+  const navigate = useCallback(
+    (next: { view: View; subject?: Subject; chapter?: string | null; lecture?: string | null }, replace = false) => {
+      const url = buildUrl(next.view, next.subject ?? "PHYSICS", next.chapter, next.lecture);
+      if (replace) window.history.replaceState(null, "", url);
+      else window.history.pushState(null, "", url);
+      window.scrollTo({ top: 0 });
+    },
+    [],
   );
-  const [newPlanTitle, setNewPlanTitle] = useState("");
-  const [newPlanTime, setNewPlanTime] = useState("");
 
-  const formatDateKey = (year: number, month: number, day: number) => {
-    const m = String(month + 1).padStart(2, "0");
-    const d = String(day).padStart(2, "0");
-    return `${year}-${m}-${d}`;
-  };
-
-  // --- MOBILE BACK BUTTON GUARD & INITIALIZATION ---
+  // ---- sign-in checks
   useEffect(() => {
-    setMounted(true);
+    if (!mounted) return;
+    if (!session) router.replace("/login");
+    else if (session.isAdmin) router.replace("/admin");
+  }, [mounted, session, router]);
+  const active = Boolean(session && !session.isAdmin);
 
-    // Catalyst Initiation Progress Bar Sequence
-    const interval = setInterval(() => {
-      setLoadingProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => setIsInitializing(false), 300);
-          return 100;
-        }
-        return prev + 20;
-      });
-    }, 150);
-
-    if (typeof window !== "undefined") {
-      window.history.pushState(null, "", window.location.href);
-      const handlePopState = (e: PopStateEvent) => {
-        e.preventDefault();
-        window.history.pushState(null, "", window.location.href);
-        if (selectedChapter) {
-          setSelectedChapter(null);
-        } else if (activeNav !== "dashboard") {
-          setActiveNav("dashboard");
-          setSearchQuery("");
-        }
-      };
-      window.addEventListener("popstate", handlePopState);
-      return () => {
-        clearInterval(interval);
-        window.removeEventListener("popstate", handlePopState);
-      };
-    }
-  }, [activeNav, selectedChapter]);
-
-  useEffect(() => {
-    const now = new Date();
-    setCalendarViewDate(new Date(now.getFullYear(), now.getMonth(), 1));
-
-    const todayStr = formatDateKey(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
-    setTodayKey(todayStr);
-
-    const token =
-      localStorage.getItem("token") || localStorage.getItem("access_token");
-    if (!token) {
-      router.replace("/login");
-      return;
-    }
-
-    const role = (localStorage.getItem("user_role") || "").toUpperCase();
-    const email = (localStorage.getItem("user_email") || "").toLowerCase();
-
-    if (role === "ADMIN" || email === "rabbi@edutrack.com") {
-      router.replace("/admin");
-      return;
-    }
-
-    const storedName =
-      localStorage.getItem("user_name") ||
-      localStorage.getItem("student_name") ||
-      "Student";
-    const storedEmail = localStorage.getItem("user_email") || "";
-    const storedBatch = localStorage.getItem("batch_no") || "General Batch";
-    const storedClass = localStorage.getItem("grade_class") || "";
-    const storedSchool = localStorage.getItem("school") || "";
-
-    setUserProfile({
-      id: "",
-      full_name: storedName,
-      email: storedEmail,
-      batch_no: storedBatch,
-      grade_class: storedClass,
-      school: storedSchool,
-      role: role,
-      days_left: 30,
-      is_approved: true,
-    });
-
-    const storedWatched = localStorage.getItem("edutrack_watched_videos");
-    if (storedWatched) {
-      try {
-        setWatchedVideos(JSON.parse(storedWatched));
-      } catch {
-        setWatchedVideos([]);
+  // ---- data
+  const [serverProfile, setServerProfile] = useState<Partial<UserProfile>>({});
+  const onProfile = useCallback(
+    (d: Partial<UserProfile> & { is_admin?: boolean }) => {
+      if (d.is_admin || String(d.role).toUpperCase() === "ADMIN" || d.email === ADMIN_EMAIL) {
+        router.replace("/admin");
+        return;
       }
-    }
-
-    const storedPlans = localStorage.getItem("edutrack_study_plans");
-    if (storedPlans) {
-      try {
-        setStudyPlans(JSON.parse(storedPlans));
-      } catch {
-        setStudyPlans([]);
-      }
-    }
-
-    const storedNotes = localStorage.getItem("edutrack_lecture_notes");
-    if (storedNotes) {
-      try {
-        setLectureNotes(JSON.parse(storedNotes));
-      } catch {
-        setLectureNotes({});
-      }
-    }
-
-    fetchUserData();
-    fetchAcademicData();
+      setServerProfile({ full_name: d.full_name, email: d.email, batch_no: d.batch_no, grade_class: d.grade_class, school: d.school, days_left: d.days_left, is_approved: d.is_approved });
+      if (d.full_name) localStorage.setItem("user_name", d.full_name);
+      if (d.batch_no) localStorage.setItem("batch_no", d.batch_no);
+    },
+    [router],
+  );
+  const onUnauthorized = useCallback(() => {
+    localStorage.clear();
+    router.replace("/login");
   }, [router]);
 
-  const fetchUserData = async () => {
-    try {
-      const res = await api.get("/api/v1/auth/me");
-      if (res.data) {
-        const isAdmin = Boolean(
-          res.data.is_admin ||
-          String(res.data.role).toUpperCase() === "ADMIN" ||
-          res.data.email === "rabbi@edutrack.com"
-        );
+  const { videos, materials, notice, loading, error, reload } = useDashboardData({ enabled: active, onProfile, onUnauthorized });
+  const progress = useProgress(active ? session!.email || "student" : null);
+  const { state, today, ready, setCompleted, savePosition, touchLecture, saveNote, addPlan, removePlan } = progress;
 
-        if (isAdmin) {
-          router.replace("/admin");
-          return;
-        }
+  const fullName = serverProfile.full_name || session?.name || "Student";
+  const batch = serverProfile.batch_no || session?.batch || "General Batch";
+  const daysLeft = serverProfile.days_left !== undefined ? serverProfile.days_left : 30;
+  const isExpired = daysLeft <= 0 || serverProfile.is_approved === false;
+  const isExpiringSoon = daysLeft > 0 && daysLeft <= 3;
 
-        setUserProfile((prev) => ({
-          ...prev,
-          full_name: res.data.full_name || prev.full_name,
-          email: res.data.email || prev.email,
-          batch_no: res.data.batch_no || prev.batch_no,
-          grade_class: res.data.grade_class || prev.grade_class,
-          school: res.data.school || prev.school,
-          days_left:
-            res.data.days_left !== undefined
-              ? res.data.days_left
-              : prev.days_left,
-          is_approved:
-            res.data.is_approved !== undefined
-              ? res.data.is_approved
-              : prev.is_approved,
-        }));
-        if (res.data.full_name)
-          localStorage.setItem("user_name", res.data.full_name);
-        if (res.data.batch_no)
-          localStorage.setItem("batch_no", res.data.batch_no);
-      }
-    } catch {
-      // Retain stored local values
+  // ---- numbers shown on screen
+  const streak = useMemo(() => computeStreak(state.days, today), [state.days, today]);
+  const dots = useMemo(() => weekDots(state.days, today), [state.days, today]);
+  const stats = useMemo(() => chapterStats(videos, state), [videos, state]);
+  const completedCount = useMemo(() => countCompleted(videos, state), [videos, state]);
+  const notesCount = countNotes(state);
+  const level = useMemo(() => levelInfo(computeXp(completedCount, notesCount, state.days.length)), [completedCount, notesCount, state.days.length]);
+  const badges = useMemo(() => computeBadges(badgeInputFor(videos, state, streak.best)), [videos, state, streak.best]);
+  const resume = useMemo(() => findResume(videos, state), [videos, state]);
+  const weeklyDone = useMemo(() => completedThisWeek(state, today), [state, today]);
+  const coverage = videos.length ? Math.round((completedCount / videos.length) * 100) : 0;
+
+  const bySubject = useMemo(() => {
+    const out: Record<Subject, { total: number; done: number }> = { PHYSICS: { total: 0, done: 0 }, CHEMISTRY: { total: 0, done: 0 } };
+    for (const v of videos) {
+      const s = subjectKey(v.subject || "PHYSICS");
+      out[s].total += 1;
+      if (state.lectures[v.id]?.completed) out[s].done += 1;
     }
-  };
+    return out;
+  }, [videos, state.lectures]);
 
-  const fetchAcademicData = async () => {
-    try {
-      setLoading(true);
-
-      let videoData: VideoLecture[] = [];
-      try {
-        const vRes = await api.get("/api/v1/academic/videos");
-        if (Array.isArray(vRes.data) && vRes.data.length > 0) {
-          videoData = vRes.data;
-        }
-      } catch {
-        try {
-          const lRes = await api.get("/api/v1/academic/lectures");
-          if (Array.isArray(lRes.data)) {
-            videoData = lRes.data;
-          }
-        } catch {
-          videoData = [];
-        }
-      }
-
-      setVideos(videoData);
-
-      const [mRes, nRes] = await Promise.allSettled([
-        api.get("/api/v1/academic/materials"),
-        api.get("/api/v1/academic/notice"),
-      ]);
-
-      if (mRes.status === "fulfilled" && Array.isArray(mRes.value.data)) {
-        setMaterials(mRes.value.data);
-      }
-      if (nRes.status === "fulfilled" && nRes.value.data) {
-        setNotice(nRes.value.data);
-      }
-    } catch (err) {
-      console.error("Dashboard fetch error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubjectTransition = (subject: "PHYSICS" | "CHEMISTRY") => {
-    setActiveTransition(subject);
-    setSelectedSubjectTab(subject);
-    setSelectedChapter(null);
-    setActiveNav("lectures");
-    setTimeout(() => {
-      setActiveTransition(null);
-    }, 600);
-  };
-
-  // --- CHAPTER-WISE GROUPING LOGIC ---
-  const chaptersBySubject = useMemo(() => {
-    const physicsMap: Record<string, VideoLecture[]> = {};
-    const chemistryMap: Record<string, VideoLecture[]> = {};
-
-    videos.forEach((vid) => {
-      const subj = (vid.subject || "PHYSICS").toUpperCase();
-      const chName = vid.chapter ? vid.chapter.trim() : "General Chapter";
-      if (subj === "CHEMISTRY") {
-        if (!chemistryMap[chName]) chemistryMap[chName] = [];
-        chemistryMap[chName].push(vid);
-      } else {
-        if (!physicsMap[chName]) physicsMap[chName] = [];
-        physicsMap[chName].push(vid);
-      }
-    });
-
-    return {
-      PHYSICS: physicsMap,
-      CHEMISTRY: chemistryMap,
-    };
-  }, [videos]);
-
-  const currentSubjectChapters = useMemo(() => {
-    return chaptersBySubject[selectedSubjectTab] || {};
-  }, [chaptersBySubject, selectedSubjectTab]);
-
+  const chaptersOfSubject = useMemo(() => stats.filter((s) => s.subject === subject), [stats, subject]);
+  const lecturesOfChapter = useMemo(() => (chapter ? videos.filter((v) => (v.chapter || "General Chapter").trim() === chapter && subjectKey(v.subject) === subject) : []), [videos, chapter, subject]);
   const materialsByChapter = useMemo(() => {
     const map: Record<string, Material[]> = {};
-    materials.forEach((mat) => {
-      const chName = mat.chapter ? mat.chapter.trim() : "General Chapter";
-      if (!map[chName]) map[chName] = [];
-      map[chName].push(mat);
-    });
+    for (const m of materials) (map[(m.chapter || "General Chapter").trim()] ??= []).push(m);
     return map;
   }, [materials]);
+  const upNext = useMemo(() => videos.filter((v) => !state.lectures[v.id]?.completed && v.id !== resume.lecture?.id).slice(0, 3), [videos, state.lectures, resume.lecture]);
 
-  const toggleWatchStatus = (id: string) => {
-    const updated = watchedVideos.includes(id)
-      ? watchedVideos.filter((vId) => vId !== id)
-      : [...watchedVideos, id];
-    setWatchedVideos(updated);
-    localStorage.setItem("edutrack_watched_videos", JSON.stringify(updated));
+  // ---- search
+  const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query).trim().toLowerCase();
+  const searching = deferredQuery.length > 0;
+  const foundVideos = useMemo(
+    () => (searching ? videos.filter((v) => `${v.topic || v.title || ""} ${v.chapter || ""} ${v.subject || ""}`.toLowerCase().includes(deferredQuery)) : []),
+    [videos, deferredQuery, searching],
+  );
+  const foundMaterials = useMemo(
+    () => (searching ? materials.filter((m) => `${m.title || ""} ${m.chapter || ""} ${m.subject || ""}`.toLowerCase().includes(deferredQuery)) : []),
+    [materials, deferredQuery, searching],
+  );
+
+  // ---- overlays and small UI state
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [noticeOpen, setNoticeOpen] = useState(false);
+  const [seenNotice, setSeenNotice] = useState<string | null>(() => {
+    try {
+      return typeof window === "undefined" ? null : localStorage.getItem(SEEN_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const [pdf, setPdf] = useState<{ url: string; raw: string; title: string } | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(true);
+  const [planDay, setPlanDay] = useState<string | null>(null);
+  const [simId, setSimId] = useState<SimId | null>(null);
+  const [chat, setChat] = useState<{ open: boolean; prompt?: string }>({ open: false });
+  const [goal, setGoalState] = useState(readGoal);
+  const [celebration, setCelebration] = useState<CelebrationEvent | null>(null);
+  const [materialFilter, setMaterialFilter] = useState<"ALL" | Subject>("ALL");
+
+  const setGoal = (n: number) => {
+    setGoalState(n);
+    try {
+      localStorage.setItem(GOAL_KEY, String(n));
+    } catch {
+      // not saved: fine
+    }
   };
 
-  const handleNoteChange = (lectureId: string, content: string) => {
-    const updated = { ...lectureNotes, [lectureId]: content };
-    setLectureNotes(updated);
-    localStorage.setItem("edutrack_lecture_notes", JSON.stringify(updated));
-    setSaveStatus((prev) => ({ ...prev, [lectureId]: true }));
-    setTimeout(() => {
-      setSaveStatus((prev) => ({ ...prev, [lectureId]: false }));
-    }, 1500);
+  const hasUnread = Boolean(notice && notice.id !== seenNotice);
+  const openNotice = () => {
+    if (!notice) return;
+    setNoticeOpen(true);
+    setSeenNotice(notice.id);
+    try {
+      localStorage.setItem(SEEN_KEY, notice.id);
+    } catch {
+      // not saved: fine
+    }
   };
 
-  const handleAddTimestampTag = (lectureId: string) => {
-    const current = lectureNotes[lectureId] || "";
-    const stamp = `\n[Timestamp Note]: `;
-    handleNoteChange(lectureId, current + stamp);
-  };
+  // ---- celebrations: only for things the student just did, never for progress that arrived from a sync
+  const armed = useRef(false);
+  const baseline = useRef<{ badges: Set<string>; level: number; done: Set<string> } | null>(null);
+  const eventId = useRef(0);
+  useEffect(() => {
+    if (!ready || loading) return;
+    const next = {
+      badges: new Set(badges.filter((b) => b.earned).map((b) => b.id)),
+      level: level.level,
+      done: new Set(stats.filter((s) => s.total > 0 && s.done === s.total).map((s) => `${s.subject}::${s.chapter}`)),
+    };
+    const prev = baseline.current;
+    baseline.current = next;
+    if (!prev || !armed.current) return;
+    armed.current = false;
 
-  const handleExportNotes = (lecture: VideoLecture) => {
-    const noteText =
-      lectureNotes[lecture.id] || "No notes recorded for this lecture.";
-    const blob = new Blob(
-      [
-        `AZS: The Catalyst - Revision Notes\n`,
-        `Subject: ${lecture.subject}\n`,
-        `Chapter: ${lecture.chapter}\n`,
-        `Lecture #${lecture.lecture_no}: ${lecture.topic || lecture.title}\n`,
-        `----------------------------------------\n\n`,
-        noteText,
-      ],
-      { type: "text/plain;charset=utf-8" }
-    );
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `Lecture_${lecture.lecture_no}_Notes.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
+    const newChapter = stats.find((s) => s.total > 0 && s.done === s.total && !prev.done.has(`${s.subject}::${s.chapter}`));
+    const newBadge = badges.find((b) => b.earned && !prev.badges.has(b.id));
+    eventId.current += 1;
+    const id = eventId.current;
+    // The celebration is a reaction to the student's own tap, so showing it from here is intended.
+    if (newChapter) setCelebration({ id, kind: "chapter", title: "Chapter complete!", text: `You finished every lecture in ${newChapter.chapter}.` });
+    else if (newBadge) setCelebration({ id, kind: "badge", title: `Badge earned: ${newBadge.title}`, text: newBadge.hint });
+    else if (next.level > prev.level) setCelebration({ id, kind: "level", title: `Level ${next.level}!`, text: "Your hard work is paying off." });
+    else setCelebration({ id, kind: "lecture", title: "Lecture complete", text: "+20 XP. Revision reminders added to your planner." });
+  }, [badges, level.level, stats, ready, loading]);
 
-  const handleLogout = () => {
+  // ---- actions
+  const complete = useCallback(
+    (lecture: VideoLecture, done: boolean) => {
+      if (setCompleted(lecture, done)) armed.current = true;
+    },
+    [setCompleted],
+  );
+  const openLecture = useCallback(
+    (lecture: VideoLecture) => {
+      setQuery("");
+      navigate({ view: "lectures", subject: subjectKey(lecture.subject), chapter: (lecture.chapter || "General Chapter").trim(), lecture: lecture.id });
+    },
+    [navigate],
+  );
+  const askAi = useCallback((prompt: string) => setChat({ open: true, prompt }), []);
+  const openPlan = useCallback(
+    (plan: Plan) => {
+      const m = /^rev-(.+)-\d+$/.exec(plan.id);
+      const lecture = m ? videos.find((v) => v.id === m[1]) : undefined;
+      if (lecture) {
+        setPlanDay(null);
+        openLecture(lecture);
+      }
+    },
+    [videos, openLecture],
+  );
+  const go = (v: View) => {
+    setMenuOpen(false);
+    setQuery("");
+    navigate({ view: v, subject });
+  };
+  const logout = async () => {
+    await progress.flushNow();
+    progress.halt();
     localStorage.clear();
     router.replace("/login");
   };
 
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-  ];
+  if (!mounted || !active) return null;
 
-  const currentYearCalendar = calendarViewDate
-    ? calendarViewDate.getFullYear()
-    : 2025;
-  const currentMonthCalendar = calendarViewDate
-    ? calendarViewDate.getMonth()
-    : 0;
-  const currentMonthTitle = `${monthNames[currentMonthCalendar]} ${currentYearCalendar}`;
+  const first = fullName.trim().split(/\s+/)[0] || "there";
+  const chapterSim = chapter ? simForChapter(chapter, subject) : null;
+  const showSkeleton = loading && videos.length === 0;
+  const simOpen = SIMS.find((s) => s.id === simId) ?? null;
+  const toGo = Math.max(0, goal - weeklyDone);
 
-  const daysInMonth = new Date(
-    currentYearCalendar,
-    currentMonthCalendar + 1,
-    0
-  ).getDate();
-  const startDayOfMonth = new Date(
-    currentYearCalendar,
-    currentMonthCalendar,
-    1
-  ).getDay();
+  const renderLectureCards = (list: VideoLecture[]) => (
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {list.map((v) => (
+        <LectureCard
+          key={v.id}
+          lecture={v}
+          progress={state.lectures[v.id]}
+          note={state.notes[v.id] ?? ""}
+          autoPlay={focusLecture === v.id}
+          highlight={focusLecture === v.id}
+          onOpen={(l) => touchLecture(l.id)}
+          onSavePosition={savePosition}
+          onSetCompleted={complete}
+          onSaveNote={saveNote}
+          onAskAi={askAi}
+        />
+      ))}
+    </div>
+  );
 
-  const handlePrevMonth = () => {
-    setCalendarViewDate(
-      new Date(currentYearCalendar, currentMonthCalendar - 1, 1)
-    );
-  };
-
-  const handleNextMonth = () => {
-    setCalendarViewDate(
-      new Date(currentYearCalendar, currentMonthCalendar + 1, 1)
-    );
-  };
-
-  const handleAddPlan = (e: FormEvent) => {
-    e.preventDefault();
-    if (!selectedDateForPlan || !newPlanTitle.trim()) return;
-
-    const newPlan: StudyPlan = {
-      id: `${Date.now()}-${Math.random()}`,
-      dateKey: selectedDateForPlan,
-      title: newPlanTitle.trim(),
-      time: newPlanTime.trim() || undefined,
-    };
-
-    const updated = [...studyPlans, newPlan];
-    setStudyPlans(updated);
-    localStorage.setItem("edutrack_study_plans", JSON.stringify(updated));
-    setNewPlanTitle("");
-    setNewPlanTime("");
-  };
-
-  const handleDeletePlan = (id: string) => {
-    const updated = studyPlans.filter((p) => p.id !== id);
-    setStudyPlans(updated);
-    localStorage.setItem("edutrack_study_plans", JSON.stringify(updated));
-  };
-
-  const totalLectures = videos.length;
-  const completedCount = useMemo(() => {
-    return videos.filter((v) => watchedVideos.includes(v.id)).length;
-  }, [videos, watchedVideos]);
-
-  const completionPercentage =
-    totalLectures > 0
-      ? Math.round((completedCount / totalLectures) * 100)
-      : 0;
-
-  const chapterStats = useMemo(() => {
-    const map: Record<
-      string,
-      { total: number; completed: number; subject: string }
-    > = {};
-    videos.forEach((v) => {
-      const ch = v.chapter || "General";
-      if (!map[ch])
-        map[ch] = { total: 0, completed: 0, subject: v.subject };
-      map[ch].total += 1;
-      if (watchedVideos.includes(v.id)) map[ch].completed += 1;
-    });
-    return Object.entries(map);
-  }, [videos, watchedVideos]);
-
-  const normalizedQuery = searchQuery.toLowerCase().trim();
-
-  const filteredVideos = useMemo(() => {
-    return videos.filter((v) => {
-      const topicStr = (v.topic || v.title || "").toLowerCase();
-      const matchSearch =
-        !normalizedQuery ||
-        topicStr.includes(normalizedQuery) ||
-        (v.chapter && v.chapter.toLowerCase().includes(normalizedQuery)) ||
-        (v.subject && v.subject.toLowerCase().includes(normalizedQuery));
-      return matchSearch;
-    });
-  }, [videos, normalizedQuery]);
-
-  const filteredMaterials = useMemo(() => {
-    return materials.filter((m) => {
-      const matchSearch =
-        !normalizedQuery ||
-        (m.title && m.title.toLowerCase().includes(normalizedQuery)) ||
-        (m.chapter && m.chapter.toLowerCase().includes(normalizedQuery)) ||
-        (m.subject && m.subject.toLowerCase().includes(normalizedQuery));
-      return matchSearch;
-    });
-  }, [materials, normalizedQuery]);
-
-  const isSearchActive = normalizedQuery.length > 0;
-  const hasSearchResults =
-    filteredVideos.length > 0 || filteredMaterials.length > 0;
-
-  // --- SUBSCRIPTION STATUS CHECKS ---
-  const daysLeft =
-    userProfile.days_left !== undefined ? userProfile.days_left : 30;
-  const isExpired = daysLeft <= 0 || userProfile.is_approved === false;
-  const isExpiringSoon = daysLeft > 0 && daysLeft <= 3;
-
-  if (!mounted) return null;
-
-  // --- CATALYST INITIALIZATION LOADING SCREEN ---
-  if (isInitializing) {
-    return (
-      <div className="min-h-screen bg-[#F3F8FC] flex flex-col items-center justify-center p-6 font-sans selection:bg-sky-100">
-        <div className="max-w-sm w-full space-y-8 text-center">
-          <div className="w-20 h-20 mx-auto rounded-3xl bg-white border border-[#D3E3EF] shadow-lg flex items-center justify-center p-3 animate-pulse">
-            <img
-              src="/logo.png"
-              alt="AZS Logo"
-              className="w-full h-full object-contain"
-            />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-black text-[#075985] tracking-tight">
-              Igniting Catalyst Engine...
-            </h1>
-            <p className="text-xs font-semibold text-slate-500">
-              Synchronizing academic deck &amp; progress telemetry
-            </p>
-          </div>
-          <div className="w-full bg-[#D3E3EF] h-2.5 rounded-full overflow-hidden p-0.5">
-            <motion.div
-              className="h-full bg-gradient-to-r from-[#075985] via-[#0369A1] to-[#CC310E] rounded-full"
-              initial={{ width: "0%" }}
-              animate={{ width: `${loadingProgress}%` }}
-              transition={{ ease: "easeOut" }}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const heading = (text: string, sub?: string) => (
+    <div>
+      <h1 className="text-2xl font-black tracking-tight text-[#075985] sm:text-3xl">{text}</h1>
+      {sub && <p className="mt-1 text-sm text-slate-500">{sub}</p>}
+    </div>
+  );
 
   return (
-    <div
-      className={`min-h-screen bg-[#F3F8FC] text-slate-900 flex flex-col font-sans antialiased relative overflow-x-hidden selection:bg-sky-100 transition-colors duration-700 ${activeNav === "lectures" && selectedSubjectTab === "PHYSICS"
-          ? "bg-sky-50/20"
-          : activeNav === "lectures" && selectedSubjectTab === "CHEMISTRY"
-            ? "bg-ember-50/20"
-            : ""
-        }`}
-    >
-      {/* SUBJECT TRANSITION OVERLAY */}
-      <AnimatePresence>
-        {activeTransition && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-[80] bg-[#F3F8FC]/95 backdrop-blur-md flex flex-col items-center justify-center"
-          >
-            {activeTransition === "PHYSICS" ? (
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="flex flex-col items-center space-y-6"
-              >
-                <div className="relative w-28 h-28 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border-2 border-sky-300 animate-ping" />
-                  <div className="w-16 h-16 rounded-2xl bg-sky-100 border border-sky-300 flex items-center justify-center shadow-lg shadow-sky-500/10">
-                    <Atom className="w-8 h-8 text-[#0369A1] animate-spin" />
-                  </div>
-                </div>
-                <div className="text-center space-y-1">
-                  <span className="text-[10px] font-mono tracking-widest text-[#0369A1] uppercase font-bold">
-                    Quantum Sector
-                  </span>
-                  <h3 className="text-lg font-black text-[#075985]">
-                    Activating Physics Engine...
-                  </h3>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="flex flex-col items-center space-y-6"
-              >
-                <div className="relative w-28 h-28 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border-2 border-ember-300 animate-ping" />
-                  <div className="w-16 h-16 rounded-2xl bg-ember-100 border border-ember-300 flex items-center justify-center shadow-lg shadow-ember-500/10">
-                    <FlaskConical className="w-8 h-8 text-[#CC310E] animate-bounce" />
-                  </div>
-                </div>
-                <div className="text-center space-y-1">
-                  <span className="text-[10px] font-mono tracking-widest text-[#CC310E] uppercase font-bold">
-                    Synthesis Sector
-                  </span>
-                  <h3 className="text-lg font-black text-[#075985]">
-                    Opening Chemistry Vault...
-                  </h3>
-                </div>
-              </motion.div>
-            )}
-          </motion.div>
+    <div className="relative flex min-h-screen bg-[#F3F8FC] font-sans text-slate-900 antialiased selection:bg-sky-100">
+      <DashBackdrop />
+
+      <Sidebar
+        view={view}
+        open={menuOpen}
+        name={fullName}
+        batch={batch}
+        level={level}
+        counts={{ lectures: videos.length, materials: materials.length }}
+        onNavigate={go}
+        onClose={() => setMenuOpen(false)}
+        onLogout={logout}
+      />
+
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+        <TopBar
+          query={query}
+          streakDays={streak.current}
+          level={level.level}
+          hasUnread={hasUnread}
+          hasNotice={Boolean(notice)}
+          status={progress.status}
+          pending={progress.pending}
+          onQuery={setQuery}
+          onMenu={() => setMenuOpen(true)}
+          onBell={openNotice}
+        />
+
+        {(isExpired || isExpiringSoon) && (
+          <div className={`flex flex-col items-start justify-between gap-4 border-b px-4 py-4 sm:flex-row sm:items-center sm:px-8 ${isExpired ? "border-rose-200 bg-rose-50 text-rose-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+            <div className="flex items-center gap-3">
+              <ShieldAlert className="h-6 w-6 shrink-0 text-rose-600" />
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider">{isExpired ? "Subscription Expired — Content Locked" : `Payment Reminder: ${daysLeft} ${daysLeft === 1 ? "Day" : "Days"} Remaining`}</h4>
+                <p className="mt-0.5 text-xs text-slate-600">{isExpired ? "Your coaching pass has ended. Streaming and materials are locked until payment is cleared." : "Please renew your account subscription before expiration to avoid interruption."}</p>
+              </div>
+            </div>
+            <a href={TEACHER.whatsapp} target="_blank" rel="noopener noreferrer" className="flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-[#CC310E] px-6 text-xs font-bold text-white shadow-md sm:w-auto">
+              <CreditCard className="h-4 w-4" /> Pay / Renew via WhatsApp
+            </a>
+          </div>
         )}
-      </AnimatePresence>
 
-      <div className="flex-1 flex min-w-0 relative z-10">
-        {/* MOBILE SIDEBAR OVERLAY BACKDROP */}
-        <AnimatePresence>
-          {isMobileSidebarOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsMobileSidebarOpen(false)}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 md:hidden"
-            />
-          )}
-        </AnimatePresence>
-
-        {/* LEFT SIDEBAR (Nord Cream) */}
-        <aside
-          className={`fixed md:static inset-y-0 left-0 z-50 w-72 bg-white border-r border-[#D3E3EF] p-5 flex flex-col justify-between shrink-0 shadow-2xl md:shadow-none transition-transform duration-300 ease-in-out ${isMobileSidebarOpen
-              ? "translate-x-0"
-              : "-translate-x-full md:translate-x-0"
-            }`}
-        >
-          <div className="space-y-6">
-            {/* Brand Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3 px-1">
-                <div className="w-12 h-12 rounded-2xl bg-[#F3F8FC] border border-[#D3E3EF] shadow-sm flex items-center justify-center shrink-0 p-2">
-                  <img
-                    src="/logo.png"
-                    alt="AZS Logo"
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <div>
-                  <span className="font-black text-base text-[#075985] block leading-tight">
-                    AZS
-                  </span>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#0369A1] block">
-                    The Catalyst
-                  </span>
-                </div>
+        <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 p-4 pb-28 sm:p-8 md:pb-12">
+          {isExpired && (
+            <div className="dash-card space-y-6 p-8 text-center sm:p-12">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 text-rose-600">
+                <Lock className="h-8 w-8" />
               </div>
-              <button
-                onClick={() => setIsMobileSidebarOpen(false)}
-                className="md:hidden text-slate-400 hover:text-slate-700 p-2 rounded-xl bg-slate-50 border border-[#D3E3EF]"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Navigation Options */}
-            <nav className="space-y-2">
-              {(
-                [
-                  {
-                    id: "dashboard" as const,
-                    label: "Command Deck",
-                    icon: LayoutDashboard,
-                    extra: null,
-                  },
-                  {
-                    id: "lectures" as const,
-                    label: "Video Lectures",
-                    icon: PlayCircle,
-                    extra: (
-                      <span className="ml-auto text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono border border-[#D3E3EF]">
-                        {videos.length}
-                      </span>
-                    ),
-                  },
-                  {
-                    id: "materials" as const,
-                    label: "Study Sheets",
-                    icon: FileText,
-                    extra: (
-                      <span className="ml-auto text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono border border-[#D3E3EF]">
-                        {materials.length}
-                      </span>
-                    ),
-                  },
-                  {
-                    id: "ai" as const,
-                    label: "AI Tutor Core",
-                    icon: Bot,
-                    extra: (
-                      <span className="ml-auto text-[10px] bg-ember-50 text-ember-700 border border-ember-200 px-2 py-0.5 rounded-md font-bold">
-                        Online
-                      </span>
-                    ),
-                  },
-                ] as const
-              ).map(({ id, label, icon: Icon, extra }) => (
-                <button
-                  key={id}
-                  onClick={() => {
-                    setActiveNav(id);
-                    setSelectedChapter(null);
-                    if (id === "dashboard") setSearchQuery("");
-                    setIsMobileSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center space-x-3 px-4 min-h-[48px] rounded-xl text-sm font-bold transition-all ${activeNav === id
-                      ? "bg-[#075985] text-white shadow-lg shadow-sky-900/10"
-                      : "text-slate-600 hover:text-[#075985] hover:bg-slate-50 border border-transparent"
-                    }`}
-                >
-                  <Icon
-                    className={`w-5 h-5 ${activeNav === id
-                        ? "text-white"
-                        : id === "ai"
-                          ? "text-[#0369A1]"
-                          : "text-slate-400"
-                      }`}
-                  />
-                  <span>{label}</span>
-                  {extra}
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          {/* Student Card & Logout */}
-          <div className="pt-5 border-t border-[#D3E3EF]">
-            <div className="flex items-center justify-between gap-2">
-              <div className="overflow-hidden">
-                <p className="text-xs font-black text-slate-900 truncate">
-                  {userProfile.full_name}
-                </p>
-                <p className="text-[10px] text-slate-500 font-semibold truncate">
-                  {userProfile.batch_no || "General Batch"}
-                </p>
+              <div className="mx-auto max-w-lg space-y-2">
+                <h2 className="text-2xl font-black text-[#075985]">Access Restricted</h2>
+                <p className="text-sm leading-relaxed text-slate-600">Your student subscription has expired. Video streaming and PDF study handouts are currently locked.</p>
               </div>
-
-              <button
-                onClick={handleLogout}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors border border-rose-100 shrink-0"
-                title="Sign Out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </aside>
-
-        {/* MAIN WORKSPACE */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative">
-          {/* Top Header Bar */}
-          <header className="h-16 sm:h-20 bg-white/80 backdrop-blur-md border-b border-[#D3E3EF] px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 gap-3">
-            <div className="flex items-center gap-3 flex-1 max-w-md">
-              <button
-                onClick={() => setIsMobileSidebarOpen(true)}
-                className="w-12 h-12 rounded-xl bg-[#F3F8FC] border border-[#D3E3EF] text-slate-600 flex md:hidden items-center justify-center shrink-0"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search topic or chapter..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-12 pl-11 pr-9 bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1]"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-3 shrink-0">
-              <div className="hidden sm:flex items-center space-x-2 px-3.5 h-10 bg-amber-50 border border-amber-200 rounded-full text-xs font-bold text-amber-800">
-                <Flame className="w-4 h-4 text-amber-500" />
-                <span>Streak Active</span>
-              </div>
-
-              <div className="w-12 h-12 rounded-xl bg-[#F3F8FC] border border-[#D3E3EF] flex items-center justify-center relative text-slate-600">
-                <Bell className="w-5 h-5" />
-                {notice && (
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 absolute top-3 right-3 animate-ping" />
-                )}
-              </div>
-            </div>
-          </header>
-
-          {/* SUBSCRIPTION EXPIRED / EXPIRING ALERT */}
-          {(isExpired || isExpiringSoon) && (
-            <div
-              className={`px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b ${isExpired
-                  ? "bg-rose-50 border-rose-200 text-rose-900"
-                  : "bg-amber-50 border-amber-200 text-amber-900"
-                }`}
-            >
-              <div className="flex items-center space-x-3">
-                <ShieldAlert className="w-6 h-6 text-rose-600 shrink-0" />
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider">
-                    {isExpired
-                      ? "Subscription Expired — Content Locked"
-                      : `Payment Reminder: ${daysLeft} ${daysLeft === 1 ? "Day" : "Days"
-                      } Remaining`}
-                  </h4>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    {isExpired
-                      ? "Your coaching pass has ended. Streaming and materials are locked until payment is cleared."
-                      : "Please renew your account subscription before expiration to avoid interruption."}
-                  </p>
-                </div>
-              </div>
-
-              <a
-                href={TEACHER.whatsapp}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto h-12 px-6 bg-[#075985] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shrink-0 shadow-md"
-              >
-                <CreditCard className="w-4 h-4" />
-                <span>Pay / Renew via WhatsApp</span>
+              <a href={TEACHER.whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex h-12 items-center gap-2 rounded-xl bg-[#CC310E] px-6 text-xs font-bold text-white shadow-md hover:bg-[#A8270B]">
+                <MessageCircle className="h-4 w-4" /> Contact Academic Guide on WhatsApp
               </a>
             </div>
           )}
 
-          {/* Notice Banner Strip */}
-          {notice && (
-            <div className="bg-[#075985] text-white px-6 py-3 flex items-center space-x-3 shadow-inner">
-              <span className="px-2 py-0.5 rounded bg-white/20 text-white font-black text-[10px] uppercase">
-                Notice
-              </span>
-              <p className="text-xs font-semibold flex-1 truncate">
-                {notice.content}
-              </p>
+          {!isExpired && error && (
+            <div role="alert" className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center">
+              <p className="text-sm font-semibold text-amber-900">{error}</p>
+              <button type="button" onClick={() => void reload()} className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-4 text-xs font-extrabold text-amber-900 shadow-sm active:scale-95">
+                <RefreshCw className="h-4 w-4" /> Try again
+              </button>
             </div>
           )}
 
-          <main className="p-4 sm:p-8 max-w-6xl w-full mx-auto space-y-8 flex-1 pb-28 md:pb-12 relative z-10">
-            {/* EXPIRED LOCK CARD */}
-            {isExpired && (
-              <div className="bg-white border border-[#D3E3EF] rounded-3xl p-8 sm:p-12 text-center space-y-6 shadow-sm">
-                <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 mx-auto">
-                  <Lock className="w-8 h-8" />
-                </div>
-                <div className="space-y-2 max-w-lg mx-auto">
-                  <h2 className="text-2xl font-black text-[#075985]">
-                    Access Restricted
-                  </h2>
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    Your student subscription has expired. Video streaming and
-                    PDF study handouts are currently locked.
-                  </p>
-                </div>
-                <a
-                  href={TEACHER.whatsapp}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex h-12 px-6 bg-ember-600 hover:bg-ember-700 text-white rounded-xl text-xs font-bold items-center gap-2 shadow-md"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>Contact Academic Guide on WhatsApp</span>
-                </a>
-              </div>
-            )}
-
-            {/* SEARCH RESULTS VIEW */}
-            {!isExpired && isSearchActive && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div>
-                    <h2 className="text-2xl font-black text-[#075985] flex items-center gap-2">
-                      <Search className="w-6 h-6 text-[#0369A1]" />
-                      <span>Results for &ldquo;{searchQuery}&rdquo;</span>
-                    </h2>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Found {filteredVideos.length} lectures and{" "}
-                      {filteredMaterials.length} study sheets.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="h-10 px-4 bg-white border border-[#D3E3EF] rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50"
-                  >
-                    Clear Search
-                  </button>
-                </div>
-
-                {!hasSearchResults ? (
-                  <div className="bg-white border border-[#D3E3EF] rounded-3xl p-12 text-center space-y-4">
-                    <SearchX className="w-12 h-12 text-slate-400 mx-auto" />
-                    <p className="text-sm font-bold text-slate-700">
-                      No matching academic material found.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-8">
-                    {filteredVideos.length > 0 && (
-                      <div className="space-y-4">
-                        <h3 className="text-xs font-bold text-[#075985] uppercase tracking-wider">
-                          Video Lectures ({filteredVideos.length})
-                        </h3>
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {filteredVideos.map((vid) => {
-                            const embedUrl = getYouTubeEmbedUrl(
-                              vid.youtube_url || vid.video_url || ""
-                            );
-                            const isWatched = watchedVideos.includes(vid.id);
-
-                            return (
-                              <div
-                                key={vid.id}
-                                className="bg-white border border-[#D3E3EF] rounded-2xl overflow-hidden flex flex-col justify-between shadow-sm"
-                              >
-                                <div>
-                                  <div className="aspect-video bg-slate-900">
-                                    <iframe
-                                      src={embedUrl}
-                                      title={vid.topic || "Lecture"}
-                                      className="w-full h-full border-none"
-                                      allowFullScreen
-                                    />
-                                  </div>
-                                  <div className="p-5 space-y-2">
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-[#D3E3EF]">
-                                      Lec #{vid.lecture_no} · {vid.subject}
-                                    </span>
-                                    <h4 className="font-bold text-sm text-slate-900 line-clamp-2">
-                                      {vid.topic || vid.title}
-                                    </h4>
-                                    <p className="text-xs text-slate-500">
-                                      {vid.chapter}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="p-5 pt-0">
-                                  <button
-                                    onClick={() => toggleWatchStatus(vid.id)}
-                                    className={`w-full h-12 rounded-xl text-xs font-bold ${isWatched
-                                        ? "bg-ember-50 text-ember-700 border border-ember-200"
-                                        : "bg-[#075985] text-white"
-                                      }`}
-                                  >
-                                    {isWatched ? "✓ Watched" : "Mark as Watched"}
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* VIEW: DASHBOARD OVERVIEW COMMAND DECK */}
-            {!isExpired && !isSearchActive && activeNav === "dashboard" && (
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-8"
-              >
+          {/* ---------------- SEARCH ---------------- */}
+          {!isExpired && searching && (
+            <section className="space-y-6" aria-live="polite">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h1 className="text-2xl font-black text-[#075985]">
-                    Academic Command Deck
-                  </h1>
-                  <p className="text-sm text-slate-500 mt-1">
-                    Welcome back,{" "}
-                    <strong className="text-slate-900">
-                      {userProfile.full_name}
-                    </strong>
-                    . Select a subject launchpad below.
+                  <h2 className="text-2xl font-black text-[#075985]">Results for &ldquo;{query.trim()}&rdquo;</h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {foundVideos.length} lectures and {foundMaterials.length} study sheets
                   </p>
                 </div>
-
-                {/* Subject Launchpads */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Physics Launcher */}
-                  <div
-                    onClick={() => handleSubjectTransition("PHYSICS")}
-                    className="group bg-white border border-sky-200 hover:border-[#0369A1] rounded-3xl p-8 cursor-pointer shadow-sm hover:shadow-md transition-all flex flex-col justify-between min-h-[220px] relative overflow-hidden"
-                  >
-                    <div className="space-y-3 relative z-10">
-                      <div className="w-14 h-14 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-[#0369A1]">
-                        <Atom className="w-7 h-7 animate-spin" />
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-[#0369A1] uppercase tracking-widest">
-                          Sector 01
-                        </span>
-                        <h3 className="text-2xl font-black text-[#075985]">
-                          Physics Engine
-                        </h3>
-                      </div>
-                    </div>
-                    <div className="pt-4 border-t border-sky-100 flex items-center justify-between text-xs font-bold text-[#0369A1]">
-                      <span>Open Physics Vault</span>
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </div>
-
-                  {/* Chemistry Launcher */}
-                  <div
-                    onClick={() => handleSubjectTransition("CHEMISTRY")}
-                    className="group bg-white border border-ember-200 hover:border-[#CC310E] rounded-3xl p-8 cursor-pointer shadow-sm hover:shadow-md transition-all flex flex-col justify-between min-h-[220px] relative overflow-hidden"
-                  >
-                    <div className="space-y-3 relative z-10">
-                      <div className="w-14 h-14 rounded-2xl bg-ember-50 border border-ember-200 flex items-center justify-center text-[#CC310E]">
-                        <FlaskConical className="w-7 h-7 animate-bounce" />
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-[#CC310E] uppercase tracking-widest">
-                          Sector 02
-                        </span>
-                        <h3 className="text-2xl font-black text-[#075985]">
-                          Chemistry Lab
-                        </h3>
-                      </div>
-                    </div>
-                    <div className="pt-4 border-t border-ember-100 flex items-center justify-between text-xs font-bold text-[#CC310E]">
-                      <span>Open Chemistry Hub</span>
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </div>
+                <button type="button" onClick={() => setQuery("")} className="h-11 rounded-xl border border-[#D3E3EF] bg-white px-4 text-xs font-bold text-slate-700">
+                  Clear search
+                </button>
+              </div>
+              {foundVideos.length + foundMaterials.length === 0 ? (
+                <div className="dash-card space-y-3 p-12 text-center">
+                  <SearchX className="mx-auto h-12 w-12 text-slate-400" />
+                  <p className="text-sm font-bold text-slate-700">No matching lecture or sheet found.</p>
                 </div>
-
-                {/* Progress Stats & Calendar */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                  <div className="lg:col-span-7 space-y-6">
-                    <h3 className="text-xs font-bold text-[#075985] uppercase tracking-wider">
-                      Academic Telemetry
-                    </h3>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      {[
-                        {
-                          label: "Completed",
-                          value: completedCount,
-                          color: "text-[#0369A1]",
-                        },
-                        {
-                          label: "Chapters",
-                          value: chapterStats.length,
-                          color: "text-[#075985]",
-                        },
-                        {
-                          label: "Coverage",
-                          value: `${completionPercentage}%`,
-                          color: "text-[#CC310E]",
-                        },
-                      ].map((stat, i) => (
-                        <div
-                          key={i}
-                          className="bg-white border border-[#D3E3EF] p-5 rounded-2xl text-center shadow-sm"
-                        >
-                          <p className={`text-2xl font-black ${stat.color}`}>
-                            {stat.value}
-                          </p>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">
-                            {stat.label}
-                          </p>
-                        </div>
+              ) : (
+                <>
+                  {foundVideos.length > 0 && renderLectureCards(foundVideos)}
+                  {foundMaterials.length > 0 && (
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                      {foundMaterials.map((m) => (
+                        <MaterialCard key={m.id} material={m} onPreview={(mat) => { setPdfLoading(true); setPdf({ url: getDrivePreviewUrl(mat.pdf_url || mat.file_url || ""), raw: mat.pdf_url || mat.file_url || "", title: mat.title }); }} />
                       ))}
                     </div>
+                  )}
+                </>
+              )}
+            </section>
+          )}
 
-                    <div className="bg-white border border-[#D3E3EF] rounded-3xl p-6 shadow-sm space-y-4">
-                      <h4 className="text-sm font-bold text-slate-900">
-                        Recommended Lectures
-                      </h4>
-                      <div className="space-y-3">
-                        {videos.slice(0, 4).map((v) => {
-                          const isDone = watchedVideos.includes(v.id);
-                          return (
-                            <div
-                              key={v.id}
-                              className="flex items-center justify-between p-3.5 bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl gap-3"
-                            >
-                              <div className="flex items-center space-x-3 overflow-hidden">
-                                <div
-                                  className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${v.subject === "PHYSICS"
-                                      ? "bg-sky-100 text-[#0369A1]"
-                                      : "bg-ember-100 text-[#CC310E]"
-                                    }`}
-                                >
-                                  #{v.lecture_no}
-                                </div>
-                                <div className="overflow-hidden">
-                                  <p className="text-xs font-bold text-slate-900 truncate">
-                                    {v.topic || v.title}
-                                  </p>
-                                  <p className="text-[10px] text-slate-500 truncate">
-                                    {v.chapter}
-                                  </p>
-                                </div>
-                              </div>
+          {/* ---------------- HOME ---------------- */}
+          {!isExpired && !searching && view === "dashboard" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-8">
+              {heading(`${greeting(new Date().getHours())}, ${first}`, weeklyDone >= goal ? "You hit your weekly goal. Everything from here is a bonus." : `${toGo} more lecture${toGo === 1 ? "" : "s"} to reach your weekly goal.`)}
 
-                              <button
-                                onClick={() => toggleWatchStatus(v.id)}
-                                className={`h-9 px-3 rounded-lg text-xs font-bold shrink-0 ${isDone
-                                    ? "bg-ember-100 text-ember-800"
-                                    : "bg-white border border-[#D3E3EF] text-slate-700 hover:bg-slate-100"
-                                  }`}
-                              >
-                                {isDone ? "✓ Done" : "Watch"}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Calendar Widget */}
-                  <div className="lg:col-span-5">
-                    <div className="bg-white border border-[#D3E3EF] rounded-3xl p-6 shadow-sm space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-black text-[#075985]">
-                          {currentMonthTitle}
-                        </h4>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={handlePrevMonth}
-                            className="p-1.5 rounded-lg border border-[#D3E3EF] text-slate-600 hover:bg-slate-50"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={handleNextMonth}
-                            className="p-1.5 rounded-lg border border-[#D3E3EF] text-slate-600 hover:bg-slate-50"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 uppercase">
-                        <span>Su</span>
-                        <span>Mo</span>
-                        <span>Tu</span>
-                        <span>We</span>
-                        <span>Th</span>
-                        <span>Fr</span>
-                        <span>Sa</span>
-                      </div>
-
-                      <div className="grid grid-cols-7 text-center text-xs gap-1 font-semibold">
-                        {Array.from({ length: startDayOfMonth }).map((_, i) => (
-                          <span key={`empty-${i}`} className="text-slate-300">
-                            -
-                          </span>
-                        ))}
-                        {Array.from({ length: daysInMonth }).map((_, i) => {
-                          const dayNum = i + 1;
-                          const dateKey = formatDateKey(
-                            currentYearCalendar,
-                            currentMonthCalendar,
-                            dayNum
-                          );
-                          const isToday = dateKey === todayKey;
-                          const hasPlans = studyPlans.some(
-                            (p) => p.dateKey === dateKey
-                          );
-
-                          return (
-                            <button
-                              key={dayNum}
-                              onClick={() => setSelectedDateForPlan(dateKey)}
-                              className={`h-9 w-9 mx-auto flex items-center justify-center rounded-xl relative ${isToday
-                                  ? "bg-[#075985] text-white shadow-md"
-                                  : "text-slate-700 hover:bg-slate-100"
-                                }`}
-                            >
-                              <span>{dayNum}</span>
-                              {hasPlans && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#0369A1] absolute bottom-1" />
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* VIEW: CHAPTER-WISE LECTURES VAULT */}
-            {!isExpired && !isSearchActive && activeNav === "lectures" && (
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
-              >
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
-                    <h2 className="text-2xl font-black text-[#075985] flex items-center gap-3">
-                      {selectedChapter && (
-                        <button
-                          onClick={() => setSelectedChapter(null)}
-                          className="w-10 h-10 rounded-full bg-white border border-[#D3E3EF] flex items-center justify-center text-slate-700 hover:bg-slate-50"
-                        >
-                          <ArrowLeft className="w-5 h-5" />
-                        </button>
-                      )}
-                      <span>
-                        {selectedChapter
-                          ? `Chapter: ${selectedChapter}`
-                          : "Video Lectures Vault"}
+              {showSkeleton ? (
+                <DashboardSkeleton />
+              ) : (
+                <>
+                  {hasUnread && notice && (
+                    <button type="button" onClick={openNotice} className="flex w-full items-center gap-3 rounded-2xl border border-[#FAC3B0] bg-gradient-to-r from-[#FEF3EF] to-white p-4 text-left active:scale-[0.99]">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#CC310E] text-white">
+                        <Megaphone className="h-5 w-5" />
                       </span>
-                    </h2>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[10px] font-black uppercase tracking-widest text-[#CC310E]">New notice</span>
+                        <span className="block truncate text-sm font-bold text-slate-800">{notice.content}</span>
+                      </span>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-[#CC310E]" />
+                    </button>
+                  )}
+
+                  <ContinueCard resume={resume} duration={resume.lecture ? state.lectures[resume.lecture.id]?.duration ?? 0 : 0} loading={loading} hasLectures={videos.length > 0} onOpen={openLecture} onLab={() => document.getElementById("practice-lab")?.scrollIntoView({ behavior: "smooth" })} />
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <StreakCard streak={streak} dots={dots} />
+                    <WeeklyGoal done={weeklyDone} goal={goal} onGoal={setGoal} />
+                    <section className="dash-card flex items-center gap-4 p-5" aria-label="Overall coverage">
+                      <ProgressRing value={coverage} size={96} stroke={10} color="#CC310E" label={`${coverage} percent of all lectures watched`}>
+                        <span className="text-xl font-black text-slate-900"><CountUp value={coverage} suffix="%" /></span>
+                      </ProgressRing>
+                      <div>
+                        <p className="text-sm font-black text-[#075985]">Course coverage</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-600">{completedCount} of {videos.length} lectures</p>
+                        <p className="text-xs font-semibold text-slate-600">{stats.filter((s) => s.total > 0 && s.done === s.total).length} of {stats.length} chapters</p>
+                      </div>
+                    </section>
                   </div>
 
-                  {!selectedChapter && (
-                    <div className="flex items-center bg-white border border-[#D3E3EF] rounded-2xl p-1 shadow-sm">
-                      <button
-                        onClick={() => setSelectedSubjectTab("PHYSICS")}
-                        className={`h-10 px-5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${selectedSubjectTab === "PHYSICS"
-                            ? "bg-[#0369A1] text-white"
-                            : "text-slate-600 hover:bg-slate-50"
-                          }`}
-                      >
-                        <Atom className="w-4 h-4" />
-                        <span>Physics</span>
-                      </button>
-                      <button
-                        onClick={() => setSelectedSubjectTab("CHEMISTRY")}
-                        className={`h-10 px-5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${selectedSubjectTab === "CHEMISTRY"
-                            ? "bg-[#CC310E] text-white"
-                            : "text-slate-600 hover:bg-slate-50"
-                          }`}
-                      >
-                        <FlaskConical className="w-4 h-4" />
-                        <span>Chemistry</span>
-                      </button>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {(["PHYSICS", "CHEMISTRY"] as const).map((s, i) => {
+                      const physics = s === "PHYSICS";
+                      const t = bySubject[s];
+                      const pct = t.total ? Math.round((t.done / t.total) * 100) : 0;
+                      return (
+                        <motion.button
+                          key={s}
+                          type="button"
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => navigate({ view: "lectures", subject: s })}
+                          className={`dash-card dash-lift group flex items-center gap-4 p-6 text-left ${physics ? "" : "!border-[#CC310E]/25"}`}
+                        >
+                          <GlowIcon icon={physics ? Atom : FlaskConical} offset={i * 2} size="lg" />
+                          <span className="min-w-0 flex-1">
+                            <span className={`block text-[10px] font-black uppercase tracking-widest ${physics ? "text-[#0369A1]" : "text-[#CC310E]"}`}>Sector 0{i + 1}</span>
+                            <span className="block text-xl font-black text-[#075985]">{physics ? "Physics Engine" : "Chemistry Lab"}</span>
+                            <span className="mt-1 block text-xs font-semibold text-slate-500">{t.done} of {t.total} lectures · {pct}%</span>
+                            <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-slate-100">
+                              <span className={`block h-full rounded-full transition-all duration-700 ${physics ? "bg-sky-500" : "bg-[#CC310E]"}`} style={{ width: `${pct}%` }} />
+                            </span>
+                          </span>
+                          <ArrowRight className="h-5 w-5 shrink-0 text-slate-400 transition-transform group-hover:translate-x-1" />
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="grid items-start gap-6 lg:grid-cols-12">
+                    <div className="space-y-6 lg:col-span-7">
+                      <DueToday plans={state.plans} today={today} onOpenPlan={openPlan} />
+                      {upNext.length > 0 && (
+                        <section className="dash-card p-5" aria-label="Up next">
+                          <h3 className="mb-3 text-sm font-black text-[#075985]">Up next</h3>
+                          <ul className="space-y-2">
+                            {upNext.map((v) => (
+                              <li key={v.id}>
+                                <button type="button" onClick={() => openLecture(v)} className="flex min-h-[56px] w-full items-center gap-3 rounded-xl bg-[#F3F8FC] p-3 text-left active:bg-sky-100">
+                                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-black ${subjectKey(v.subject) === "PHYSICS" ? "bg-sky-100 text-[#0369A1]" : "bg-[#FDE2D9] text-[#CC310E]"}`}>#{v.lecture_no}</span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-xs font-bold text-slate-900">{v.topic || v.title}</span>
+                                    <span className="block truncate text-[10px] text-slate-500">{v.chapter}</span>
+                                  </span>
+                                  <ArrowRight className="h-4 w-4 shrink-0 text-slate-400" />
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </section>
+                      )}
                     </div>
+                    <div className="lg:col-span-5">
+                      <StudyCalendar plans={state.plans} today={today} onPick={setPlanDay} />
+                    </div>
+                  </div>
+
+                  <div id="practice-lab" className="scroll-mt-24">
+                    <PracticeLab onOpen={setSimId} />
+                  </div>
+                  <BadgesGrid badges={badges} />
+                </>
+              )}
+            </motion.div>
+          )}
+
+          {/* ---------------- LECTURES ---------------- */}
+          {!isExpired && !searching && view === "lectures" && (
+            <motion.div key={`${subject}:${chapter ?? ""}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className="space-y-6">
+              <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-3">
+                  {chapter && (
+                    <button type="button" onClick={() => navigate({ view: "lectures", subject })} aria-label="Back to chapters" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#D3E3EF] bg-white text-slate-700 active:scale-95">
+                      <ArrowLeft className="h-5 w-5" />
+                    </button>
+                  )}
+                  {heading(chapter ? chapter : "Video Lectures")}
+                </div>
+                {!chapter && (
+                  <div role="tablist" aria-label="Subject" className="relative flex rounded-2xl border border-[#D3E3EF] bg-white p-1 shadow-sm">
+                    {(["PHYSICS", "CHEMISTRY"] as const).map((s) => {
+                      const on = subject === s;
+                      return (
+                        <button key={s} type="button" role="tab" aria-selected={on} onClick={() => navigate({ view: "lectures", subject: s }, true)} className={`relative flex h-11 items-center gap-2 rounded-xl px-5 text-xs font-extrabold transition-colors ${on ? "text-white" : "text-slate-600"}`}>
+                          {on && <motion.span layoutId="subject-pill" transition={{ type: "spring", stiffness: 420, damping: 34 }} className={`absolute inset-0 rounded-xl ${s === "PHYSICS" ? "bg-[#0369A1]" : "bg-[#CC310E]"}`} />}
+                          <span className="relative flex items-center gap-2">
+                            {s === "PHYSICS" ? <Atom className="h-4 w-4" /> : <FlaskConical className="h-4 w-4" />}
+                            {s === "PHYSICS" ? "Physics" : "Chemistry"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {showSkeleton ? (
+                <GridSkeleton />
+              ) : !chapter ? (
+                chaptersOfSubject.length === 0 ? (
+                  <div className="dash-card p-12 text-center text-sm font-semibold text-slate-500">No {subject === "PHYSICS" ? "Physics" : "Chemistry"} lectures have been published yet.</div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {chaptersOfSubject.map((s) => (
+                      <ChapterCard key={s.chapter} stat={s} materials={(materialsByChapter[s.chapter] || []).length} hasSim={simForChapter(s.chapter, s.subject) !== null} onOpen={(c) => navigate({ view: "lectures", subject, chapter: c })} />
+                    ))}
+                  </div>
+                )
+              ) : lecturesOfChapter.length === 0 ? (
+                <div className="dash-card space-y-3 p-12 text-center text-sm font-semibold text-slate-500">
+                  <p>This chapter has no lectures.</p>
+                  <button type="button" onClick={() => navigate({ view: "lectures", subject })} className="text-[#0369A1] underline">Back to chapters</button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {chapterSim && <ChapterSimBanner simId={chapterSim} onOpen={setSimId} />}
+                  <div className="flex flex-wrap items-center gap-2" aria-label="Ask the AI tutor">
+                    <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-slate-500"><Sparkles className="h-3.5 w-3.5 text-[#CC310E]" /> Ask AI</span>
+                    {[
+                      ["Explain simply", `"${chapter}" অধ্যায়ের মূল ধারণাগুলো সহজ ভাষায় বুঝিয়ে দাও।`],
+                      ["Practice questions", `"${chapter}" অধ্যায় থেকে ৫টি অনুশীলনী প্রশ্ন দাও (উত্তরসহ)।`],
+                      ["Common mistakes", `"${chapter}" অধ্যায়ে শিক্ষার্থীরা সাধারণত কী কী ভুল করে এবং কীভাবে এড়ানো যায়?`],
+                    ].map(([label, prompt]) => (
+                      <button key={label} type="button" onClick={() => askAi(prompt)} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-[#D3E3EF] bg-white px-4 text-xs font-bold text-[#075985] shadow-sm active:scale-95">
+                        <Bot className="h-3.5 w-3.5" /> {label}
+                      </button>
+                    ))}
+                  </div>
+                  {renderLectureCards(lecturesOfChapter)}
+                  {(materialsByChapter[chapter] || []).length > 0 && (
+                    <section className="space-y-3" aria-label="Study sheets for this chapter">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-[#075985]">Study sheets for this chapter</h3>
+                      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                        {materialsByChapter[chapter].map((m) => (
+                          <MaterialCard key={m.id} material={m} onPreview={(mat) => { setPdfLoading(true); setPdf({ url: getDrivePreviewUrl(mat.pdf_url || mat.file_url || ""), raw: mat.pdf_url || mat.file_url || "", title: mat.title }); }} />
+                        ))}
+                      </div>
+                    </section>
                   )}
                 </div>
+              )}
+            </motion.div>
+          )}
 
-                {!selectedChapter ? (
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {Object.entries(currentSubjectChapters).map(
-                      ([chName, chVideos]) => {
-                        const chMaterials = materialsByChapter[chName] || [];
-                        const completedInCh = chVideos.filter((v) =>
-                          watchedVideos.includes(v.id)
-                        ).length;
-                        const chProgress =
-                          chVideos.length > 0
-                            ? Math.round(
-                              (completedInCh / chVideos.length) * 100
-                            )
-                            : 0;
-
-                        return (
-                          <div
-                            key={chName}
-                            onClick={() => setSelectedChapter(chName)}
-                            className="bg-white border border-[#D3E3EF] hover:border-[#075985] rounded-3xl p-6 cursor-pointer shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-6"
-                          >
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between">
-                                <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-[#D3E3EF] flex items-center justify-center text-[#075985]">
-                                  <FolderOpen className="w-6 h-6" />
-                                </div>
-                                <span className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
-                                  {chVideos.length} Lec | {chMaterials.length} PDF
-                                </span>
-                              </div>
-                              <div>
-                                <h3 className="text-lg font-black text-slate-900 leading-snug">
-                                  {chName}
-                                </h3>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2 pt-4 border-t border-[#D3E3EF]">
-                              <div className="flex justify-between text-xs font-bold text-slate-600">
-                                <span>Completion</span>
-                                <span>{chProgress}%</span>
-                              </div>
-                              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-[#075985] rounded-full"
-                                  style={{ width: `${chProgress}%` }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {(currentSubjectChapters[selectedChapter] || []).map(
-                        (vid) => {
-                          const embedUrl = getYouTubeEmbedUrl(
-                            vid.youtube_url || vid.video_url || ""
-                          );
-                          const isWatched = watchedVideos.includes(vid.id);
-                          const isNotesOpen = openNotesId === vid.id;
-
-                          return (
-                            <div
-                              key={vid.id}
-                              className="bg-white border border-[#D3E3EF] rounded-3xl overflow-hidden shadow-sm flex flex-col justify-between"
-                            >
-                              <div>
-                                <div className="aspect-video bg-slate-900">
-                                  <iframe
-                                    src={embedUrl}
-                                    title={vid.topic || "Lecture"}
-                                    className="w-full h-full border-none"
-                                    allowFullScreen
-                                  />
-                                </div>
-                                <div className="p-5 space-y-3">
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-[#D3E3EF]">
-                                    Lec #{vid.lecture_no} · {vid.subject}
-                                  </span>
-                                  <h3 className="font-bold text-slate-900 text-sm leading-snug">
-                                    {vid.topic || vid.title}
-                                  </h3>
-                                </div>
-                              </div>
-
-                              <div className="p-5 pt-0 space-y-3">
-                                {/* Lecture Notes Drawer */}
-                                <div className="border border-[#D3E3EF] rounded-xl overflow-hidden bg-[#F3F8FC]">
-                                  <button
-                                    onClick={() =>
-                                      setOpenNotesId(
-                                        isNotesOpen ? null : vid.id
-                                      )
-                                    }
-                                    className="w-full px-4 h-11 flex items-center justify-between text-xs font-bold text-slate-700"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <FileEdit className="w-4 h-4 text-[#0369A1]" />
-                                      <span>My Personal Notes</span>
-                                    </div>
-                                    <ChevronDown className="w-4 h-4" />
-                                  </button>
-
-                                  {isNotesOpen && (
-                                    <div className="p-3 bg-white border-t border-[#D3E3EF] space-y-3">
-                                      <textarea
-                                        rows={4}
-                                        placeholder="Write key formulas or timestamps..."
-                                        value={lectureNotes[vid.id] || ""}
-                                        onChange={(e) =>
-                                          handleNoteChange(vid.id, e.target.value)
-                                        }
-                                        className="w-full p-2.5 bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl text-xs text-slate-900 outline-none"
-                                      />
-                                      <div className="flex justify-between text-[11px]">
-                                        <button
-                                          onClick={() =>
-                                            handleAddTimestampTag(vid.id)
-                                          }
-                                          className="font-bold text-[#0369A1]"
-                                        >
-                                          + Add Timestamp
-                                        </button>
-                                        <button
-                                          onClick={() => handleExportNotes(vid)}
-                                          className="font-bold text-slate-600"
-                                        >
-                                          Export TXT
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-
-                                <button
-                                  onClick={() => toggleWatchStatus(vid.id)}
-                                  className={`w-full h-12 rounded-xl text-xs font-bold ${isWatched
-                                      ? "bg-ember-50 text-ember-700 border border-ember-200"
-                                      : "bg-[#075985] text-white"
-                                    }`}
-                                >
-                                  {isWatched ? "✓ Completed" : "Mark as Watched"}
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        }
-                      )}
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            )}
-
-            {/* VIEW: STUDY MATERIALS PDF TAB */}
-            {!isExpired && !isSearchActive && activeNav === "materials" && (
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h2 className="text-2xl font-black text-[#075985]">
-                    Study Materials &amp; PDFs
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Download lecture handouts and problem practice sheets.
-                  </p>
+          {/* ---------------- MATERIALS ---------------- */}
+          {!isExpired && !searching && view === "materials" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className="space-y-6">
+              <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+                {heading("Study Materials & PDFs", "Preview handouts here or download them for offline revision.")}
+                <div className="flex rounded-2xl border border-[#D3E3EF] bg-white p-1 shadow-sm" role="group" aria-label="Filter by subject">
+                  {(["ALL", "PHYSICS", "CHEMISTRY"] as const).map((f) => (
+                    <button key={f} type="button" aria-pressed={materialFilter === f} onClick={() => setMaterialFilter(f)} className={`h-11 rounded-xl px-4 text-xs font-extrabold transition-colors ${materialFilter === f ? "bg-[#075985] text-white" : "text-slate-600"}`}>
+                      {f === "ALL" ? "All" : f === "PHYSICS" ? "Physics" : "Chemistry"}
+                    </button>
+                  ))}
                 </div>
-
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {materials.map((mat) => {
-                    const rawFileUrl = mat.pdf_url || mat.file_url || "";
-                    const drivePreviewLink = getDrivePreviewUrl(rawFileUrl);
-
-                    return (
-                      <div
-                        key={mat.id}
-                        className="bg-white border border-[#D3E3EF] rounded-3xl p-6 flex flex-col justify-between space-y-5 shadow-sm"
-                      >
-                        <div className="space-y-3">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-[#D3E3EF]">
-                            {mat.subject} · {mat.chapter}
-                          </span>
-                          <h3 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2">
-                            {mat.title}
-                          </h3>
-                        </div>
-
-                        <div className="flex items-center gap-2 pt-2 border-t border-[#D3E3EF]">
-                          <button
-                            onClick={() => {
-                              setPreviewPdfUrl(drivePreviewLink);
-                              setPreviewPdfTitle(mat.title);
-                            }}
-                            className="flex-1 h-12 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl flex items-center justify-center gap-2"
-                          >
-                            <Eye className="w-4 h-4" /> Preview
-                          </button>
-
-                          <a
-                            href={rawFileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-12 h-12 bg-[#075985] text-white rounded-xl flex items-center justify-center shrink-0"
-                          >
-                            <Download className="w-4 h-4" />
-                          </a>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
-
-            {/* VIEW: AI TUTOR CORE TAB */}
-            {!isExpired && !isSearchActive && activeNav === "ai" && (
-              <div className="h-[calc(100vh-140px)] min-h-[600px] rounded-3xl overflow-hidden border border-[#D3E3EF] bg-white shadow-sm">
-                <EduTrackAiChat isEmbedded={true} />
               </div>
-            )}
-          </main>
+              {showSkeleton ? (
+                <GridSkeleton count={6} />
+              ) : (
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {materials
+                    .filter((m) => materialFilter === "ALL" || subjectKey(m.subject) === materialFilter)
+                    .map((m) => (
+                      <MaterialCard key={m.id} material={m} onPreview={(mat) => { setPdfLoading(true); setPdf({ url: getDrivePreviewUrl(mat.pdf_url || mat.file_url || ""), raw: mat.pdf_url || mat.file_url || "", title: mat.title }); }} />
+                    ))}
+                </div>
+              )}
+            </motion.div>
+          )}
 
-          {/* Unified Site Footer */}
-          <SiteFooter />
-        </div>
+          {/* ---------------- AI ---------------- */}
+          {!isExpired && !searching && view === "ai" && (
+            <div className="h-[calc(100dvh-11rem)] min-h-[520px] overflow-hidden rounded-3xl border border-[#D3E3EF] bg-white shadow-sm md:h-[calc(100dvh-9rem)]">
+              <EduTrackAiChat isEmbedded />
+            </div>
+          )}
+        </main>
+
+        <SiteFooter />
       </div>
 
-      {/* FLOATING AI CHAT WIDGET TRIGGER */}
-      {!isExpired && activeNav !== "ai" && (
-        <div className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-40">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsFloatingChatOpen(true)}
-            className="w-16 h-16 bg-[#075985] text-white rounded-full shadow-xl shadow-sky-900/20 flex items-center justify-center relative border-4 border-white"
-          >
-            <Bot className="w-7 h-7" />
-            <span className="w-3.5 h-3.5 bg-sky-500 border-2 border-white rounded-full absolute top-0 right-0" />
-          </motion.button>
-        </div>
-      )}
+      <MobileDock view={view} onNavigate={go} />
 
-      {/* FLOATING AI POPUP MODAL */}
-      {isFloatingChatOpen && (
-        <EduTrackAiChat
-          isOpen={true}
-          onClose={() => setIsFloatingChatOpen(false)}
-        />
+      {/* Floating AI button */}
+      {!isExpired && view !== "ai" && (
+        <motion.button
+          type="button"
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.94 }}
+          onClick={() => setChat({ open: true })}
+          aria-label="Open AI tutor"
+          className="fixed bottom-24 right-4 z-40 flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-gradient-to-br from-[#075985] to-[#0369A1] text-white shadow-xl shadow-sky-900/25 md:bottom-8 md:right-8"
+        >
+          <Bot className="h-7 w-7" />
+          <span className="absolute right-0 top-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#CC310E]" />
+        </motion.button>
       )}
+      {chat.open && <EduTrackAiChat isOpen initialPrompt={chat.prompt} onClose={() => setChat({ open: false })} />}
 
-      {/* STUDY PLANNER MODAL */}
       <AnimatePresence>
-        {selectedDateForPlan && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setSelectedDateForPlan(null)}
+        {noticeOpen && notice && <NoticeSheet key="notice" notice={notice} onClose={() => setNoticeOpen(false)} />}
+        {planDay && (
+          <DayPlanSheet key="plan" dateKey={planDay} plans={state.plans} onAdd={addPlan} onRemove={removePlan} onOpenPlan={openPlan} onClose={() => setPlanDay(null)} />
+        )}
+        {simOpen && <SimModal key={simOpen.id} sim={simOpen} onClose={() => setSimId(null)} />}
+        {pdf && (
+          <Sheet
+            key="pdf"
+            title={pdf.title}
+            size="lg"
+            onClose={() => setPdf(null)}
+            headerExtra={
+              <a href={pdf.raw} target="_blank" rel="noopener noreferrer" className="hidden h-11 items-center gap-1.5 rounded-full border border-[#D3E3EF] bg-white px-4 text-xs font-bold text-[#075985] sm:flex">
+                <ExternalLink className="h-3.5 w-3.5" /> Open in new tab
+              </a>
+            }
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white border border-[#D3E3EF] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5"
-            >
-              <div className="flex justify-between items-center border-b border-[#D3E3EF] pb-3">
-                <h3 className="font-bold text-slate-900 text-base">
-                  Study Planner: {selectedDateForPlan}
-                </h3>
-                <button
-                  onClick={() => setSelectedDateForPlan(null)}
-                  className="p-1 text-slate-400 hover:text-slate-700"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {studyPlans.filter((p) => p.dateKey === selectedDateForPlan)
-                  .length === 0 ? (
-                  <p className="text-xs text-slate-500 text-center py-4 bg-[#F3F8FC] rounded-xl border border-[#D3E3EF]">
-                    No revision task added for this day yet.
-                  </p>
-                ) : (
-                  studyPlans
-                    .filter((p) => p.dateKey === selectedDateForPlan)
-                    .map((p) => (
-                      <div
-                        key={p.id}
-                        className="flex justify-between items-center bg-[#F3F8FC] p-3 rounded-xl border border-[#D3E3EF] text-xs"
-                      >
-                        <div>
-                          <p className="font-bold text-slate-900">{p.title}</p>
-                          {p.time && (
-                            <p className="text-[10px] text-[#0369A1]">
-                              {p.time}
-                            </p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleDeletePlan(p.id)}
-                          className="text-rose-600 hover:text-rose-800 p-1"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))
-                )}
-              </div>
-
-              <form onSubmit={handleAddPlan} className="space-y-3 pt-2">
-                <input
-                  type="text"
-                  required
-                  placeholder="Task title (e.g. Physics CQ Revision)"
-                  value={newPlanTitle}
-                  onChange={(e) => setNewPlanTitle(e.target.value)}
-                  className="w-full h-11 px-4 bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl text-xs text-slate-900 outline-none"
-                />
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Target time (e.g. 8:00 PM)"
-                    value={newPlanTime}
-                    onChange={(e) => setNewPlanTime(e.target.value)}
-                    className="flex-1 h-11 px-4 bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl text-xs text-slate-900 outline-none"
-                  />
-                  <button
-                    type="submit"
-                    className="h-11 px-4 bg-[#075985] text-white rounded-xl text-xs font-bold shrink-0"
-                  >
-                    Add Task
-                  </button>
+            <div className="relative h-full min-h-[300px]">
+              {pdfLoading && (
+                <div className="absolute inset-0 flex items-center justify-center text-slate-400">
+                  <Loader2 className="h-7 w-7 animate-spin" />
                 </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* PDF PREVIEW MODAL */}
-      <AnimatePresence>
-        {previewPdfUrl && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setPreviewPdfUrl(null)}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white border border-[#D3E3EF] rounded-3xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden shadow-2xl"
-            >
-              <div className="px-6 h-16 bg-[#F3F8FC] border-b border-[#D3E3EF] flex items-center justify-between">
-                <h3 className="font-bold text-slate-900 text-sm truncate">
-                  {previewPdfTitle}
-                </h3>
-                <button
-                  onClick={() => setPreviewPdfUrl(null)}
-                  className="p-2 rounded-xl bg-white border border-[#D3E3EF] text-slate-600 hover:text-slate-900"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <iframe
-                src={previewPdfUrl}
-                title={previewPdfTitle}
-                className="w-full flex-1 border-none"
-              />
+              )}
+              <iframe src={pdf.url} title={pdf.title} onLoad={() => setPdfLoading(false)} className="relative h-full min-h-[300px] w-full border-none" />
             </div>
-          </motion.div>
+          </Sheet>
         )}
       </AnimatePresence>
 
-      {/* MOBILE STICKY BOTTOM NAVIGATION DOCK (48px Touch Standard) */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-[#D3E3EF] h-20 px-2 flex items-center justify-around shadow-lg">
-        {[
-          { id: "dashboard" as const, label: "Home", icon: LayoutDashboard },
-          { id: "lectures" as const, label: "Classes", icon: PlayCircle },
-          { id: "materials" as const, label: "Sheets", icon: FileText },
-          { id: "ai" as const, label: "AI Tutor", icon: Bot },
-        ].map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => {
-              setActiveNav(id);
-              setSelectedChapter(null);
-              setIsMobileSidebarOpen(false);
-            }}
-            className={`flex flex-col items-center justify-center min-h-[48px] px-3 rounded-xl transition-all ${activeNav === id
-                ? "text-[#075985] font-bold"
-                : "text-slate-400 hover:text-slate-600"
-              }`}
-          >
-            <Icon className="w-5 h-5" />
-            <span className="text-[10px] tracking-tight mt-1">{label}</span>
-          </button>
-        ))}
-      </nav>
+      <Celebration event={celebration} onDone={() => setCelebration(null)} />
     </div>
   );
 }
@@ -1797,8 +719,8 @@ export default function StudentDashboardPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#F3F8FC] flex flex-col items-center justify-center p-6 font-sans">
-          <div className="w-12 h-12 border-4 border-[#D3E3EF] border-t-[#075985] rounded-full animate-spin" />
+        <div className="flex min-h-screen items-center justify-center bg-[#F3F8FC]">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#D3E3EF] border-t-[#CC310E]" />
         </div>
       }
     >

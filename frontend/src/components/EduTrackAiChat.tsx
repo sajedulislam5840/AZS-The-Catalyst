@@ -41,6 +41,7 @@ export interface EduTrackAiChatProps {
     isOpen?: boolean;
     onClose?: () => void;
     isEmbedded?: boolean; // When true, rendered directly in dashboard page instead of floating popup
+    initialPrompt?: string; // Sent once as the first question when the chat opens (used by "Ask AI" shortcuts)
 }
 
 const BACKEND_URL = (
@@ -74,6 +75,7 @@ export default function EduTrackAiChat({
     isOpen = true,
     onClose,
     isEmbedded = false,
+    initialPrompt,
 }: EduTrackAiChatProps) {
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -273,6 +275,17 @@ export default function EduTrackAiChat({
             setIsLoading(false);
         }
     };
+
+    // "Ask AI" shortcuts open the chat with a ready-made question, sent exactly once.
+    const initialSent = useRef(false);
+    useEffect(() => {
+        if (initialPrompt && (isOpen || isEmbedded) && !initialSent.current) {
+            initialSent.current = true;
+            void handleSend(initialPrompt);
+        }
+        // handleSend is recreated every render; the ref makes this run once.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialPrompt, isOpen, isEmbedded]);
 
     const copyToClipboard = (text: string, index: number) => {
         navigator.clipboard.writeText(text);

@@ -11,11 +11,13 @@ from app.core.database import engine, Base
 from app.models.user import User
 import app.models.academic
 import app.models.chat
+import app.models.progress
 from app.api.v1.auth import router as auth_router
 # Updated import from admin_academic.py
 from app.api.v1.admin_academic import router as admin_router
 from app.api.v1.academic import router as academic_router
 from app.api.v1.chat import router as chat_router
+from app.api.v1.progress import router as progress_router
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "static"
@@ -122,6 +124,7 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(academic_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
+app.include_router(progress_router, prefix="/api/v1")
 
 
 @app.get("/")

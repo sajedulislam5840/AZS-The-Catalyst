@@ -18,7 +18,7 @@ const BohrAtom = dynamic(() => import("./sims/BohrAtom"), { ssr: false, loading:
 const MoleculeShapes = dynamic(() => import("./sims/MoleculeShapes"), { ssr: false, loading: Loading });
 const PhScale = dynamic(() => import("./sims/PhScale"), { ssr: false, loading: Loading });
 
-interface Sim {
+export interface Sim {
   id: string;
   icon: LucideIcon;
   title: string;
@@ -28,14 +28,14 @@ interface Sim {
   Component: ComponentType;
 }
 
-const SIMS: Sim[] = [
+export const SIMS: Sim[] = [
   { id: "projectile", icon: Magnet, title: "Projectile Motion", text: "Change angle and speed, watch the arc.", goal: "Hit moving-distance targets on Earth, Moon and Mars.", subject: "physics", Component: ProjectileGame },
   { id: "bohr", icon: Atom, title: "Bohr Atom", text: "Excite electrons between energy levels.", goal: "Fire off real hydrogen spectral lines and finish 4 challenges.", subject: "physics", Component: BohrAtom },
   { id: "molecule", icon: FlaskConical, title: "Molecule Shapes", text: "Build molecules and see bond angles.", goal: "Rotate 3D VSEPR shapes, then quiz yourself on all 13.", subject: "chemistry", Component: MoleculeShapes },
   { id: "ph", icon: TestTube2, title: "pH Scale", text: "Mix solutions and read the colour.", goal: "Guess the pH of everyday liquids over 5 rounds.", subject: "chemistry", Component: PhScale },
 ];
 
-function SimModal({ sim, onClose }: { sim: Sim; onClose: () => void }) {
+export function SimModal({ sim, onClose }: { sim: Sim; onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {

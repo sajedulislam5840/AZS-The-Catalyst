@@ -1,10 +1,8 @@
 import Hero from "@/components/landing/Hero";
 import LandingNavbar from "@/components/landing/LandingNavbar";
 import Sandbox from "@/components/landing/Sandbox";
-import {
-  CurriculumSection,
-  SimulationsSection,
-} from "@/components/landing/LandingSections";
+import { CurriculumSection } from "@/components/landing/LandingSections";
+import SimulationsSection from "@/components/landing/SimulationsSection";
 import SiteFooter from "@/components/SiteFooter";
 
 export default function Home() {

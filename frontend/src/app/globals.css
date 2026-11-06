@@ -542,3 +542,5 @@ button {
   .azs-drift, .azs-bubble, .azs-wave, .azs-projectile { animation: none; }
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes azs-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .azs-spin { animation: none !important; } }

@@ -15,64 +15,9 @@ import {
   trajectory,
   type Planet,
 } from "@/lib/sim";
+import { Readout, Slider } from "./sims/SimUI";
 
 type Tab = "physics" | "chemistry";
-
-function Slider({
-  label,
-  value,
-  min,
-  max,
-  step = 1,
-  unit,
-  onChange,
-  tone,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step?: number;
-  unit: string;
-  onChange: (v: number) => void;
-  tone: "physics" | "chemistry";
-}) {
-  const id = `sb-${label.replace(/\W+/g, "-").toLowerCase()}`;
-  return (
-    <div>
-      <div className="mb-1 flex items-baseline justify-between text-sm">
-        <label htmlFor={id} className="font-semibold text-slate-700">
-          {label}
-        </label>
-        <span className="font-mono text-xs font-bold text-slate-900">
-          {value}
-          {unit}
-        </span>
-      </div>
-      <input
-        id={id}
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className={`h-2 w-full cursor-pointer ${
-          tone === "physics" ? "accent-sky-600" : "accent-[#CC310E]"
-        }`}
-      />
-    </div>
-  );
-}
-
-function Readout({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-sky-100 bg-white px-3 py-2">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</p>
-      <p className="font-mono text-sm font-extrabold text-slate-900">{value}</p>
-    </div>
-  );
-}
 
 /* ------------------------------ Physics ------------------------------ */
 

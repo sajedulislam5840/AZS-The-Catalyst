@@ -95,3 +95,84 @@ export function phLabel(ph: number): "Acidic" | "Neutral" | "Basic" {
   if (ph > 7.5) return "Basic";
   return "Neutral";
 }
+
+/* ---------------- Shared helpers for the games ---------------- */
+
+/** Deterministic value in [0, 1) from an integer seed (keeps game logic pure and testable). */
+export function rand01(seed: number): number {
+  let a = (seed * 2654435761) | 0;
+  a = (a + 0x6d2b79f5) | 0;
+  let t = Math.imul(a ^ (a >>> 15), 1 | a);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/** Fisher–Yates shuffle driven by a seed. Does not mutate the input. */
+export function shuffled<T>(items: readonly T[], seed: number): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rand01(seed * 1009 + i) * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/* ---------------- Projectile target practice ---------------- */
+
+export const MAX_LAUNCH_SPEED = 40;
+
+/** Target distance (m) for a level: 20%–85% of the best possible range on that planet. */
+export function targetDistance(level: number, g: number): number {
+  const maxRange = (MAX_LAUNCH_SPEED * MAX_LAUNCH_SPEED) / g;
+  return Math.round(maxRange * (0.2 + 0.65 * rand01(level * 7919 + 13)));
+}
+
+export function targetTolerance(distance: number): number {
+  return Math.max(2, distance * 0.04);
+}
+
+/** Points for a hit: 3 on the first try, 2 on the second, then 1. */
+export function hitPoints(attemptsThisLevel: number): number {
+  return Math.max(1, 4 - attemptsThisLevel);
+}
+
+/* ---------------- pH scale game ---------------- */
+
+export interface Substance {
+  name: string;
+  ph: number;
+}
+
+export const SUBSTANCES: readonly Substance[] = [
+  { name: "Stomach acid", ph: 1.5 },
+  { name: "Lemon juice", ph: 2.0 },
+  { name: "Vinegar", ph: 2.9 },
+  { name: "Orange juice", ph: 3.5 },
+  { name: "Tomato juice", ph: 4.5 },
+  { name: "Black coffee", ph: 5.0 },
+  { name: "Milk", ph: 6.5 },
+  { name: "Pure water", ph: 7.0 },
+  { name: "Human blood", ph: 7.4 },
+  { name: "Seawater", ph: 8.1 },
+  { name: "Baking soda solution", ph: 8.3 },
+  { name: "Hand soap", ph: 10.0 },
+  { name: "Milk of magnesia", ph: 10.5 },
+  { name: "Household ammonia", ph: 11.5 },
+  { name: "Bleach", ph: 12.5 },
+  { name: "Drain cleaner", ph: 13.5 },
+];
+
+/** Points for a pH guess: 3 within 0.5, 2 within 1, 1 within 2, else 0. */
+export function guessPoints(guess: number, actual: number): number {
+  const d = Math.abs(guess - actual);
+  if (d <= 0.5) return 3;
+  if (d <= 1) return 2;
+  if (d <= 2) return 1;
+  return 0;
+}
+
+/** Hydrogen-ion concentration split into mantissa × 10^exponent (mol/L). */
+export function hydrogenIon(ph: number): { mantissa: number; exponent: number } {
+  const exponent = -Math.ceil(ph);
+  return { mantissa: Math.pow(10, -ph - exponent), exponent };
+}

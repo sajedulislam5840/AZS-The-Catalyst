@@ -284,17 +284,17 @@ export default function EduTrackAiChat({
 
     // Nord Soft Academic Cream containers — no drawer/slide motion
     const containerClasses = isEmbedded
-        ? "w-full h-full min-h-[600px] flex flex-col bg-white border border-[#E6E1D8] rounded-2xl overflow-hidden shadow-sm relative text-[#0F172A] font-sans"
-        : "fixed inset-3 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[460px] sm:h-[640px] max-w-[100vw] h-[min(640px,calc(100dvh-1.5rem))] bg-white border border-[#E6E1D8] rounded-2xl shadow-xl flex flex-col overflow-hidden z-50 text-[#0F172A] font-sans";
+        ? "w-full h-full min-h-[600px] flex flex-col bg-white border border-[#D3E3EF] rounded-2xl overflow-hidden shadow-sm relative text-[#0F172A] font-sans"
+        : "fixed inset-3 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[460px] sm:h-[640px] max-w-[100vw] h-[min(640px,calc(100dvh-1.5rem))] bg-white border border-[#D3E3EF] rounded-2xl shadow-xl flex flex-col overflow-hidden z-50 text-[#0F172A] font-sans";
 
     const chatContent = (
         <div className={containerClasses}>
             {/* Soft subject aura washes (static, non-animated chrome) */}
             <div className="absolute top-0 right-0 w-40 h-40 bg-[#0369A1]/[0.06] rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-40 h-40 bg-[#047857]/[0.05] rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-40 h-40 bg-[#CC310E]/[0.05] rounded-full blur-3xl pointer-events-none" />
 
             {/* TOP HEADER — sapphire academic bar */}
-            <header className="px-3 sm:px-4 py-3 bg-[#1E3A8A] border-b border-[#1E3A8A] flex items-center justify-between gap-2 z-10 relative min-h-[56px]">
+            <header className="px-3 sm:px-4 py-3 bg-[#075985] border-b border-[#075985] flex items-center justify-between gap-2 z-10 relative min-h-[56px]">
                 <div className="flex items-center gap-2 min-w-0">
                     {/* Sessions toggle — instant panel, no slide drawer */}
                     <button
@@ -302,7 +302,7 @@ export default function EduTrackAiChat({
                         type="button"
                         className={`min-h-[48px] min-w-[48px] px-3 rounded-xl border transition-colors flex items-center justify-center gap-1.5 text-xs font-semibold shrink-0 ${
                             isSidebarOpen
-                                ? "bg-white text-[#1E3A8A] border-white"
+                                ? "bg-white text-[#075985] border-white"
                                 : "bg-white/10 border-white/20 text-white hover:bg-white/20"
                         }`}
                         title="Chat History (Retrack)"
@@ -313,17 +313,17 @@ export default function EduTrackAiChat({
                     </button>
 
                     <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-white text-[#1E3A8A] flex items-center justify-center shrink-0 shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-white text-[#075985] flex items-center justify-center shrink-0 shadow-sm">
                             <Sparkles className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
                             <h3 className="font-bold text-sm leading-tight text-white flex items-center gap-1.5 truncate">
                                 AZS AI Catalyst
                             </h3>
-                            <p className="text-[11px] text-emerald-300 font-medium flex items-center gap-1.5">
+                            <p className="text-[11px] text-sky-300 font-medium flex items-center gap-1.5">
                                 <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-400" />
                                 </span>
                                 AI Online
                             </p>
@@ -340,7 +340,7 @@ export default function EduTrackAiChat({
                             onClick={() => setSelectedModel("deepseek")}
                             className={`flex items-center gap-1 min-h-[40px] px-2.5 sm:px-3 rounded-lg text-[10px] sm:text-[11px] font-bold transition-colors ${
                                 selectedModel === "deepseek"
-                                    ? "bg-white text-[#1E3A8A] shadow-sm"
+                                    ? "bg-white text-[#075985] shadow-sm"
                                     : "text-white/80 hover:text-white hover:bg-white/10"
                             }`}
                             title="DeepSeek R1: Advanced mathematical reasoning and step-by-step derivations"
@@ -378,18 +378,18 @@ export default function EduTrackAiChat({
             </header>
 
             {/* MAIN CONTENT — sessions panel is instant (no slide / drawer animation) */}
-            <div className="flex-1 flex overflow-hidden relative z-10 bg-[#FAF8F5]">
+            <div className="flex-1 flex overflow-hidden relative z-10 bg-[#F3F8FC]">
                 {/* SESSIONS HISTORY PANEL — instant show/hide, no motion drawer */}
                 {isSidebarOpen && (
-                    <aside className="absolute inset-y-0 left-0 w-[min(100%,20rem)] sm:w-80 bg-white border-r border-[#E6E1D8] p-4 flex flex-col z-30 shadow-lg">
-                        <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#E6E1D8]">
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-[#1E3A8A] flex items-center gap-2">
+                    <aside className="absolute inset-y-0 left-0 w-[min(100%,20rem)] sm:w-80 bg-white border-r border-[#D3E3EF] p-4 flex flex-col z-30 shadow-lg">
+                        <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#D3E3EF]">
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-[#075985] flex items-center gap-2">
                                 <History className="w-4 h-4 text-[#0369A1]" /> পূর্বের সেশন
                             </h4>
                             <button
                                 onClick={() => setIsSidebarOpen(false)}
                                 type="button"
-                                className="min-h-[48px] min-w-[48px] flex items-center justify-center text-[#64748B] hover:text-[#1E3A8A] rounded-xl hover:bg-[#FAF8F5] transition-colors border border-transparent hover:border-[#E6E1D8]"
+                                className="min-h-[48px] min-w-[48px] flex items-center justify-center text-[#64748B] hover:text-[#075985] rounded-xl hover:bg-[#F3F8FC] transition-colors border border-transparent hover:border-[#D3E3EF]"
                                 aria-label="Close sessions"
                             >
                                 <ChevronLeft className="w-5 h-5" />
@@ -400,7 +400,7 @@ export default function EduTrackAiChat({
                         <button
                             onClick={handleNewChat}
                             type="button"
-                            className="w-full min-h-[48px] py-2.5 px-3 mb-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 shrink-0 bg-[#1E3A8A] text-white hover:bg-[#1e40af] transition-colors shadow-sm"
+                            className="w-full min-h-[48px] py-2.5 px-3 mb-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 shrink-0 bg-[#075985] text-white hover:bg-[#0C4A6E] transition-colors shadow-sm"
                         >
                             <Plus className="w-4 h-4" />
                             নতুন কথোপকথন শুরু করো
@@ -419,8 +419,8 @@ export default function EduTrackAiChat({
                                         onClick={() => loadSessionHistory(s.id)}
                                         className={`group p-3 rounded-xl border text-left cursor-pointer transition-colors flex items-start justify-between gap-2 min-h-[52px] ${
                                             currentSessionId === s.id
-                                                ? "bg-[#EFF6FF] border-[#1E3A8A]/40 text-[#0F172A]"
-                                                : "bg-[#FAF8F5] border-[#E6E1D8] text-[#334155] hover:bg-white hover:border-[#0369A1]/35"
+                                                ? "bg-[#EFF6FF] border-[#075985]/40 text-[#0F172A]"
+                                                : "bg-[#F3F8FC] border-[#D3E3EF] text-[#334155] hover:bg-white hover:border-[#0369A1]/35"
                                         }`}
                                     >
                                         <div className="flex items-start gap-2 min-w-0">
@@ -472,21 +472,21 @@ export default function EduTrackAiChat({
                             <div
                                 className={`group relative max-w-[88%] sm:max-w-[82%] rounded-2xl px-4 py-3 leading-relaxed ${
                                     msg.role === "user"
-                                        ? "bg-[#1E3A8A] text-white rounded-br-md shadow-sm"
-                                        : "bg-white text-[#0F172A] rounded-bl-md border border-[#E6E1D8] shadow-sm"
+                                        ? "bg-[#075985] text-white rounded-br-md shadow-sm"
+                                        : "bg-white text-[#0F172A] rounded-bl-md border border-[#D3E3EF] shadow-sm"
                                 }`}
                             >
                                 {msg.role === "assistant" ? (
                                     <>
                                         {/* AI Catalyst badge */}
                                         <div className="flex items-center gap-1.5 mb-2">
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#EFF6FF] border border-[#BFDBFE] text-[10px] font-bold uppercase tracking-wide text-[#1E3A8A]">
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#EFF6FF] border border-[#BFDBFE] text-[10px] font-bold uppercase tracking-wide text-[#075985]">
                                                 <Sparkles className="w-3 h-3" />
                                                 AI Catalyst
                                             </span>
                                         </div>
 
-                                        <div className="prose prose-sm max-w-none break-words leading-relaxed text-[#0F172A] prose-headings:text-[#1E3A8A] prose-a:text-[#0369A1] prose-code:text-[#047857] prose-pre:bg-[#FAF8F5] prose-pre:border prose-pre:border-[#E6E1D8]">
+                                        <div className="prose prose-sm max-w-none break-words leading-relaxed text-[#0F172A] prose-headings:text-[#075985] prose-a:text-[#0369A1] prose-code:text-[#CC310E] prose-pre:bg-[#F3F8FC] prose-pre:border prose-pre:border-[#D3E3EF]">
                                             <ReactMarkdown
                                                 remarkPlugins={[remarkMath]}
                                                 rehypePlugins={[rehypeKatex]}
@@ -499,12 +499,12 @@ export default function EduTrackAiChat({
                                         <button
                                             onClick={() => copyToClipboard(msg.content, index)}
                                             type="button"
-                                            className="absolute top-2 right-2 min-h-[40px] min-w-[40px] flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-2 rounded-lg bg-[#FAF8F5] text-[#64748B] hover:text-[#1E3A8A] transition-colors border border-[#E6E1D8]"
+                                            className="absolute top-2 right-2 min-h-[40px] min-w-[40px] flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-2 rounded-lg bg-[#F3F8FC] text-[#64748B] hover:text-[#075985] transition-colors border border-[#D3E3EF]"
                                             title="Copy reply"
                                             aria-label="Copy reply"
                                         >
                                             {copiedIndex === index ? (
-                                                <Check className="w-4 h-4 text-[#047857]" />
+                                                <Check className="w-4 h-4 text-[#CC310E]" />
                                             ) : (
                                                 <Copy className="w-4 h-4" />
                                             )}
@@ -535,12 +535,12 @@ export default function EduTrackAiChat({
                                             className={`text-left p-3 min-h-[48px] rounded-xl border transition-colors text-sm group ${
                                                 isPhysics
                                                     ? "bg-[#F0F9FF] border-[#BAE6FD] hover:border-[#0369A1] hover:bg-[#E0F2FE]"
-                                                    : "bg-[#ECFDF5] border-[#A7F3D0] hover:border-[#047857] hover:bg-[#D1FAE5]"
+                                                    : "bg-[#FEF3EF] border-[#FAC3B0] hover:border-[#CC310E] hover:bg-[#FDE2D9]"
                                             }`}
                                         >
                                             <p
                                                 className={`font-bold text-[12px] mb-0.5 flex items-center gap-1 ${
-                                                    isPhysics ? "text-[#0369A1]" : "text-[#047857]"
+                                                    isPhysics ? "text-[#0369A1]" : "text-[#CC310E]"
                                                 }`}
                                             >
                                                 {isPhysics ? (
@@ -563,7 +563,7 @@ export default function EduTrackAiChat({
                     {/* Thinking indicator — azure 3-dot wave style */}
                     {isLoading && (
                         <div className="flex justify-start">
-                            <div className="bg-white border border-[#E6E1D8] rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-3 text-[#334155] text-sm shadow-sm">
+                            <div className="bg-white border border-[#D3E3EF] rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-3 text-[#334155] text-sm shadow-sm">
                                 <div className="flex items-center gap-1" aria-hidden>
                                     <span className="w-2 h-2 rounded-full bg-[#0369A1] animate-bounce [animation-delay:-0.3s]" />
                                     <span className="w-2 h-2 rounded-full bg-[#0369A1] animate-bounce [animation-delay:-0.15s]" />
@@ -583,13 +583,13 @@ export default function EduTrackAiChat({
             </div>
 
             {/* BOTTOM INPUT BAR — thumb-zone, 48px targets, safe area */}
-            <footer className="p-3 sm:p-3.5 bg-white border-t border-[#E6E1D8] z-10 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <footer className="p-3 sm:p-3.5 bg-white border-t border-[#D3E3EF] z-10 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
                         handleSend();
                     }}
-                    className="flex items-center gap-2 bg-[#FAF8F5] border border-[#E6E1D8] rounded-2xl px-3 py-1.5 focus-within:border-[#1E3A8A]/50 focus-within:ring-2 focus-within:ring-[#1E3A8A]/15 transition-colors"
+                    className="flex items-center gap-2 bg-[#F3F8FC] border border-[#D3E3EF] rounded-2xl px-3 py-1.5 focus-within:border-[#075985]/50 focus-within:ring-2 focus-within:ring-[#075985]/15 transition-colors"
                 >
                     <input
                         type="text"
@@ -605,7 +605,7 @@ export default function EduTrackAiChat({
                     <button
                         type="submit"
                         disabled={isLoading || !input.trim()}
-                        className="min-h-[48px] min-w-[48px] flex items-center justify-center bg-[#1E3A8A] text-white rounded-xl hover:bg-[#1e40af] disabled:opacity-35 disabled:cursor-not-allowed transition-colors shadow-sm shrink-0"
+                        className="min-h-[48px] min-w-[48px] flex items-center justify-center bg-[#075985] text-white rounded-xl hover:bg-[#0C4A6E] disabled:opacity-35 disabled:cursor-not-allowed transition-colors shadow-sm shrink-0"
                         aria-label="Send message"
                     >
                         <Send className="w-5 h-5" />

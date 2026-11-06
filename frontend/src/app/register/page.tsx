@@ -71,20 +71,20 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col font-sans selection:bg-blue-100">
+    <div className="min-h-screen bg-[#F3F8FC] flex flex-col font-sans selection:bg-sky-100">
       {/* Header / Navigation */}
       <header className="w-full max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
         <Link
           href="/"
-          className="group inline-flex items-center gap-2 text-slate-500 hover:text-[#1E3A8A] transition-colors font-medium text-sm"
+          className="group inline-flex items-center gap-2 text-slate-500 hover:text-[#075985] transition-colors font-medium text-sm"
         >
-          <div className="w-8 h-8 rounded-full bg-white border border-[#E6E1D8] flex items-center justify-center group-hover:border-[#1E3A8A] transition-all">
+          <div className="w-8 h-8 rounded-full bg-white border border-[#D3E3EF] flex items-center justify-center group-hover:border-[#075985] transition-all">
             <ChevronLeft className="w-4 h-4" />
           </div>
           <span>Back to Home</span>
         </Link>
 
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-full text-emerald-700 text-[11px] font-bold uppercase tracking-wider">
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-ember-50 border border-ember-100 rounded-full text-ember-700 text-[11px] font-bold uppercase tracking-wider">
           <Sparkles className="w-3 h-3" />
           Academic Enrollment Open
         </div>
@@ -95,22 +95,22 @@ export default function RegisterPage() {
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-xl bg-white border border-[#E6E1D8] rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden"
+          className="w-full max-w-xl bg-white border border-[#D3E3EF] rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden"
         >
           {/* Top Branding Strip */}
-          <div className="bg-[#1E3A8A] h-2 w-full" />
+          <div className="bg-[#075985] h-2 w-full" />
 
           <div className="p-8 sm:p-10">
             {/* Logo & Intro */}
             <div className="text-center mb-8">
-              <div className="inline-block w-16 h-16 rounded-2xl bg-[#FAF8F5] border border-[#E6E1D8] p-2 mb-4">
+              <div className="inline-block w-16 h-16 rounded-2xl bg-[#F3F8FC] border border-[#D3E3EF] p-2 mb-4">
                 <img
                   src="/logo.png"
                   alt="AZS Logo"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <h1 className="text-2xl font-bold text-[#1E3A8A] tracking-tight">
+              <h1 className="text-2xl font-bold text-[#075985] tracking-tight">
                 Create Student Account
               </h1>
               <p className="text-slate-500 text-sm mt-1">
@@ -147,7 +147,7 @@ export default function RegisterPage() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Enter your full name"
-                    className="w-full h-12 pl-12 pr-4 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
+                    className="w-full h-12 pl-12 pr-4 bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
               </div>
@@ -165,7 +165,7 @@ export default function RegisterPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com"
-                    className="w-full h-12 pl-12 pr-4 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
+                    className="w-full h-12 pl-12 pr-4 bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
               </div>
@@ -184,7 +184,7 @@ export default function RegisterPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Min. 6 characters"
-                    className="w-full h-12 pl-12 pr-12 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
+                    className="w-full h-12 pl-12 pr-12 bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
                   />
                   <button
                     type="button"
@@ -210,7 +210,7 @@ export default function RegisterPage() {
                       value={school}
                       onChange={(e) => setSchool(e.target.value)}
                       placeholder="School/College"
-                      className="w-full h-12 pl-12 pr-4 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
+                      className="w-full h-12 pl-12 pr-4 bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
                     />
                   </div>
                 </div>
@@ -224,7 +224,7 @@ export default function RegisterPage() {
                     <select
                       value={gradeClass}
                       onChange={(e) => setGradeClass(e.target.value)}
-                      className="w-full h-12 pl-12 pr-4 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none appearance-none cursor-pointer text-slate-900"
+                      className="w-full h-12 pl-12 pr-4 bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none appearance-none cursor-pointer text-slate-900"
                     >
                       <option value="Class 9">Class 9</option>
                       <option value="Class 10">Class 10</option>
@@ -248,7 +248,7 @@ export default function RegisterPage() {
                     value={batchNo}
                     onChange={(e) => setBatchNo(e.target.value)}
                     placeholder="e.g. Batch 01"
-                    className="w-full h-12 pl-12 pr-4 bg-[#FAF8F5] border border-[#E6E1D8] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
+                    className="w-full h-12 pl-12 pr-4 bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl focus:ring-2 focus:ring-[#0369A1]/20 focus:border-[#0369A1] outline-none transition-all text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
               </div>
@@ -257,7 +257,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 bg-[#1E3A8A] hover:bg-[#1e3a8a]/90 text-white font-bold rounded-xl shadow-lg shadow-blue-900/10 flex items-center justify-center gap-2 transition-all disabled:opacity-70 active:scale-[0.98]"
+                className="w-full h-12 bg-[#075985] hover:bg-[#075985]/90 text-white font-bold rounded-xl shadow-lg shadow-sky-900/10 flex items-center justify-center gap-2 transition-all disabled:opacity-70 active:scale-[0.98]"
               >
                 {loading ? (
                   <>
@@ -273,7 +273,7 @@ export default function RegisterPage() {
               </button>
             </form>
 
-            <div className="mt-8 pt-6 border-t border-[#E6E1D8] text-center">
+            <div className="mt-8 pt-6 border-t border-[#D3E3EF] text-center">
               <p className="text-sm text-slate-500">
                 Already registered?{" "}
                 <Link

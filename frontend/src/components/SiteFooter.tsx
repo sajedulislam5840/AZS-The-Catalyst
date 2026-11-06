@@ -37,10 +37,10 @@ export default function SiteFooter({ compact = false }: SiteFooterProps) {
   const currentYear = 2025; // SSG safe
 
   return (
-    <footer className="w-full bg-[#FFFFFF] border-t border-[#E6E1D8] text-[#1E293B] py-8 px-4 sm:px-6">
+    <footer className="w-full bg-[#FFFFFF] border-t border-[#D3E3EF] text-[#1E293B] py-8 px-4 sm:px-6">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* TOP SECTION: ACADEMIC GUIDE & DEVELOPER CREDITS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-[#E6E1D8]">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-[#D3E3EF]">
           
           {/* ACADEMIC GUIDE / TEACHER COLUMN */}
           <div className="space-y-3">
@@ -48,11 +48,11 @@ export default function SiteFooter({ compact = false }: SiteFooterProps) {
               Academic Guidance & Mentorship
             </span>
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-[#047857]/10 text-[#047857] border border-[#047857]/20 flex items-center justify-center font-bold text-sm shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-[#CC310E]/10 text-[#CC310E] border border-[#CC310E]/20 flex items-center justify-center font-bold text-sm shrink-0">
                 AZS
               </div>
               <div>
-                <h4 className="text-sm font-extrabold text-[#1E3A8A]">
+                <h4 className="text-sm font-extrabold text-[#075985]">
                   {TEACHER.name}
                 </h4>
                 <p className="text-xs text-[#64748b]">{TEACHER.role}</p>
@@ -65,7 +65,7 @@ export default function SiteFooter({ compact = false }: SiteFooterProps) {
                 href={TEACHER.whatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#047857] hover:bg-[#065f46] text-white text-xs font-bold transition flex items-center gap-2 shadow-sm active:scale-95"
+                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#CC310E] hover:bg-[#A8270B] text-white text-xs font-bold transition flex items-center gap-2 shadow-sm active:scale-95"
               >
                 <MessageCircle className="w-4 h-4" />
                 <span>WhatsApp Mentor</span>
@@ -75,17 +75,17 @@ export default function SiteFooter({ compact = false }: SiteFooterProps) {
                 href={TEACHER.facebook}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E3A8A] transition flex items-center justify-center active:scale-95 border border-[#E6E1D8]"
+                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#E6F0F8] hover:bg-[#D3E3EF] text-[#075985] transition flex items-center justify-center active:scale-95 border border-[#D3E3EF]"
                 title="Facebook Profile"
               >
-                <FacebookIcon className="w-4 h-4 fill-[#1E3A8A]" />
+                <FacebookIcon className="w-4 h-4 fill-[#075985]" />
               </a>
 
               <a
                 href={TEACHER.youtube}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#BE123C] transition flex items-center justify-center active:scale-95 border border-[#E6E1D8]"
+                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#E6F0F8] hover:bg-[#D3E3EF] text-[#BE123C] transition flex items-center justify-center active:scale-95 border border-[#D3E3EF]"
                 title="YouTube Channel"
               >
                 <YoutubeIcon className="w-4 h-4 fill-[#BE123C]" />
@@ -99,11 +99,11 @@ export default function SiteFooter({ compact = false }: SiteFooterProps) {
               Platform Architecture & Engineering
             </span>
             <div className="flex items-center space-x-3 md:flex-row-reverse md:space-x-reverse">
-              <div className="w-10 h-10 rounded-xl bg-[#1E3A8A]/10 text-[#1E3A8A] border border-[#1E3A8A]/20 flex items-center justify-center font-bold text-xs shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-[#075985]/10 text-[#075985] border border-[#075985]/20 flex items-center justify-center font-bold text-xs shrink-0">
                 DEV
               </div>
               <div>
-                <h4 className="text-sm font-extrabold text-[#1E3A8A]">
+                <h4 className="text-sm font-extrabold text-[#075985]">
                   {DEVELOPER.name}
                 </h4>
                 <p className="text-xs text-[#64748b]">{DEVELOPER.role}</p>
@@ -116,7 +116,7 @@ export default function SiteFooter({ compact = false }: SiteFooterProps) {
                 href="https://sajedul-islam-portfolio.vercel.app/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#1E3A8A] hover:bg-[#1E40AF] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#075985] hover:bg-[#0C4A6E] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95"
               >
                 <Globe className="w-3.5 h-3.5" />
                 <span>Portfolio</span>
@@ -127,7 +127,7 @@ export default function SiteFooter({ compact = false }: SiteFooterProps) {
                 href={DEVELOPER.linkedin}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#0369A1] transition flex items-center justify-center active:scale-95 border border-[#E6E1D8]"
+                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#E6F0F8] hover:bg-[#D3E3EF] text-[#0369A1] transition flex items-center justify-center active:scale-95 border border-[#D3E3EF]"
                 title="Developer LinkedIn"
               >
                 <LinkedinIcon className="w-4 h-4 fill-[#0369A1]" />
@@ -137,7 +137,7 @@ export default function SiteFooter({ compact = false }: SiteFooterProps) {
                 href={DEVELOPER.github}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E293B] transition flex items-center justify-center active:scale-95 border border-[#E6E1D8]"
+                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#E6F0F8] hover:bg-[#D3E3EF] text-[#1E293B] transition flex items-center justify-center active:scale-95 border border-[#D3E3EF]"
                 title="Developer GitHub"
               >
                 <GithubIcon className="w-4 h-4 fill-[#1E293B]" />
@@ -147,20 +147,20 @@ export default function SiteFooter({ compact = false }: SiteFooterProps) {
                 href={DEVELOPER.whatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#047857] transition flex items-center justify-center active:scale-95 border border-[#E6E1D8]"
+                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#E6F0F8] hover:bg-[#D3E3EF] text-[#CC310E] transition flex items-center justify-center active:scale-95 border border-[#D3E3EF]"
                 title="Developer WhatsApp"
               >
-                <MessageCircle className="w-4 h-4 text-[#047857]" />
+                <MessageCircle className="w-4 h-4 text-[#CC310E]" />
               </a>
 
               <a
                 href={DEVELOPER.facebook}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#F3EFE8] hover:bg-[#E6E1D8] text-[#1E3A8A] transition flex items-center justify-center active:scale-95 border border-[#E6E1D8]"
+                className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[#E6F0F8] hover:bg-[#D3E3EF] text-[#075985] transition flex items-center justify-center active:scale-95 border border-[#D3E3EF]"
                 title="Developer Facebook"
               >
-                <FacebookIcon className="w-4 h-4 fill-[#1E3A8A]" />
+                <FacebookIcon className="w-4 h-4 fill-[#075985]" />
               </a>
             </div>
           </div>

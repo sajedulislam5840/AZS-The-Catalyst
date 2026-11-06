@@ -98,7 +98,7 @@ function LoginContent() {
       <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
         <Link
           href="/"
-          className="min-h-[44px] inline-flex items-center gap-2 rounded-xl border border-[#E6E1D8] bg-white px-3.5 py-2 text-xs font-bold text-[#1E293B] shadow-sm transition-all hover:bg-[#FAF8F5] active:scale-95"
+          className="min-h-[44px] inline-flex items-center gap-2 rounded-xl border border-[#D3E3EF] bg-white px-3.5 py-2 text-xs font-bold text-[#1E293B] shadow-sm transition-all hover:bg-[#F3F8FC] active:scale-95"
         >
           <ArrowLeft className="h-4 w-4 text-[#0369A1]" />
           <span>Back to Home</span>
@@ -106,7 +106,7 @@ function LoginContent() {
 
         <div className="flex items-center gap-2">
           <span className="azs-badge azs-badge-indigo text-[10px]">
-            <ShieldCheck className="h-3.5 w-3.5 text-[#1E3A8A]" />
+            <ShieldCheck className="h-3.5 w-3.5 text-[#075985]" />
             Secure Portal
           </span>
         </div>
@@ -118,12 +118,12 @@ function LoginContent() {
           initial={{ opacity: 0, y: 12, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.35, ease: "easeOut" }}
-          className="azs-card max-w-md w-full p-6 sm:p-8 bg-white border border-[#E6E1D8] shadow-[0_8px_30px_-8px_rgba(30,41,59,0.08)] space-y-6"
+          className="azs-card max-w-md w-full p-6 sm:p-8 bg-white border border-[#D3E3EF] shadow-[0_8px_30px_-8px_rgba(30,41,59,0.08)] space-y-6"
         >
           {/* Logo & Header Title */}
           <div className="text-center space-y-3">
             <Link href="/" className="inline-flex relative group">
-              <div className="w-14 h-14 mx-auto rounded-2xl overflow-hidden bg-[#FAF8F5] border border-[#E6E1D8] shadow-sm flex items-center justify-center p-2 transition-transform group-hover:scale-105">
+              <div className="w-14 h-14 mx-auto rounded-2xl overflow-hidden bg-[#F3F8FC] border border-[#D3E3EF] shadow-sm flex items-center justify-center p-2 transition-transform group-hover:scale-105">
                 <img
                   src="/logo.png"
                   alt="AZS Logo"
@@ -133,7 +133,7 @@ function LoginContent() {
             </Link>
 
             <div>
-              <h1 className="text-2xl font-black text-[#1E3A8A] tracking-tight">
+              <h1 className="text-2xl font-black text-[#075985] tracking-tight">
                 Sign In to Portal
               </h1>
               <p className="text-xs text-[#64748B] mt-1">
@@ -243,7 +243,7 @@ function LoginContent() {
           </form>
 
           {/* Registration Redirect Banner */}
-          <div className="text-center pt-4 border-t border-[#E6E1D8]">
+          <div className="text-center pt-4 border-t border-[#D3E3EF]">
             <p className="text-xs text-[#64748B]">
               Don&apos;t have a batch account yet?{" "}
               <Link
@@ -265,7 +265,7 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#FAF8F5]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#F3F8FC]" />}>
       <LoginContent />
     </Suspense>
   );

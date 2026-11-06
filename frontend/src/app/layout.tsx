@@ -39,7 +39,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#faf8f5",
+  themeColor: "#F3F8FC",
   colorScheme: "light",
   width: "device-width",
   initialScale: 1,
@@ -55,7 +55,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans bg-background text-foreground antialiased selection:bg-indigo-100 selection:text-indigo-900">
+      <body className="min-h-full flex flex-col font-sans bg-background text-foreground antialiased selection:bg-sky-100 selection:text-sky-900">
         {children}
       </body>
     </html>

@@ -7,22 +7,22 @@
    ============================================ */
 :root {
   /* Core surfaces — warm linen paper */
-  --background: #faf8f5;
+  --background: #F3F8FC;
   --background-elevated: #ffffff;
-  --background-muted: #f3efe8;
+  --background-muted: #E6F0F8;
   --foreground: #1e293b;
   --muted: #64748b;
   --dim: #94a3b8;
 
   /* Brand — academic sapphire + mint */
-  --azs-primary: #1e3a8a;
-  --azs-primary-soft: rgba(30, 58, 138, 0.08);
-  --azs-sapphire: #1e3a8a;
+  --azs-primary: #075985;
+  --azs-primary-soft: rgba(7, 89, 133, 0.08);
+  --azs-sapphire: #075985;
   --azs-azure: #0369a1;
   --azs-azure-soft: rgba(3, 105, 161, 0.1);
-  --azs-mint: #047857;
-  --azs-mint-soft: rgba(4, 120, 87, 0.1);
-  --azs-emerald: #059669;
+  --azs-mint: #CC310E;
+  --azs-mint-soft: rgba(204, 49, 14, 0.1);
+  --azs-emerald: #DC4A22;
   --azs-terracotta: #b45309;
   --azs-terracotta-soft: rgba(180, 83, 9, 0.1);
   --azs-amber: #d97706;
@@ -31,17 +31,17 @@
   /* Legacy aliases (so older class names still resolve safely) */
   --azs-cyan: #0369a1;
   --azs-cyan-dim: rgba(3, 105, 161, 0.1);
-  --azs-indigo: #1e3a8a;
-  --azs-indigo-dim: rgba(30, 58, 138, 0.1);
+  --azs-indigo: #075985;
+  --azs-indigo-dim: rgba(7, 89, 133, 0.1);
   --azs-violet: #4338ca;
   --azs-violet-dim: rgba(67, 56, 202, 0.08);
 
   /* Paper borders & cards */
-  --border: #e6e1d8;
-  --border-strong: #d4cdc0;
+  --border: #D3E3EF;
+  --border-strong: #BBD2E3;
   --glass: #ffffff;
-  --glass-border: #e6e1d8;
-  --glass-border-hover: #c4b9a8;
+  --glass-border: #D3E3EF;
+  --glass-border-hover: #A5C2D8;
   --card: #ffffff;
 
   /* Soft paper elevation (phone-friendly, not heavy) */
@@ -54,6 +54,19 @@
   --touch-min: 48px;
   --radius-card: 1rem;
   --radius-btn: 0.75rem;
+}
+
+@theme {
+  --color-cloud: #F3F8FC;
+  --color-ember-50: #FEF3EF;
+  --color-ember-100: #FDE2D9;
+  --color-ember-200: #FAC3B0;
+  --color-ember-300: #F59A7C;
+  --color-ember-400: #EB6A43;
+  --color-ember-500: #DC4A22;
+  --color-ember-600: #CC310E;
+  --color-ember-700: #A8270B;
+  --color-ember-800: #861F0A;
 }
 
 @theme inline {
@@ -122,7 +135,7 @@ body {
 }
 
 ::selection {
-  background: rgba(30, 58, 138, 0.18);
+  background: rgba(7, 89, 133, 0.18);
   color: var(--foreground);
 }
 
@@ -149,11 +162,11 @@ button {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cfc8bc;
+  background: #B2CADC;
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #a89f8f;
+  background: #8AA6BC;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -261,7 +274,7 @@ button {
 }
 
 .azs-input:hover {
-  border-color: #b8ae9e;
+  border-color: #9BB7CC;
 }
 
 .azs-input:focus {
@@ -295,7 +308,7 @@ button {
 }
 
 .azs-btn-primary:hover:not(:disabled) {
-  background: #1e40af;
+  background: #0C4A6E;
   box-shadow: var(--shadow-card);
 }
 
@@ -328,7 +341,7 @@ button {
 
 .azs-btn-ghost:hover {
   background: var(--background-muted);
-  border-color: #b8ae9e;
+  border-color: #9BB7CC;
 }
 
 .azs-btn-ghost:active {
@@ -354,7 +367,7 @@ button {
 }
 
 .azs-btn-cyan:hover:not(:disabled) {
-  background: #065f46;
+  background: #A8270B;
 }
 
 .azs-btn-cyan:active:not(:disabled) {
@@ -387,14 +400,14 @@ button {
 }
 
 .azs-badge-indigo {
-  border-color: rgba(30, 58, 138, 0.2);
+  border-color: rgba(7, 89, 133, 0.2);
   background: var(--azs-primary-soft);
   color: var(--azs-sapphire);
 }
 
 .azs-badge-emerald,
 .azs-badge-chemistry {
-  border-color: rgba(4, 120, 87, 0.25);
+  border-color: rgba(204, 49, 14, 0.25);
   background: var(--azs-mint-soft);
   color: var(--azs-mint);
 }
@@ -427,7 +440,7 @@ button {
 }
 .azs-chemistry-bg {
   background: var(--azs-mint-soft);
-  border-color: rgba(4, 120, 87, 0.2);
+  border-color: rgba(204, 49, 14, 0.2);
 }
 
 /* ============================================
@@ -488,3 +501,44 @@ button {
   font-size: 1.05em;
   color: var(--foreground);
 }
+
+/* ============================================
+   Landing — motion helpers (Obsidian hero)
+   ============================================ */
+@keyframes azs-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -14px, 0); }
+}
+@keyframes azs-rise {
+  0% { transform: translate3d(0, 0, 0) scale(0.6); opacity: 0; }
+  15% { opacity: 0.8; }
+  100% { transform: translate3d(0, -70px, 0) scale(1); opacity: 0; }
+}
+@keyframes azs-wave {
+  from { transform: translateX(0); }
+  to { transform: translateX(-60px); }
+}
+@keyframes azs-projectile {
+  from { offset-distance: 0%; }
+  to { offset-distance: 100%; }
+}
+.azs-drift { animation: azs-drift 7s ease-in-out infinite; }
+.azs-bubble { animation: azs-rise 3.4s ease-in infinite; }
+.azs-wave { animation: azs-wave 3.2s linear infinite; }
+.azs-projectile {
+  offset-path: path("M10 190 Q 180 -50 350 190");
+  offset-rotate: 0deg;
+  animation: azs-projectile 3.6s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+.azs-vector-grid {
+  background-image:
+    linear-gradient(rgba(2, 132, 199, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(2, 132, 199, 0.10) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(90deg, #000 0%, transparent 55%);
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 55%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .azs-drift, .azs-bubble, .azs-wave, .azs-projectile { animation: none; }
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

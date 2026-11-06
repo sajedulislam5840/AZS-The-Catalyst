@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { ArrowRight, FlaskConical, Orbit, Play, Gamepad2 } from "lucide-react";
 import { FlaskAccent, TrajectoryOverlay } from "./HeroAccents";
+import GlowIcon from "@/components/ui/GlowIcon";
 import HeroBackdrop from "./HeroBackdrop";
 
 interface DomainCardProps {
@@ -21,19 +22,13 @@ function DomainCard({ title, text, cta, href, tone }: DomainCardProps) {
       href={href}
       whileHover={{ y: -4 }}
       whileTap={{ scale: 0.98 }}
-      className={`group relative block overflow-hidden rounded-2xl border bg-white/70 p-5 text-left shadow-sm backdrop-blur-md transition-colors ${
+      className={`group relative block overflow-hidden rounded-2xl border bg-white/85 p-5 text-left shadow-sm md:bg-white/70 md:backdrop-blur-md transition-colors ${
         physics
           ? "border-sky-300/70 hover:border-sky-500"
           : "border-[#CC310E]/25 hover:border-[#CC310E]/60"
       }`}
     >
-      <div
-        className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${
-          physics ? "bg-sky-100 text-sky-700" : "bg-[#CC310E]/10 text-[#CC310E]"
-        }`}
-      >
-        <Icon className="h-5 w-5" />
-      </div>
+      <GlowIcon icon={Icon} offset={physics ? 0 : 1} className="mb-3" />
       <h3 className="text-lg font-extrabold text-slate-900">{title}</h3>
       <p className="mt-1 text-sm leading-relaxed text-slate-600">{text}</p>
       <span
@@ -50,7 +45,7 @@ function DomainCard({ title, text, cta, href, tone }: DomainCardProps) {
 
 export default function Hero() {
   return (
-    <section className="relative isolate min-h-[100svh] overflow-hidden bg-[#F3F8FC] pt-28">
+    <section className="relative isolate min-h-[100svh] overflow-hidden bg-[#F3F8FC] pt-24 sm:pt-28">
       {/* Layer 0: vector grid, colour blend, particles/3D */}
       <div aria-hidden="true" className="azs-vector-grid pointer-events-none absolute inset-0" />
       <div
@@ -74,7 +69,7 @@ export default function Hero() {
           <div className="relative mx-auto max-w-2xl text-center">
             <div
               aria-hidden="true"
-              className="absolute -inset-x-6 -inset-y-8 -z-10 rounded-[3rem] bg-white/60 blur-2xl"
+              className="absolute -inset-x-6 -inset-y-8 -z-10 rounded-[3rem] bg-white/60 blur-xl md:blur-2xl"
             />
             <motion.p
               initial={{ opacity: 0, y: 12 }}
@@ -124,7 +119,7 @@ export default function Hero() {
               </a>
               <a
                 href="#sandbox"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-sky-300 bg-white/70 px-6 py-3.5 text-sm font-bold text-sky-900 backdrop-blur-md transition hover:border-sky-500 hover:bg-white active:scale-95"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-sky-300 bg-white/80 px-6 py-3.5 text-sm font-bold text-sky-900 md:backdrop-blur-md transition hover:border-sky-500 hover:bg-white active:scale-95"
               >
                 <Gamepad2 className="h-4 w-4" />
                 Try Free Sandbox

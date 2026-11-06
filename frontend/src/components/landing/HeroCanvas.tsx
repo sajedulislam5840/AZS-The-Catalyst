@@ -272,6 +272,23 @@ function Bubbles() {
   );
 }
 
+/** If the scene cannot hold ~40 fps after warm-up, ask the parent to drop to the light layer. */
+function FpsGuard({ onSlow }: { onSlow: () => void }) {
+  const m = useRef({ start: -1, frames: 0, done: false });
+  useFrame((state) => {
+    const r = m.current;
+    const now = state.clock.elapsedTime;
+    if (r.done || now < 1) return; // skip shader-compile warm-up
+    if (r.start < 0) r.start = now;
+    r.frames += 1;
+    if (now - r.start >= 2.5) {
+      r.done = true;
+      if (r.frames / (now - r.start) < 40) onSlow();
+    }
+  });
+  return null;
+}
+
 function Scene({ pointer }: { pointer: PointerRef }) {
   const viewportWidth = useThree((s) => s.viewport.width);
   const scale = Math.min(1.15, viewportWidth / 12);
@@ -293,7 +310,7 @@ function Scene({ pointer }: { pointer: PointerRef }) {
   );
 }
 
-export default function HeroCanvas({ active }: { active: boolean }) {
+export default function HeroCanvas({ active, onSlow }: { active: boolean; onSlow: () => void }) {
   const pointer = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -313,6 +330,7 @@ export default function HeroCanvas({ active }: { active: boolean }) {
       gl={{ antialias: false, alpha: true, powerPreference: "low-power" }}
     >
       <Scene pointer={pointer} />
+      <FpsGuard onSlow={onSlow} />
     </Canvas>
   );
 }

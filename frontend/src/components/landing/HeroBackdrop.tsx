@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import FloatingGlowIcons from "./FloatingGlowIcons";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 // three + r3f are heavy: keep them out of the initial bundle and the server render.
@@ -24,7 +25,7 @@ function hasWebGL() {
 function subscribe(onChange: () => void) {
   const queries = [
     window.matchMedia("(prefers-reduced-motion: reduce)"),
-    window.matchMedia("(min-width: 768px)"),
+    window.matchMedia("(min-width: 1024px)"),
   ];
   queries.forEach((q) => q.addEventListener("change", onChange));
   return () => queries.forEach((q) => q.removeEventListener("change", onChange));
@@ -32,7 +33,7 @@ function subscribe(onChange: () => void) {
 
 function getSnapshot(): Mode {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return "css";
-  if (!window.matchMedia("(min-width: 768px)").matches) return "css";
+  if (!window.matchMedia("(min-width: 1024px)").matches) return "css";
   const nav = navigator as Navigator & { deviceMemory?: number };
   if ((nav.hardwareConcurrency ?? 8) < 4) return "css";
   if ((nav.deviceMemory ?? 8) < 4) return "css";
@@ -52,6 +53,7 @@ export default function HeroBackdrop() {
   const mode = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [ready, setReady] = useState(false);
   const [inView, setInView] = useState(true);
+  const [slow, setSlow] = useState(false);
   const root = useRef<HTMLDivElement>(null);
 
   // Mount the canvas shortly after first paint so text and CTAs appear first.
@@ -69,7 +71,7 @@ export default function HeroBackdrop() {
     return () => io.disconnect();
   }, []);
 
-  const showCanvas = mode === "canvas" && ready;
+  const showCanvas = mode === "canvas" && ready && !slow;
 
   return (
     <div ref={root} aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -87,9 +89,11 @@ export default function HeroBackdrop() {
           />
         ))}
 
+      {!showCanvas && <FloatingGlowIcons />}
+
       {showCanvas && (
         <div className="absolute inset-0 animate-[fadeIn_1s_ease-out_both]">
-          <HeroCanvas active={inView} />
+          <HeroCanvas active={inView} onSlow={() => setSlow(true)} />
         </div>
       )}
     </div>

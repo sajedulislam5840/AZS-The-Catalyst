@@ -30,7 +30,9 @@ function PhysicsSandbox() {
   const [speed, setSpeed] = useState(22);
   const [angle, setAngle] = useState(45);
   const [planet, setPlanet] = useState<Planet>("Earth");
-  const [t, setT] = useState<number | null>(null);
+  const [ballShown, setBallShown] = useState(false);
+  const [flying, setFlying] = useState(false);
+  const ballRef = useRef<SVGCircleElement>(null);
   const raf = useRef<number | null>(null);
 
   const g = GRAVITY[planet];
@@ -56,23 +58,30 @@ function PhysicsSandbox() {
     const duration = Math.min(4, Math.max(1.2, result.flightTime));
     const rate = result.flightTime / duration;
     const start = performance.now();
+    setBallShown(true);
+    setFlying(true);
+    const move = (time: number) => {
+      // Update the DOM node directly: smooth 60 fps without re-rendering React.
+      const p = positionAt(speed, angle, g, time);
+      ballRef.current?.setAttribute("cx", String(px(p.x)));
+      ballRef.current?.setAttribute("cy", String(py(p.y)));
+    };
     const step = (now: number) => {
       const sim = ((now - start) / 1000) * rate;
       if (sim >= result.flightTime) {
-        setT(result.flightTime);
+        move(result.flightTime);
+        setFlying(false);
         raf.current = null;
         return;
       }
-      setT(sim);
+      move(sim);
       raf.current = requestAnimationFrame(step);
     };
     raf.current = requestAnimationFrame(step);
   };
 
-  const ball = t === null ? null : positionAt(speed, angle, g, t);
-
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+    <div className="grid gap-6 md:grid-cols-[1fr_280px]">
       <div className="overflow-hidden rounded-2xl border border-sky-200 bg-gradient-to-b from-sky-50 to-white">
         <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label="Projectile trajectory">
           <line x1={LEFT} y1={GROUND} x2={W - 10} y2={GROUND} stroke="#94A3B8" strokeWidth="2" />
@@ -89,13 +98,13 @@ function PhysicsSandbox() {
           />
           {/* landing marker */}
           <circle cx={px(result.range)} cy={GROUND} r="4" fill="#CC310E" />
-          {ball && <circle cx={px(ball.x)} cy={py(ball.y)} r="9" fill="#CC310E" />}
+          {ballShown && <circle ref={ballRef} cx={LEFT} cy={GROUND} r="9" fill="#CC310E" />}
         </svg>
       </div>
 
       <div className="space-y-4">
-        <Slider label="Launch speed" value={speed} min={5} max={40} unit=" m/s" onChange={setSpeed} tone="physics" />
-        <Slider label="Angle" value={angle} min={5} max={85} unit="°" onChange={setAngle} tone="physics" />
+        <Slider label="Launch speed" value={speed} min={5} max={40} unit=" m/s" onChange={setSpeed} tone="physics" disabled={flying} />
+        <Slider label="Angle" value={angle} min={5} max={85} unit="°" onChange={setAngle} tone="physics" disabled={flying} />
         <div>
           <p className="mb-1 text-sm font-semibold text-slate-700">Gravity</p>
           <div className="grid grid-cols-3 gap-2">
@@ -103,9 +112,10 @@ function PhysicsSandbox() {
               <button
                 key={p}
                 type="button"
-                onClick={() => setPlanet(p)}
+                onClick={() => { setPlanet(p); setBallShown(false); }}
+                disabled={flying}
                 aria-pressed={planet === p}
-                className={`rounded-lg border px-2 py-2 text-xs font-bold transition ${
+                className={`rounded-lg border px-2 py-3 text-xs font-bold transition ${
                   planet === p
                     ? "border-sky-600 bg-sky-600 text-white"
                     : "border-sky-200 bg-white text-slate-700 hover:border-sky-400"
@@ -150,7 +160,7 @@ function ChemistrySandbox() {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+    <div className="grid gap-6 md:grid-cols-[1fr_280px]">
       <div className="overflow-hidden rounded-2xl border border-[#CC310E]/20 bg-gradient-to-b from-[#FEF3EF] to-white">
         <svg viewBox="0 0 600 300" className="block h-auto w-full" role="img" aria-label={`Beaker with pH ${ph.toFixed(1)}`}>
           <defs>
@@ -234,7 +244,7 @@ export default function Sandbox() {
           <p className="mt-3 text-slate-600">Throw a projectile or neutralise an acid. Change a number, see what happens.</p>
         </div>
 
-        <div className="rounded-3xl border border-sky-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm sm:p-6">
+        <div className="rounded-3xl border border-sky-200 bg-white/90 p-4 shadow-sm sm:p-6 md:bg-white/80 md:backdrop-blur-sm">
           <div role="tablist" aria-label="Sandbox subject" className="mx-auto mb-6 grid max-w-sm grid-cols-2 rounded-full bg-sky-100 p-1">
             {(
               [

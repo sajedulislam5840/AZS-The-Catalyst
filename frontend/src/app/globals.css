@@ -544,3 +544,75 @@ button {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes azs-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .azs-spin { animation: none !important; } }
+
+/* ============================================
+   Glowing icons — colour set by --glow, which JS changes every 15 s
+   ============================================ */
+@property --glow {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0ea5e9;
+}
+@keyframes azs-glow-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.9); }
+  50% { opacity: 0.6; transform: scale(1.12); }
+}
+.azs-glow { transition: --glow 1.6s ease-in-out; }
+.azs-glow-icon { color: var(--glow); filter: drop-shadow(0 0 5px var(--glow)); }
+.azs-glow-tile {
+  background: color-mix(in srgb, var(--glow) 12%, white);
+  box-shadow: 0 0 22px -6px var(--glow), inset 0 0 0 1px color-mix(in srgb, var(--glow) 28%, transparent);
+}
+.azs-glow-halo {
+  background: var(--glow);
+  filter: blur(10px);
+  animation: azs-glow-pulse 3.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .azs-glow { transition-duration: 0.01s; }
+  .azs-glow-halo { animation: none; opacity: 0.35; }
+}
+
+/* ============================================
+   Phone & tablet smoothness
+   ============================================ */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* No 300 ms tap delay or accidental double-tap zoom on controls */
+a, button, [role="button"], [role="tab"], summary, label { touch-action: manipulation; }
+/* iOS zooms the page when focusing an input under 16px */
+@media (max-width: 767px) {
+  input, select, textarea { font-size: 16px; }
+}
+.azs-drift { will-change: transform; }
+
+/* Touch-friendly range slider: 26px thumb, filled track, 30px tall hit area */
+.azs-range {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 30px;
+  padding: 12px 0;
+  border-radius: 999px;
+  cursor: pointer;
+  touch-action: pan-y;
+  background: linear-gradient(to right, var(--range-color) var(--pct), #bae6fd var(--pct)) content-box;
+}
+.azs-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid var(--range-color);
+  box-shadow: 0 2px 8px rgba(7, 89, 133, 0.35);
+}
+.azs-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid var(--range-color);
+  box-shadow: 0 2px 8px rgba(7, 89, 133, 0.35);
+}
+.azs-range:disabled { opacity: 0.55; cursor: not-allowed; }

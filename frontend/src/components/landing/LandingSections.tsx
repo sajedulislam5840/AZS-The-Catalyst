@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import GlowIcon from "@/components/ui/GlowIcon";
 import { BookOpen, Bot, PlayCircle, Sparkles, type LucideIcon } from "lucide-react";
 
 const fadeUp = {
@@ -44,7 +45,7 @@ export function CurriculumSection() {
               transition={{ duration: 0.5, delay: i * 0.06 }}
               className="flex gap-4 rounded-2xl border border-sky-200 bg-white p-5 shadow-sm"
             >
-              <f.icon className="mt-0.5 h-6 w-6 shrink-0 text-sky-600" />
+              <GlowIcon icon={f.icon} offset={i + 2} />
               <div>
                 <h3 className="font-extrabold text-slate-900">{f.title}</h3>
                 <p className="mt-1 text-sm text-slate-600">{f.text}</p>

@@ -1,5 +1,7 @@
 "use client";
 
+import type { CSSProperties } from "react";
+
 export function Slider({
   label,
   value,
@@ -9,6 +11,7 @@ export function Slider({
   unit,
   onChange,
   tone,
+  disabled = false,
 }: {
   label: string;
   value: number;
@@ -18,11 +21,13 @@ export function Slider({
   unit: string;
   onChange: (v: number) => void;
   tone: "physics" | "chemistry";
+  disabled?: boolean;
 }) {
   const id = `sb-${label.replace(/\W+/g, "-").toLowerCase()}`;
+  const pct = ((value - min) / (max - min)) * 100;
   return (
     <div>
-      <div className="mb-1 flex items-baseline justify-between text-sm">
+      <div className="mb-0.5 flex items-baseline justify-between text-sm">
         <label htmlFor={id} className="font-semibold text-slate-700">
           {label}
         </label>
@@ -38,10 +43,10 @@ export function Slider({
         max={max}
         step={step}
         value={value}
+        disabled={disabled}
         onChange={(e) => onChange(Number(e.target.value))}
-        className={`h-2 w-full cursor-pointer ${
-          tone === "physics" ? "accent-sky-600" : "accent-[#CC310E]"
-        }`}
+        className={`azs-range ${tone === "physics" ? "[--range-color:#0284C7]" : "[--range-color:#CC310E]"}`}
+        style={{ "--pct": `${pct}%` } as CSSProperties}
       />
     </div>
   );

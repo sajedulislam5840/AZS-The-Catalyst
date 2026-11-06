@@ -28,7 +28,7 @@ export default function LandingNavbar({
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-sky-200/70 bg-white/70 backdrop-blur-xl">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-sky-200/70 bg-white/90 pt-[env(safe-area-inset-top)] md:bg-white/70 md:backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         {/* Left: brand */}
         <Link href="/" className="flex min-w-0 items-center gap-3">
@@ -84,7 +84,7 @@ export default function LandingNavbar({
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-700 hover:bg-sky-100/70 md:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-700 hover:bg-sky-100/70 md:hidden"
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
           >

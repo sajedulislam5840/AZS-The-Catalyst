@@ -1,0 +1,926 @@
+From 0f819509d1d73d920acd8b26372189f821f34334 Mon Sep 17 00:00:00 2001
+From: Mir Mohammad Sajedul Islam <mohammad.sajedul.islam@g.bracu.ac.bd>
+Date: Fri, 6 Nov 2026 17:22:01 +0000
+Subject: [PATCH] feat(ui): glowing colour-cycling icons and smoother
+ phone/tablet experience
+
+- Glowing icons change colour every 15 s from one shared timer that pauses in
+  background tabs; floating icons fill the hero on phones and tablets
+- 3D hero only on large screens and drops itself if it cannot hold ~40 fps
+- Touch-friendly sliders, 44px tap targets, 16px inputs (no iOS zoom), safe areas
+- Tablet layouts for the simulations; ball animation no longer re-renders React
+- Lighter blur and effects on small screens; reduced-motion respected
+---
+ frontend/src/app/globals.css                  | 72 +++++++++++++++++++
+ frontend/src/app/layout.tsx                   |  1 +
+ frontend/src/components/auth/AuthUI.tsx       |  6 +-
+ .../components/landing/FloatingGlowIcons.tsx  | 27 +++++++
+ frontend/src/components/landing/Hero.tsx      | 17 ++---
+ .../src/components/landing/HeroBackdrop.tsx   | 12 ++--
+ .../src/components/landing/HeroCanvas.tsx     | 20 +++++-
+ .../src/components/landing/LandingNavbar.tsx  |  4 +-
+ .../components/landing/LandingSections.tsx    |  3 +-
+ frontend/src/components/landing/Sandbox.tsx   | 36 ++++++----
+ .../components/landing/SimulationsSection.tsx | 13 ++--
+ .../src/components/landing/sims/BohrAtom.tsx  |  4 +-
+ .../landing/sims/MoleculeShapes.tsx           | 24 ++++---
+ .../src/components/landing/sims/PhScale.tsx   |  2 +-
+ .../landing/sims/ProjectileGame.tsx           | 30 +++++---
+ .../src/components/landing/sims/SimUI.tsx     | 13 ++--
+ frontend/src/components/ui/GlowIcon.tsx       | 38 ++++++++++
+ frontend/src/lib/glow.ts                      | 50 +++++++++++++
+ 18 files changed, 303 insertions(+), 69 deletions(-)
+ create mode 100644 frontend/src/components/landing/FloatingGlowIcons.tsx
+ create mode 100644 frontend/src/components/ui/GlowIcon.tsx
+ create mode 100644 frontend/src/lib/glow.ts
+
+diff --git a/frontend/src/app/globals.css b/frontend/src/app/globals.css
+index 0523ddd..a6b0992 100644
+--- a/frontend/src/app/globals.css
++++ b/frontend/src/app/globals.css
+@@ -544,3 +544,75 @@ button {
+ @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+ @keyframes azs-spin { to { transform: rotate(360deg); } }
+ @media (prefers-reduced-motion: reduce) { .azs-spin { animation: none !important; } }
++
++/* ============================================
++   Glowing icons — colour set by --glow, which JS changes every 15 s
++   ============================================ */
++@property --glow {
++  syntax: "<color>";
++  inherits: true;
++  initial-value: #0ea5e9;
++}
++@keyframes azs-glow-pulse {
++  0%, 100% { opacity: 0.25; transform: scale(0.9); }
++  50% { opacity: 0.6; transform: scale(1.12); }
++}
++.azs-glow { transition: --glow 1.6s ease-in-out; }
++.azs-glow-icon { color: var(--glow); filter: drop-shadow(0 0 5px var(--glow)); }
++.azs-glow-tile {
++  background: color-mix(in srgb, var(--glow) 12%, white);
++  box-shadow: 0 0 22px -6px var(--glow), inset 0 0 0 1px color-mix(in srgb, var(--glow) 28%, transparent);
++}
++.azs-glow-halo {
++  background: var(--glow);
++  filter: blur(10px);
++  animation: azs-glow-pulse 3.4s ease-in-out infinite;
++}
++@media (prefers-reduced-motion: reduce) {
++  .azs-glow { transition-duration: 0.01s; }
++  .azs-glow-halo { animation: none; opacity: 0.35; }
++}
++
++/* ============================================
++   Phone & tablet smoothness
++   ============================================ */
++html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
++/* No 300 ms tap delay or accidental double-tap zoom on controls */
++a, button, [role="button"], [role="tab"], summary, label { touch-action: manipulation; }
++/* iOS zooms the page when focusing an input under 16px */
++@media (max-width: 767px) {
++  input, select, textarea { font-size: 16px; }
++}
++.azs-drift { will-change: transform; }
++
++/* Touch-friendly range slider: 26px thumb, filled track, 30px tall hit area */
++.azs-range {
++  -webkit-appearance: none;
++  appearance: none;
++  display: block;
++  width: 100%;
++  height: 30px;
++  padding: 12px 0;
++  border-radius: 999px;
++  cursor: pointer;
++  touch-action: pan-y;
++  background: linear-gradient(to right, var(--range-color) var(--pct), #bae6fd var(--pct)) content-box;
++}
++.azs-range::-webkit-slider-thumb {
++  -webkit-appearance: none;
++  width: 26px;
++  height: 26px;
++  border-radius: 50%;
++  background: #fff;
++  border: 4px solid var(--range-color);
++  box-shadow: 0 2px 8px rgba(7, 89, 133, 0.35);
++}
++.azs-range::-moz-range-thumb {
++  width: 18px;
++  height: 18px;
++  border-radius: 50%;
++  background: #fff;
++  border: 4px solid var(--range-color);
++  box-shadow: 0 2px 8px rgba(7, 89, 133, 0.35);
++}
++.azs-range:disabled { opacity: 0.55; cursor: not-allowed; }
+diff --git a/frontend/src/app/layout.tsx b/frontend/src/app/layout.tsx
+index 87b3dcf..bb6b64f 100644
+--- a/frontend/src/app/layout.tsx
++++ b/frontend/src/app/layout.tsx
+@@ -43,6 +43,7 @@ export const viewport: Viewport = {
+   colorScheme: "light",
+   width: "device-width",
+   initialScale: 1,
++  viewportFit: "cover",
+ };
+ 
+ export default function RootLayout({
+diff --git a/frontend/src/components/auth/AuthUI.tsx b/frontend/src/components/auth/AuthUI.tsx
+index 0f2425b..1135f39 100644
+--- a/frontend/src/components/auth/AuthUI.tsx
++++ b/frontend/src/components/auth/AuthUI.tsx
+@@ -10,7 +10,7 @@ import SiteFooter from "@/components/SiteFooter";
+ 
+ /** Shared input look: white field, sky border, sky focus ring. */
+ export const authInputClass =
+-  "h-12 w-full rounded-xl border border-sky-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20";
++  "h-12 w-full rounded-xl border border-sky-200 bg-white pl-11 pr-4 text-base text-slate-900 sm:text-sm outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20";
+ 
+ interface AuthShellProps {
+   children: ReactNode;
+@@ -55,7 +55,7 @@ export function AuthShell({ children, wide = false, badge, logo }: AuthShellProp
+           {badge}
+           <Link
+             href="/"
+-            className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-sky-200 bg-white/70 px-3.5 py-2 text-xs font-bold text-sky-900 backdrop-blur transition hover:border-sky-400 hover:bg-white active:scale-95"
++            className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-sky-200 bg-white/80 px-3.5 py-2 text-xs font-bold text-sky-900 md:backdrop-blur transition hover:border-sky-400 hover:bg-white active:scale-95"
+           >
+             <ArrowLeft className="h-4 w-4 text-sky-600" />
+             Back to Home
+@@ -69,7 +69,7 @@ export function AuthShell({ children, wide = false, badge, logo }: AuthShellProp
+           initial={{ opacity: 0, y: 16 }}
+           animate={{ opacity: 1, y: 0 }}
+           transition={{ duration: 0.4, ease: "easeOut" }}
+-          className={`w-full ${wide ? "max-w-xl" : "max-w-md"} overflow-hidden rounded-3xl border border-sky-200 bg-white/85 shadow-[0_20px_60px_-20px_rgba(7,89,133,0.25)] backdrop-blur-xl`}
++          className={`w-full ${wide ? "max-w-xl" : "max-w-md"} overflow-hidden rounded-3xl border border-sky-200 bg-white/95 shadow-[0_20px_60px_-20px_rgba(7,89,133,0.25)] md:bg-white/85 md:backdrop-blur-xl`}
+         >
+           <div className="h-1.5 w-full bg-gradient-to-r from-sky-500 via-sky-300 to-[#CC310E]" />
+           <div className="p-6 sm:p-9">{children}</div>
+diff --git a/frontend/src/components/landing/FloatingGlowIcons.tsx b/frontend/src/components/landing/FloatingGlowIcons.tsx
+new file mode 100644
+index 0000000..5d89518
+--- /dev/null
++++ b/frontend/src/components/landing/FloatingGlowIcons.tsx
+@@ -0,0 +1,27 @@
++"use client";
++
++import { Atom, FlaskConical, Magnet, Orbit, TestTube2, Zap } from "lucide-react";
++import GlowIcon from "@/components/ui/GlowIcon";
++
++// Placed near the edges so they never sit under the headline on a phone.
++const ITEMS = [
++  { Icon: Atom, pos: "left-3 top-28 sm:left-8", phone: true },
++  { Icon: FlaskConical, pos: "right-3 top-36 sm:right-8", phone: true },
++  { Icon: Magnet, pos: "left-4 bottom-44 sm:left-14 sm:bottom-52", phone: true },
++  { Icon: TestTube2, pos: "right-4 bottom-52 sm:right-14 sm:bottom-60", phone: true },
++  { Icon: Orbit, pos: "left-[18%] top-24", phone: false },
++  { Icon: Zap, pos: "right-[18%] bottom-32", phone: false },
++] as const;
++
++/** Decorative glowing icons for phones and tablets, where the 3D scene is not loaded. */
++export default function FloatingGlowIcons() {
++  return (
++    <div aria-hidden="true" className="pointer-events-none absolute inset-0">
++      {ITEMS.map(({ Icon, pos, phone }, i) => (
++        <div key={i} className={`absolute ${pos} ${phone ? "" : "hidden sm:block"} azs-drift`} style={{ animationDelay: `${-i * 1.3}s` }}>
++          <GlowIcon icon={Icon} offset={i} size="lg" />
++        </div>
++      ))}
++    </div>
++  );
++}
+diff --git a/frontend/src/components/landing/Hero.tsx b/frontend/src/components/landing/Hero.tsx
+index 310a1d9..1d2794c 100644
+--- a/frontend/src/components/landing/Hero.tsx
++++ b/frontend/src/components/landing/Hero.tsx
+@@ -3,6 +3,7 @@
+ import { motion } from "framer-motion";
+ import { ArrowRight, FlaskConical, Orbit, Play, Gamepad2 } from "lucide-react";
+ import { FlaskAccent, TrajectoryOverlay } from "./HeroAccents";
++import GlowIcon from "@/components/ui/GlowIcon";
+ import HeroBackdrop from "./HeroBackdrop";
+ 
+ interface DomainCardProps {
+@@ -21,19 +22,13 @@ function DomainCard({ title, text, cta, href, tone }: DomainCardProps) {
+       href={href}
+       whileHover={{ y: -4 }}
+       whileTap={{ scale: 0.98 }}
+-      className={`group relative block overflow-hidden rounded-2xl border bg-white/70 p-5 text-left shadow-sm backdrop-blur-md transition-colors ${
++      className={`group relative block overflow-hidden rounded-2xl border bg-white/85 p-5 text-left shadow-sm md:bg-white/70 md:backdrop-blur-md transition-colors ${
+         physics
+           ? "border-sky-300/70 hover:border-sky-500"
+           : "border-[#CC310E]/25 hover:border-[#CC310E]/60"
+       }`}
+     >
+-      <div
+-        className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${
+-          physics ? "bg-sky-100 text-sky-700" : "bg-[#CC310E]/10 text-[#CC310E]"
+-        }`}
+-      >
+-        <Icon className="h-5 w-5" />
+-      </div>
++      <GlowIcon icon={Icon} offset={physics ? 0 : 1} className="mb-3" />
+       <h3 className="text-lg font-extrabold text-slate-900">{title}</h3>
+       <p className="mt-1 text-sm leading-relaxed text-slate-600">{text}</p>
+       <span
+@@ -50,7 +45,7 @@ function DomainCard({ title, text, cta, href, tone }: DomainCardProps) {
+ 
+ export default function Hero() {
+   return (
+-    <section className="relative isolate min-h-[100svh] overflow-hidden bg-[#F3F8FC] pt-28">
++    <section className="relative isolate min-h-[100svh] overflow-hidden bg-[#F3F8FC] pt-24 sm:pt-28">
+       {/* Layer 0: vector grid, colour blend, particles/3D */}
+       <div aria-hidden="true" className="azs-vector-grid pointer-events-none absolute inset-0" />
+       <div
+@@ -74,7 +69,7 @@ export default function Hero() {
+           <div className="relative mx-auto max-w-2xl text-center">
+             <div
+               aria-hidden="true"
+-              className="absolute -inset-x-6 -inset-y-8 -z-10 rounded-[3rem] bg-white/60 blur-2xl"
++              className="absolute -inset-x-6 -inset-y-8 -z-10 rounded-[3rem] bg-white/60 blur-xl md:blur-2xl"
+             />
+             <motion.p
+               initial={{ opacity: 0, y: 12 }}
+@@ -124,7 +119,7 @@ export default function Hero() {
+               </a>
+               <a
+                 href="#sandbox"
+-                className="inline-flex items-center justify-center gap-2 rounded-full border border-sky-300 bg-white/70 px-6 py-3.5 text-sm font-bold text-sky-900 backdrop-blur-md transition hover:border-sky-500 hover:bg-white active:scale-95"
++                className="inline-flex items-center justify-center gap-2 rounded-full border border-sky-300 bg-white/80 px-6 py-3.5 text-sm font-bold text-sky-900 md:backdrop-blur-md transition hover:border-sky-500 hover:bg-white active:scale-95"
+               >
+                 <Gamepad2 className="h-4 w-4" />
+                 Try Free Sandbox
+diff --git a/frontend/src/components/landing/HeroBackdrop.tsx b/frontend/src/components/landing/HeroBackdrop.tsx
+index 90c77ce..77d317f 100644
+--- a/frontend/src/components/landing/HeroBackdrop.tsx
++++ b/frontend/src/components/landing/HeroBackdrop.tsx
+@@ -1,6 +1,7 @@
+ "use client";
+ 
+ import dynamic from "next/dynamic";
++import FloatingGlowIcons from "./FloatingGlowIcons";
+ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+ 
+ // three + r3f are heavy: keep them out of the initial bundle and the server render.
+@@ -24,7 +25,7 @@ function hasWebGL() {
+ function subscribe(onChange: () => void) {
+   const queries = [
+     window.matchMedia("(prefers-reduced-motion: reduce)"),
+-    window.matchMedia("(min-width: 768px)"),
++    window.matchMedia("(min-width: 1024px)"),
+   ];
+   queries.forEach((q) => q.addEventListener("change", onChange));
+   return () => queries.forEach((q) => q.removeEventListener("change", onChange));
+@@ -32,7 +33,7 @@ function subscribe(onChange: () => void) {
+ 
+ function getSnapshot(): Mode {
+   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return "css";
+-  if (!window.matchMedia("(min-width: 768px)").matches) return "css";
++  if (!window.matchMedia("(min-width: 1024px)").matches) return "css";
+   const nav = navigator as Navigator & { deviceMemory?: number };
+   if ((nav.hardwareConcurrency ?? 8) < 4) return "css";
+   if ((nav.deviceMemory ?? 8) < 4) return "css";
+@@ -52,6 +53,7 @@ export default function HeroBackdrop() {
+   const mode = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+   const [ready, setReady] = useState(false);
+   const [inView, setInView] = useState(true);
++  const [slow, setSlow] = useState(false);
+   const root = useRef<HTMLDivElement>(null);
+ 
+   // Mount the canvas shortly after first paint so text and CTAs appear first.
+@@ -69,7 +71,7 @@ export default function HeroBackdrop() {
+     return () => io.disconnect();
+   }, []);
+ 
+-  const showCanvas = mode === "canvas" && ready;
++  const showCanvas = mode === "canvas" && ready && !slow;
+ 
+   return (
+     <div ref={root} aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+@@ -87,9 +89,11 @@ export default function HeroBackdrop() {
+           />
+         ))}
+ 
++      {!showCanvas && <FloatingGlowIcons />}
++
+       {showCanvas && (
+         <div className="absolute inset-0 animate-[fadeIn_1s_ease-out_both]">
+-          <HeroCanvas active={inView} />
++          <HeroCanvas active={inView} onSlow={() => setSlow(true)} />
+         </div>
+       )}
+     </div>
+diff --git a/frontend/src/components/landing/HeroCanvas.tsx b/frontend/src/components/landing/HeroCanvas.tsx
+index 52ca11b..91d76cf 100644
+--- a/frontend/src/components/landing/HeroCanvas.tsx
++++ b/frontend/src/components/landing/HeroCanvas.tsx
+@@ -272,6 +272,23 @@ function Bubbles() {
+   );
+ }
+ 
++/** If the scene cannot hold ~40 fps after warm-up, ask the parent to drop to the light layer. */
++function FpsGuard({ onSlow }: { onSlow: () => void }) {
++  const m = useRef({ start: -1, frames: 0, done: false });
++  useFrame((state) => {
++    const r = m.current;
++    const now = state.clock.elapsedTime;
++    if (r.done || now < 1) return; // skip shader-compile warm-up
++    if (r.start < 0) r.start = now;
++    r.frames += 1;
++    if (now - r.start >= 2.5) {
++      r.done = true;
++      if (r.frames / (now - r.start) < 40) onSlow();
++    }
++  });
++  return null;
++}
++
+ function Scene({ pointer }: { pointer: PointerRef }) {
+   const viewportWidth = useThree((s) => s.viewport.width);
+   const scale = Math.min(1.15, viewportWidth / 12);
+@@ -293,7 +310,7 @@ function Scene({ pointer }: { pointer: PointerRef }) {
+   );
+ }
+ 
+-export default function HeroCanvas({ active }: { active: boolean }) {
++export default function HeroCanvas({ active, onSlow }: { active: boolean; onSlow: () => void }) {
+   const pointer = useRef({ x: 0, y: 0 });
+ 
+   useEffect(() => {
+@@ -313,6 +330,7 @@ export default function HeroCanvas({ active }: { active: boolean }) {
+       gl={{ antialias: false, alpha: true, powerPreference: "low-power" }}
+     >
+       <Scene pointer={pointer} />
++      <FpsGuard onSlow={onSlow} />
+     </Canvas>
+   );
+ }
+diff --git a/frontend/src/components/landing/LandingNavbar.tsx b/frontend/src/components/landing/LandingNavbar.tsx
+index 598cd4c..5f3ae40 100644
+--- a/frontend/src/components/landing/LandingNavbar.tsx
++++ b/frontend/src/components/landing/LandingNavbar.tsx
+@@ -28,7 +28,7 @@ export default function LandingNavbar({
+   const [open, setOpen] = useState(false);
+ 
+   return (
+-    <header className="fixed inset-x-0 top-0 z-50 border-b border-sky-200/70 bg-white/70 backdrop-blur-xl">
++    <header className="fixed inset-x-0 top-0 z-50 border-b border-sky-200/70 bg-white/90 pt-[env(safe-area-inset-top)] md:bg-white/70 md:backdrop-blur-xl">
+       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+         {/* Left: brand */}
+         <Link href="/" className="flex min-w-0 items-center gap-3">
+@@ -84,7 +84,7 @@ export default function LandingNavbar({
+           <button
+             type="button"
+             onClick={() => setOpen((v) => !v)}
+-            className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-700 hover:bg-sky-100/70 md:hidden"
++            className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-700 hover:bg-sky-100/70 md:hidden"
+             aria-label={open ? "Close menu" : "Open menu"}
+             aria-expanded={open}
+           >
+diff --git a/frontend/src/components/landing/LandingSections.tsx b/frontend/src/components/landing/LandingSections.tsx
+index 98426e0..ee633b0 100644
+--- a/frontend/src/components/landing/LandingSections.tsx
++++ b/frontend/src/components/landing/LandingSections.tsx
+@@ -1,6 +1,7 @@
+ "use client";
+ 
+ import { motion } from "framer-motion";
++import GlowIcon from "@/components/ui/GlowIcon";
+ import { BookOpen, Bot, PlayCircle, Sparkles, type LucideIcon } from "lucide-react";
+ 
+ const fadeUp = {
+@@ -44,7 +45,7 @@ export function CurriculumSection() {
+               transition={{ duration: 0.5, delay: i * 0.06 }}
+               className="flex gap-4 rounded-2xl border border-sky-200 bg-white p-5 shadow-sm"
+             >
+-              <f.icon className="mt-0.5 h-6 w-6 shrink-0 text-sky-600" />
++              <GlowIcon icon={f.icon} offset={i + 2} />
+               <div>
+                 <h3 className="font-extrabold text-slate-900">{f.title}</h3>
+                 <p className="mt-1 text-sm text-slate-600">{f.text}</p>
+diff --git a/frontend/src/components/landing/Sandbox.tsx b/frontend/src/components/landing/Sandbox.tsx
+index 29e3a32..c96b2de 100644
+--- a/frontend/src/components/landing/Sandbox.tsx
++++ b/frontend/src/components/landing/Sandbox.tsx
+@@ -30,7 +30,9 @@ function PhysicsSandbox() {
+   const [speed, setSpeed] = useState(22);
+   const [angle, setAngle] = useState(45);
+   const [planet, setPlanet] = useState<Planet>("Earth");
+-  const [t, setT] = useState<number | null>(null);
++  const [ballShown, setBallShown] = useState(false);
++  const [flying, setFlying] = useState(false);
++  const ballRef = useRef<SVGCircleElement>(null);
+   const raf = useRef<number | null>(null);
+ 
+   const g = GRAVITY[planet];
+@@ -56,23 +58,30 @@ function PhysicsSandbox() {
+     const duration = Math.min(4, Math.max(1.2, result.flightTime));
+     const rate = result.flightTime / duration;
+     const start = performance.now();
++    setBallShown(true);
++    setFlying(true);
++    const move = (time: number) => {
++      // Update the DOM node directly: smooth 60 fps without re-rendering React.
++      const p = positionAt(speed, angle, g, time);
++      ballRef.current?.setAttribute("cx", String(px(p.x)));
++      ballRef.current?.setAttribute("cy", String(py(p.y)));
++    };
+     const step = (now: number) => {
+       const sim = ((now - start) / 1000) * rate;
+       if (sim >= result.flightTime) {
+-        setT(result.flightTime);
++        move(result.flightTime);
++        setFlying(false);
+         raf.current = null;
+         return;
+       }
+-      setT(sim);
++      move(sim);
+       raf.current = requestAnimationFrame(step);
+     };
+     raf.current = requestAnimationFrame(step);
+   };
+ 
+-  const ball = t === null ? null : positionAt(speed, angle, g, t);
+-
+   return (
+-    <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
++    <div className="grid gap-6 md:grid-cols-[1fr_280px]">
+       <div className="overflow-hidden rounded-2xl border border-sky-200 bg-gradient-to-b from-sky-50 to-white">
+         <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label="Projectile trajectory">
+           <line x1={LEFT} y1={GROUND} x2={W - 10} y2={GROUND} stroke="#94A3B8" strokeWidth="2" />
+@@ -89,13 +98,13 @@ function PhysicsSandbox() {
+           />
+           {/* landing marker */}
+           <circle cx={px(result.range)} cy={GROUND} r="4" fill="#CC310E" />
+-          {ball && <circle cx={px(ball.x)} cy={py(ball.y)} r="9" fill="#CC310E" />}
++          {ballShown && <circle ref={ballRef} cx={LEFT} cy={GROUND} r="9" fill="#CC310E" />}
+         </svg>
+       </div>
+ 
+       <div className="space-y-4">
+-        <Slider label="Launch speed" value={speed} min={5} max={40} unit=" m/s" onChange={setSpeed} tone="physics" />
+-        <Slider label="Angle" value={angle} min={5} max={85} unit="°" onChange={setAngle} tone="physics" />
++        <Slider label="Launch speed" value={speed} min={5} max={40} unit=" m/s" onChange={setSpeed} tone="physics" disabled={flying} />
++        <Slider label="Angle" value={angle} min={5} max={85} unit="°" onChange={setAngle} tone="physics" disabled={flying} />
+         <div>
+           <p className="mb-1 text-sm font-semibold text-slate-700">Gravity</p>
+           <div className="grid grid-cols-3 gap-2">
+@@ -103,9 +112,10 @@ function PhysicsSandbox() {
+               <button
+                 key={p}
+                 type="button"
+-                onClick={() => setPlanet(p)}
++                onClick={() => { setPlanet(p); setBallShown(false); }}
++                disabled={flying}
+                 aria-pressed={planet === p}
+-                className={`rounded-lg border px-2 py-2 text-xs font-bold transition ${
++                className={`rounded-lg border px-2 py-3 text-xs font-bold transition ${
+                   planet === p
+                     ? "border-sky-600 bg-sky-600 text-white"
+                     : "border-sky-200 bg-white text-slate-700 hover:border-sky-400"
+@@ -150,7 +160,7 @@ function ChemistrySandbox() {
+   };
+ 
+   return (
+-    <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
++    <div className="grid gap-6 md:grid-cols-[1fr_280px]">
+       <div className="overflow-hidden rounded-2xl border border-[#CC310E]/20 bg-gradient-to-b from-[#FEF3EF] to-white">
+         <svg viewBox="0 0 600 300" className="block h-auto w-full" role="img" aria-label={`Beaker with pH ${ph.toFixed(1)}`}>
+           <defs>
+@@ -234,7 +244,7 @@ export default function Sandbox() {
+           <p className="mt-3 text-slate-600">Throw a projectile or neutralise an acid. Change a number, see what happens.</p>
+         </div>
+ 
+-        <div className="rounded-3xl border border-sky-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm sm:p-6">
++        <div className="rounded-3xl border border-sky-200 bg-white/90 p-4 shadow-sm sm:p-6 md:bg-white/80 md:backdrop-blur-sm">
+           <div role="tablist" aria-label="Sandbox subject" className="mx-auto mb-6 grid max-w-sm grid-cols-2 rounded-full bg-sky-100 p-1">
+             {(
+               [
+diff --git a/frontend/src/components/landing/SimulationsSection.tsx b/frontend/src/components/landing/SimulationsSection.tsx
+index 4c42758..183f73b 100644
+--- a/frontend/src/components/landing/SimulationsSection.tsx
++++ b/frontend/src/components/landing/SimulationsSection.tsx
+@@ -3,6 +3,7 @@
+ import dynamic from "next/dynamic";
+ import { useEffect, useRef, useState, type ComponentType } from "react";
+ import { AnimatePresence, motion } from "framer-motion";
++import GlowIcon from "@/components/ui/GlowIcon";
+ import { Atom, FlaskConical, Loader2, Magnet, Play, TestTube2, X, type LucideIcon } from "lucide-react";
+ 
+ const Loading = () => (
+@@ -69,24 +70,22 @@ function SimModal({ sim, onClose }: { sim: Sim; onClose: () => void }) {
+         exit={{ y: 40, opacity: 0 }}
+         transition={{ type: "spring", stiffness: 300, damping: 30 }}
+         onClick={(e) => e.stopPropagation()}
+-        className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl border border-sky-200 bg-[#F3F8FC] shadow-2xl sm:rounded-3xl"
++        className="flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl border border-sky-200 bg-[#F3F8FC] shadow-2xl sm:rounded-3xl"
+       >
+         <div className={`h-1.5 w-full ${physics ? "bg-sky-500" : "bg-[#CC310E]"}`} />
+         <div className="flex items-center justify-between gap-3 border-b border-sky-100 bg-white px-5 py-3">
+           <div className="flex items-center gap-3">
+-            <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${physics ? "bg-sky-100 text-sky-700" : "bg-[#CC310E]/10 text-[#CC310E]"}`}>
+-              <sim.icon className="h-5 w-5" />
+-            </span>
++            <GlowIcon icon={sim.icon} offset={SIMS.indexOf(sim)} size="sm" />
+             <div>
+               <h3 id="sim-title" className="font-extrabold text-slate-900">{sim.title}</h3>
+               <p className="text-xs text-slate-500">{sim.goal}</p>
+             </div>
+           </div>
+-          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close simulation" className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-sky-100">
++          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close simulation" className="flex h-11 w-11 items-center justify-center rounded-full text-slate-600 hover:bg-sky-100">
+             <X className="h-5 w-5" />
+           </button>
+         </div>
+-        <div className="overflow-y-auto p-4 sm:p-6">
++        <div className="overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6">
+           <sim.Component />
+         </div>
+       </motion.div>
+@@ -120,7 +119,7 @@ export default function SimulationsSection() {
+                 whileHover={{ y: -4 }}
+                 className={`flex flex-col rounded-2xl border bg-white p-5 shadow-sm ${physics ? "border-sky-300/70" : "border-[#CC310E]/25"}`}
+               >
+-                <s.icon className={`h-6 w-6 ${physics ? "text-sky-600" : "text-[#CC310E]"}`} />
++                <GlowIcon icon={s.icon} offset={i} />
+                 <h3 className="mt-3 font-extrabold text-slate-900">{s.title}</h3>
+                 <p className="mt-1 text-sm text-slate-600">{s.text}</p>
+                 <p className="mt-2 flex-1 text-xs text-slate-500">{s.goal}</p>
+diff --git a/frontend/src/components/landing/sims/BohrAtom.tsx b/frontend/src/components/landing/sims/BohrAtom.tsx
+index a2b90dc..340869b 100644
+--- a/frontend/src/components/landing/sims/BohrAtom.tsx
++++ b/frontend/src/components/landing/sims/BohrAtom.tsx
+@@ -68,7 +68,7 @@ export default function BohrAtom() {
+     <div className="space-y-5">
+       <ScoreBar items={[{ label: "Level", value: `n = ${level}` }, { label: "Jumps", value: moves }, { label: "Challenges", value: `${done.length}/${CHALLENGES.length}` }]} />
+ 
+-      <div className="grid gap-6 lg:grid-cols-2">
++      <div className="grid gap-6 md:grid-cols-2">
+         {/* Atom */}
+         <div className="overflow-hidden rounded-2xl border border-sky-200 bg-gradient-to-b from-sky-50 to-white">
+           <svg viewBox="0 0 300 300" className="mx-auto block h-auto w-full max-w-sm" role="img" aria-label={`Hydrogen atom, electron at level ${level}`}>
+@@ -95,7 +95,7 @@ export default function BohrAtom() {
+                 onClick={() => goTo(n)}
+                 aria-pressed={n === level}
+                 aria-label={`Move electron to level ${n}`}
+-                className={`h-10 w-10 rounded-full border text-sm font-extrabold transition ${
++                className={`h-11 w-11 rounded-full border text-sm font-extrabold transition ${
+                   n === level ? "border-sky-600 bg-sky-600 text-white" : "border-sky-200 bg-white text-slate-700 hover:border-sky-400"
+                 }`}
+               >
+diff --git a/frontend/src/components/landing/sims/MoleculeShapes.tsx b/frontend/src/components/landing/sims/MoleculeShapes.tsx
+index cdf92c1..7607450 100644
+--- a/frontend/src/components/landing/sims/MoleculeShapes.tsx
++++ b/frontend/src/components/landing/sims/MoleculeShapes.tsx
+@@ -9,20 +9,26 @@ import { ScoreBar, ghostBtn, primaryBtn } from "./SimUI";
+ const SIZE = 300;
+ const R = 100;
+ 
+-function useAngle(paused: boolean) {
++function useAngle() {
+   const [angle, setAngle] = useState(0.6);
+   useEffect(() => {
+-    if (paused) return;
++    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+     let id = 0;
+     let last = performance.now();
++    let acc = 0;
+     const tick = (now: number) => {
+-      setAngle((a) => a + ((now - last) / 1000) * 0.7);
++      acc += now - last;
+       last = now;
++      if (acc >= 33) {
++        // ~30 fps is plenty for a slow turntable and halves the work on phones
++        setAngle((a) => a + (acc / 1000) * 0.7);
++        acc = 0;
++      }
+       id = requestAnimationFrame(tick);
+     };
+     id = requestAnimationFrame(tick);
+     return () => cancelAnimationFrame(id);
+-  }, [paused]);
++  }, []);
+   return angle;
+ }
+ 
+@@ -73,7 +79,7 @@ export default function MoleculeShapes() {
+   const [picked, setPicked] = useState<string | null>(null);
+   const [score, setScore] = useState(0);
+   const [answered, setAnswered] = useState(0);
+-  const spin = useAngle(false);
++  const spin = useAngle();
+ 
+   const question = useMemo(() => quizQuestion(round, shuffled), [round]);
+   const shape = mode === "quiz" ? question.shape : shapeFor(steric - lone, lone);
+@@ -109,7 +115,7 @@ export default function MoleculeShapes() {
+               type="button"
+               aria-selected={mode === m}
+               onClick={() => switchMode(m)}
+-              className={`rounded-full px-4 py-1.5 capitalize transition ${mode === m ? "bg-sky-600 text-white" : "text-slate-600"}`}
++              className={`rounded-full px-5 py-2.5 capitalize transition ${mode === m ? "bg-sky-600 text-white" : "text-slate-600"}`}
+             >
+               {m}
+             </button>
+@@ -118,7 +124,7 @@ export default function MoleculeShapes() {
+         {mode === "quiz" && <ScoreBar items={[{ label: "Correct", value: `${score}/${answered}` }]} />}
+       </div>
+ 
+-      <div className="grid gap-6 lg:grid-cols-2">
++      <div className="grid gap-6 md:grid-cols-2">
+         <div className="rounded-2xl border border-sky-200 bg-gradient-to-b from-sky-50 to-white p-3">
+           <Molecule bonded={bonded} lone={lp} spin={spin} />
+           <p className="text-center text-xs text-slate-500">
+@@ -134,7 +140,7 @@ export default function MoleculeShapes() {
+                 <div className="grid grid-cols-5 gap-2">
+                   {[2, 3, 4, 5, 6].map((s) => (
+                     <button key={s} type="button" onClick={() => chooseSteric(s)} aria-pressed={steric === s}
+-                      className={`rounded-lg border py-2 text-sm font-extrabold transition ${steric === s ? "border-sky-600 bg-sky-600 text-white" : "border-sky-200 bg-white text-slate-700 hover:border-sky-400"}`}>
++                      className={`rounded-lg border py-3 text-sm font-extrabold transition ${steric === s ? "border-sky-600 bg-sky-600 text-white" : "border-sky-200 bg-white text-slate-700 hover:border-sky-400"}`}>
+                       {s}
+                     </button>
+                   ))}
+@@ -145,7 +151,7 @@ export default function MoleculeShapes() {
+                 <div className="flex gap-2">
+                   {validLonePairs(steric).map((n) => (
+                     <button key={n} type="button" onClick={() => setLone(n)} aria-pressed={lone === n}
+-                      className={`h-10 w-10 rounded-lg border text-sm font-extrabold transition ${lone === n ? "border-[#CC310E] bg-[#CC310E] text-white" : "border-sky-200 bg-white text-slate-700 hover:border-[#CC310E]/50"}`}>
++                      className={`h-11 w-11 rounded-lg border text-sm font-extrabold transition ${lone === n ? "border-[#CC310E] bg-[#CC310E] text-white" : "border-sky-200 bg-white text-slate-700 hover:border-[#CC310E]/50"}`}>
+                       {n}
+                     </button>
+                   ))}
+diff --git a/frontend/src/components/landing/sims/PhScale.tsx b/frontend/src/components/landing/sims/PhScale.tsx
+index 5a06e68..b523af5 100644
+--- a/frontend/src/components/landing/sims/PhScale.tsx
++++ b/frontend/src/components/landing/sims/PhScale.tsx
+@@ -82,7 +82,7 @@ export default function PhScale() {
+           </button>
+         </div>
+       ) : (
+-        <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
++        <div className="grid gap-6 md:grid-cols-[1fr_280px]">
+           <div className="space-y-3">
+             <p className="text-sm text-slate-600">Where does this fall on the pH scale?</p>
+             <p className="text-3xl font-black tracking-tight text-slate-900">{current.name}</p>
+diff --git a/frontend/src/components/landing/sims/ProjectileGame.tsx b/frontend/src/components/landing/sims/ProjectileGame.tsx
+index c7fb84e..b2aae2d 100644
+--- a/frontend/src/components/landing/sims/ProjectileGame.tsx
++++ b/frontend/src/components/landing/sims/ProjectileGame.tsx
+@@ -27,7 +27,8 @@ export default function ProjectileGame() {
+   const [level, setLevel] = useState(1);
+   const [speed, setSpeed] = useState(25);
+   const [angle, setAngle] = useState(40);
+-  const [t, setT] = useState<number | null>(null);
++  const [ballShown, setBallShown] = useState(false);
++  const ballRef = useRef<SVGCircleElement>(null);
+   const [flying, setFlying] = useState(false);
+   const [attempts, setAttempts] = useState(0);
+   const [score, setScore] = useState(0);
+@@ -58,7 +59,7 @@ export default function ProjectileGame() {
+     setLevel(nextLevel);
+     setAttempts(0);
+     setSolved(false);
+-    setT(null);
++    setBallShown(false);
+     setLastShot(null);
+     setFeedback({ kind: "idle", text: "New target. Set speed and angle, then fire." });
+   };
+@@ -67,17 +68,25 @@ export default function ProjectileGame() {
+     setPlanet(p);
+     setAttempts(0);
+     setSolved(false);
+-    setT(null);
++    setBallShown(false);
+     setLastShot(null);
+     setFeedback({ kind: "idle", text: `Gravity is now ${GRAVITY[p]} m/s². The target moved, so aim again.` });
+   };
+ 
++  // Updates the ball directly on the DOM node: 60 fps without re-rendering React.
++  const moveBall = (v: number, a: number, time: number) => {
++    const p = positionAt(v, a, g, time);
++    ballRef.current?.setAttribute("cx", String(px(p.x)));
++    ballRef.current?.setAttribute("cy", String(py(p.y)));
++  };
++
+   const fire = () => {
+     if (flying || solved) return;
+     const result = projectile(speed, angle, g);
+     const shotAttempts = attempts + 1;
+     setAttempts(shotAttempts);
+     setFlying(true);
++    setBallShown(true);
+     setLastShot({ speed, angle });
+     const duration = Math.min(3.5, Math.max(1.2, result.flightTime));
+     const rate = result.flightTime / duration;
+@@ -85,7 +94,7 @@ export default function ProjectileGame() {
+     const step = (now: number) => {
+       const sim = ((now - start) / 1000) * rate;
+       if (sim >= result.flightTime) {
+-        setT(result.flightTime);
++        moveBall(speed, angle, result.flightTime);
+         setFlying(false);
+         raf.current = null;
+         const miss = result.range - target;
+@@ -102,13 +111,12 @@ export default function ProjectileGame() {
+         }
+         return;
+       }
+-      setT(sim);
++      moveBall(speed, angle, sim);
+       raf.current = requestAnimationFrame(step);
+     };
+     raf.current = requestAnimationFrame(step);
+   };
+ 
+-  const ball = t === null || !lastShot ? null : positionAt(lastShot.speed, lastShot.angle, g, t);
+   const ghost = lastShot
+     ? trajectory(lastShot.speed, lastShot.angle, g)
+         .map(([x, y], i) => `${i ? "L" : "M"}${px(x).toFixed(1)} ${py(y).toFixed(1)}`)
+@@ -128,7 +136,7 @@ export default function ProjectileGame() {
+               onClick={() => changePlanet(p)}
+               disabled={flying}
+               aria-pressed={planet === p}
+-              className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
++              className={`rounded-lg border px-3.5 py-2.5 text-xs font-bold transition ${
+                 planet === p ? "border-sky-600 bg-sky-600 text-white" : "border-sky-200 bg-white text-slate-700 hover:border-sky-400"
+               }`}
+             >
+@@ -138,7 +146,7 @@ export default function ProjectileGame() {
+         </div>
+       </div>
+ 
+-      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
++      <div className="grid gap-6 md:grid-cols-[1fr_280px]">
+         <div className="overflow-hidden rounded-2xl border border-sky-200 bg-gradient-to-b from-sky-50 to-white">
+           <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label={`Target ${target} metres away`}>
+             <line x1={LEFT} y1={GROUND} x2={W - 6} y2={GROUND} stroke="#94A3B8" strokeWidth="2" />
+@@ -161,13 +169,13 @@ export default function ProjectileGame() {
+               strokeLinecap="round"
+             />
+             <circle cx={LEFT} cy={GROUND} r="9" fill="#075985" />
+-            {ball && <circle cx={px(ball.x)} cy={py(ball.y)} r="8" fill="#CC310E" />}
++            {ballShown && <circle ref={ballRef} cx={LEFT} cy={GROUND} r="8" fill="#CC310E" />}
+           </svg>
+         </div>
+ 
+         <div className="space-y-4">
+-          <Slider label="Launch speed" value={speed} min={5} max={MAX_LAUNCH_SPEED} unit=" m/s" onChange={setSpeed} tone="physics" />
+-          <Slider label="Angle" value={angle} min={5} max={85} unit="°" onChange={setAngle} tone="physics" />
++          <Slider label="Launch speed" value={speed} min={5} max={MAX_LAUNCH_SPEED} unit=" m/s" onChange={setSpeed} tone="physics" disabled={flying} />
++          <Slider label="Angle" value={angle} min={5} max={85} unit="°" onChange={setAngle} tone="physics" disabled={flying} />
+           <div className="grid grid-cols-2 gap-2">
+             <Readout label="Target" value={`${target} m`} />
+             <Readout label="Gravity" value={`${g} m/s²`} />
+diff --git a/frontend/src/components/landing/sims/SimUI.tsx b/frontend/src/components/landing/sims/SimUI.tsx
+index 6991f92..19a22f4 100644
+--- a/frontend/src/components/landing/sims/SimUI.tsx
++++ b/frontend/src/components/landing/sims/SimUI.tsx
+@@ -1,5 +1,7 @@
+ "use client";
+ 
++import type { CSSProperties } from "react";
++
+ export function Slider({
+   label,
+   value,
+@@ -9,6 +11,7 @@ export function Slider({
+   unit,
+   onChange,
+   tone,
++  disabled = false,
+ }: {
+   label: string;
+   value: number;
+@@ -18,11 +21,13 @@ export function Slider({
+   unit: string;
+   onChange: (v: number) => void;
+   tone: "physics" | "chemistry";
++  disabled?: boolean;
+ }) {
+   const id = `sb-${label.replace(/\W+/g, "-").toLowerCase()}`;
++  const pct = ((value - min) / (max - min)) * 100;
+   return (
+     <div>
+-      <div className="mb-1 flex items-baseline justify-between text-sm">
++      <div className="mb-0.5 flex items-baseline justify-between text-sm">
+         <label htmlFor={id} className="font-semibold text-slate-700">
+           {label}
+         </label>
+@@ -38,10 +43,10 @@ export function Slider({
+         max={max}
+         step={step}
+         value={value}
++        disabled={disabled}
+         onChange={(e) => onChange(Number(e.target.value))}
+-        className={`h-2 w-full cursor-pointer ${
+-          tone === "physics" ? "accent-sky-600" : "accent-[#CC310E]"
+-        }`}
++        className={`azs-range ${tone === "physics" ? "[--range-color:#0284C7]" : "[--range-color:#CC310E]"}`}
++        style={{ "--pct": `${pct}%` } as CSSProperties}
+       />
+     </div>
+   );
+diff --git a/frontend/src/components/ui/GlowIcon.tsx b/frontend/src/components/ui/GlowIcon.tsx
+new file mode 100644
+index 0000000..8af2d8f
+--- /dev/null
++++ b/frontend/src/components/ui/GlowIcon.tsx
+@@ -0,0 +1,38 @@
++"use client";
++
++import { useSyncExternalStore, type CSSProperties } from "react";
++import type { LucideIcon } from "lucide-react";
++import { getGlowTick, getServerGlowTick, glowColor, subscribeGlow } from "@/lib/glow";
++
++/** Current glow colour; changes every 15 seconds, shared across the whole page. */
++export function useGlowColor(offset = 0): string {
++  const tick = useSyncExternalStore(subscribeGlow, getGlowTick, getServerGlowTick);
++  return glowColor(tick, offset);
++}
++
++const BOX = { sm: "h-9 w-9 rounded-xl", md: "h-11 w-11 rounded-xl", lg: "h-14 w-14 rounded-2xl" } as const;
++const ICON = { sm: "h-[18px] w-[18px]", md: "h-5 w-5", lg: "h-7 w-7" } as const;
++
++interface GlowIconProps {
++  icon: LucideIcon;
++  /** Shift along the palette so neighbouring icons show different colours. */
++  offset?: number;
++  size?: keyof typeof BOX;
++  /** Show the soft tinted tile behind the icon. */
++  tile?: boolean;
++  className?: string;
++}
++
++/** A softly glowing icon whose colour fades to the next palette colour every 15 seconds. */
++export default function GlowIcon({ icon: Icon, offset = 0, size = "md", tile = true, className = "" }: GlowIconProps) {
++  const color = useGlowColor(offset);
++  return (
++    <span
++      className={`azs-glow relative inline-flex shrink-0 items-center justify-center ${BOX[size]} ${tile ? "azs-glow-tile" : ""} ${className}`}
++      style={{ "--glow": color } as CSSProperties}
++    >
++      <span aria-hidden="true" className="azs-glow-halo absolute inset-1.5 rounded-full" />
++      <Icon aria-hidden="true" className={`azs-glow-icon relative ${ICON[size]}`} />
++    </span>
++  );
++}
+diff --git a/frontend/src/lib/glow.ts b/frontend/src/lib/glow.ts
+new file mode 100644
+index 0000000..f4f552a
+--- /dev/null
++++ b/frontend/src/lib/glow.ts
+@@ -0,0 +1,50 @@
++/**
++ * Shared colour cycle for glowing icons.
++ *
++ * One timer for the whole app (not one per icon): every `GLOW_INTERVAL_MS` the tick
++ * advances and every subscribed icon moves to its next palette colour. Icons use an
++ * `offset` so neighbours show different colours at the same moment.
++ */
++
++export const GLOW_INTERVAL_MS = 15_000;
++
++export const GLOW_PALETTE = [
++  "#0EA5E9", // sky
++  "#CC310E", // ember
++  "#F59E0B", // amber
++  "#14B8A6", // teal
++  "#8B5CF6", // violet
++] as const;
++
++/** Colour for a tick and offset; wraps around the palette and tolerates negatives. */
++export function glowColor(tick: number, offset = 0): string {
++  const n = GLOW_PALETTE.length;
++  return GLOW_PALETTE[(((tick + offset) % n) + n) % n];
++}
++
++let tick = 0;
++let timer: ReturnType<typeof setInterval> | null = null;
++const listeners = new Set<() => void>();
++
++function advance() {
++  // Save battery: no colour changes while the tab is in the background.
++  if (typeof document !== "undefined" && document.hidden) return;
++  tick += 1;
++  listeners.forEach((l) => l());
++}
++
++/** useSyncExternalStore subscribe: the timer runs only while something is listening. */
++export function subscribeGlow(listener: () => void): () => void {
++  listeners.add(listener);
++  if (timer === null) timer = setInterval(advance, GLOW_INTERVAL_MS);
++  return () => {
++    listeners.delete(listener);
++    if (listeners.size === 0 && timer !== null) {
++      clearInterval(timer);
++      timer = null;
++    }
++  };
++}
++
++export const getGlowTick = () => tick;
++export const getServerGlowTick = () => 0;
+-- 
+2.43.0
+

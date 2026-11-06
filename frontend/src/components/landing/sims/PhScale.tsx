@@ -82,7 +82,7 @@ export default function PhScale() {
           </button>
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+        <div className="grid gap-6 md:grid-cols-[1fr_280px]">
           <div className="space-y-3">
             <p className="text-sm text-slate-600">Where does this fall on the pH scale?</p>
             <p className="text-3xl font-black tracking-tight text-slate-900">{current.name}</p>

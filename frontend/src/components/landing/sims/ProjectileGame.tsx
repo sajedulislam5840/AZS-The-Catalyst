@@ -27,7 +27,8 @@ export default function ProjectileGame() {
   const [level, setLevel] = useState(1);
   const [speed, setSpeed] = useState(25);
   const [angle, setAngle] = useState(40);
-  const [t, setT] = useState<number | null>(null);
+  const [ballShown, setBallShown] = useState(false);
+  const ballRef = useRef<SVGCircleElement>(null);
   const [flying, setFlying] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [score, setScore] = useState(0);
@@ -58,7 +59,7 @@ export default function ProjectileGame() {
     setLevel(nextLevel);
     setAttempts(0);
     setSolved(false);
-    setT(null);
+    setBallShown(false);
     setLastShot(null);
     setFeedback({ kind: "idle", text: "New target. Set speed and angle, then fire." });
   };
@@ -67,9 +68,16 @@ export default function ProjectileGame() {
     setPlanet(p);
     setAttempts(0);
     setSolved(false);
-    setT(null);
+    setBallShown(false);
     setLastShot(null);
     setFeedback({ kind: "idle", text: `Gravity is now ${GRAVITY[p]} m/s². The target moved, so aim again.` });
+  };
+
+  // Updates the ball directly on the DOM node: 60 fps without re-rendering React.
+  const moveBall = (v: number, a: number, time: number) => {
+    const p = positionAt(v, a, g, time);
+    ballRef.current?.setAttribute("cx", String(px(p.x)));
+    ballRef.current?.setAttribute("cy", String(py(p.y)));
   };
 
   const fire = () => {
@@ -78,6 +86,7 @@ export default function ProjectileGame() {
     const shotAttempts = attempts + 1;
     setAttempts(shotAttempts);
     setFlying(true);
+    setBallShown(true);
     setLastShot({ speed, angle });
     const duration = Math.min(3.5, Math.max(1.2, result.flightTime));
     const rate = result.flightTime / duration;
@@ -85,7 +94,7 @@ export default function ProjectileGame() {
     const step = (now: number) => {
       const sim = ((now - start) / 1000) * rate;
       if (sim >= result.flightTime) {
-        setT(result.flightTime);
+        moveBall(speed, angle, result.flightTime);
         setFlying(false);
         raf.current = null;
         const miss = result.range - target;
@@ -102,13 +111,12 @@ export default function ProjectileGame() {
         }
         return;
       }
-      setT(sim);
+      moveBall(speed, angle, sim);
       raf.current = requestAnimationFrame(step);
     };
     raf.current = requestAnimationFrame(step);
   };
 
-  const ball = t === null || !lastShot ? null : positionAt(lastShot.speed, lastShot.angle, g, t);
   const ghost = lastShot
     ? trajectory(lastShot.speed, lastShot.angle, g)
         .map(([x, y], i) => `${i ? "L" : "M"}${px(x).toFixed(1)} ${py(y).toFixed(1)}`)
@@ -128,7 +136,7 @@ export default function ProjectileGame() {
               onClick={() => changePlanet(p)}
               disabled={flying}
               aria-pressed={planet === p}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
+              className={`rounded-lg border px-3.5 py-2.5 text-xs font-bold transition ${
                 planet === p ? "border-sky-600 bg-sky-600 text-white" : "border-sky-200 bg-white text-slate-700 hover:border-sky-400"
               }`}
             >
@@ -138,7 +146,7 @@ export default function ProjectileGame() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+      <div className="grid gap-6 md:grid-cols-[1fr_280px]">
         <div className="overflow-hidden rounded-2xl border border-sky-200 bg-gradient-to-b from-sky-50 to-white">
           <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label={`Target ${target} metres away`}>
             <line x1={LEFT} y1={GROUND} x2={W - 6} y2={GROUND} stroke="#94A3B8" strokeWidth="2" />
@@ -161,13 +169,13 @@ export default function ProjectileGame() {
               strokeLinecap="round"
             />
             <circle cx={LEFT} cy={GROUND} r="9" fill="#075985" />
-            {ball && <circle cx={px(ball.x)} cy={py(ball.y)} r="8" fill="#CC310E" />}
+            {ballShown && <circle ref={ballRef} cx={LEFT} cy={GROUND} r="8" fill="#CC310E" />}
           </svg>
         </div>
 
         <div className="space-y-4">
-          <Slider label="Launch speed" value={speed} min={5} max={MAX_LAUNCH_SPEED} unit=" m/s" onChange={setSpeed} tone="physics" />
-          <Slider label="Angle" value={angle} min={5} max={85} unit="°" onChange={setAngle} tone="physics" />
+          <Slider label="Launch speed" value={speed} min={5} max={MAX_LAUNCH_SPEED} unit=" m/s" onChange={setSpeed} tone="physics" disabled={flying} />
+          <Slider label="Angle" value={angle} min={5} max={85} unit="°" onChange={setAngle} tone="physics" disabled={flying} />
           <div className="grid grid-cols-2 gap-2">
             <Readout label="Target" value={`${target} m`} />
             <Readout label="Gravity" value={`${g} m/s²`} />

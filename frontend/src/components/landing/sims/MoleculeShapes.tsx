@@ -9,20 +9,26 @@ import { ScoreBar, ghostBtn, primaryBtn } from "./SimUI";
 const SIZE = 300;
 const R = 100;
 
-function useAngle(paused: boolean) {
+function useAngle() {
   const [angle, setAngle] = useState(0.6);
   useEffect(() => {
-    if (paused) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let id = 0;
     let last = performance.now();
+    let acc = 0;
     const tick = (now: number) => {
-      setAngle((a) => a + ((now - last) / 1000) * 0.7);
+      acc += now - last;
       last = now;
+      if (acc >= 33) {
+        // ~30 fps is plenty for a slow turntable and halves the work on phones
+        setAngle((a) => a + (acc / 1000) * 0.7);
+        acc = 0;
+      }
       id = requestAnimationFrame(tick);
     };
     id = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(id);
-  }, [paused]);
+  }, []);
   return angle;
 }
 
@@ -73,7 +79,7 @@ export default function MoleculeShapes() {
   const [picked, setPicked] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState(0);
-  const spin = useAngle(false);
+  const spin = useAngle();
 
   const question = useMemo(() => quizQuestion(round, shuffled), [round]);
   const shape = mode === "quiz" ? question.shape : shapeFor(steric - lone, lone);
@@ -109,7 +115,7 @@ export default function MoleculeShapes() {
               type="button"
               aria-selected={mode === m}
               onClick={() => switchMode(m)}
-              className={`rounded-full px-4 py-1.5 capitalize transition ${mode === m ? "bg-sky-600 text-white" : "text-slate-600"}`}
+              className={`rounded-full px-5 py-2.5 capitalize transition ${mode === m ? "bg-sky-600 text-white" : "text-slate-600"}`}
             >
               {m}
             </button>
@@ -118,7 +124,7 @@ export default function MoleculeShapes() {
         {mode === "quiz" && <ScoreBar items={[{ label: "Correct", value: `${score}/${answered}` }]} />}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-2xl border border-sky-200 bg-gradient-to-b from-sky-50 to-white p-3">
           <Molecule bonded={bonded} lone={lp} spin={spin} />
           <p className="text-center text-xs text-slate-500">
@@ -134,7 +140,7 @@ export default function MoleculeShapes() {
                 <div className="grid grid-cols-5 gap-2">
                   {[2, 3, 4, 5, 6].map((s) => (
                     <button key={s} type="button" onClick={() => chooseSteric(s)} aria-pressed={steric === s}
-                      className={`rounded-lg border py-2 text-sm font-extrabold transition ${steric === s ? "border-sky-600 bg-sky-600 text-white" : "border-sky-200 bg-white text-slate-700 hover:border-sky-400"}`}>
+                      className={`rounded-lg border py-3 text-sm font-extrabold transition ${steric === s ? "border-sky-600 bg-sky-600 text-white" : "border-sky-200 bg-white text-slate-700 hover:border-sky-400"}`}>
                       {s}
                     </button>
                   ))}
@@ -145,7 +151,7 @@ export default function MoleculeShapes() {
                 <div className="flex gap-2">
                   {validLonePairs(steric).map((n) => (
                     <button key={n} type="button" onClick={() => setLone(n)} aria-pressed={lone === n}
-                      className={`h-10 w-10 rounded-lg border text-sm font-extrabold transition ${lone === n ? "border-[#CC310E] bg-[#CC310E] text-white" : "border-sky-200 bg-white text-slate-700 hover:border-[#CC310E]/50"}`}>
+                      className={`h-11 w-11 rounded-lg border text-sm font-extrabold transition ${lone === n ? "border-[#CC310E] bg-[#CC310E] text-white" : "border-sky-200 bg-white text-slate-700 hover:border-[#CC310E]/50"}`}>
                       {n}
                     </button>
                   ))}

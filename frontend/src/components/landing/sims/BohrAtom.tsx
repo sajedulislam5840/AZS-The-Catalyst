@@ -68,7 +68,7 @@ export default function BohrAtom() {
     <div className="space-y-5">
       <ScoreBar items={[{ label: "Level", value: `n = ${level}` }, { label: "Jumps", value: moves }, { label: "Challenges", value: `${done.length}/${CHALLENGES.length}` }]} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         {/* Atom */}
         <div className="overflow-hidden rounded-2xl border border-sky-200 bg-gradient-to-b from-sky-50 to-white">
           <svg viewBox="0 0 300 300" className="mx-auto block h-auto w-full max-w-sm" role="img" aria-label={`Hydrogen atom, electron at level ${level}`}>
@@ -95,7 +95,7 @@ export default function BohrAtom() {
                 onClick={() => goTo(n)}
                 aria-pressed={n === level}
                 aria-label={`Move electron to level ${n}`}
-                className={`h-10 w-10 rounded-full border text-sm font-extrabold transition ${
+                className={`h-11 w-11 rounded-full border text-sm font-extrabold transition ${
                   n === level ? "border-sky-600 bg-sky-600 text-white" : "border-sky-200 bg-white text-slate-700 hover:border-sky-400"
                 }`}
               >

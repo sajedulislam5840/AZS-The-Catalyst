@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import GlowIcon from "@/components/ui/GlowIcon";
 import { Atom, FlaskConical, Loader2, Magnet, Play, TestTube2, X, type LucideIcon } from "lucide-react";
 
 const Loading = () => (
@@ -69,24 +70,22 @@ function SimModal({ sim, onClose }: { sim: Sim; onClose: () => void }) {
         exit={{ y: 40, opacity: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl border border-sky-200 bg-[#F3F8FC] shadow-2xl sm:rounded-3xl"
+        className="flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl border border-sky-200 bg-[#F3F8FC] shadow-2xl sm:rounded-3xl"
       >
         <div className={`h-1.5 w-full ${physics ? "bg-sky-500" : "bg-[#CC310E]"}`} />
         <div className="flex items-center justify-between gap-3 border-b border-sky-100 bg-white px-5 py-3">
           <div className="flex items-center gap-3">
-            <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${physics ? "bg-sky-100 text-sky-700" : "bg-[#CC310E]/10 text-[#CC310E]"}`}>
-              <sim.icon className="h-5 w-5" />
-            </span>
+            <GlowIcon icon={sim.icon} offset={SIMS.indexOf(sim)} size="sm" />
             <div>
               <h3 id="sim-title" className="font-extrabold text-slate-900">{sim.title}</h3>
               <p className="text-xs text-slate-500">{sim.goal}</p>
             </div>
           </div>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close simulation" className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-sky-100">
+          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close simulation" className="flex h-11 w-11 items-center justify-center rounded-full text-slate-600 hover:bg-sky-100">
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="overflow-y-auto p-4 sm:p-6">
+        <div className="overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6">
           <sim.Component />
         </div>
       </motion.div>
@@ -120,7 +119,7 @@ export default function SimulationsSection() {
                 whileHover={{ y: -4 }}
                 className={`flex flex-col rounded-2xl border bg-white p-5 shadow-sm ${physics ? "border-sky-300/70" : "border-[#CC310E]/25"}`}
               >
-                <s.icon className={`h-6 w-6 ${physics ? "text-sky-600" : "text-[#CC310E]"}`} />
+                <GlowIcon icon={s.icon} offset={i} />
                 <h3 className="mt-3 font-extrabold text-slate-900">{s.title}</h3>
                 <p className="mt-1 text-sm text-slate-600">{s.text}</p>
                 <p className="mt-2 flex-1 text-xs text-slate-500">{s.goal}</p>

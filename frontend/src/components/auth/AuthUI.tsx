@@ -10,7 +10,7 @@ import SiteFooter from "@/components/SiteFooter";
 
 /** Shared input look: white field, sky border, sky focus ring. */
 export const authInputClass =
-  "h-12 w-full rounded-xl border border-sky-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20";
+  "h-12 w-full rounded-xl border border-sky-200 bg-white pl-11 pr-4 text-base text-slate-900 sm:text-sm outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20";
 
 interface AuthShellProps {
   children: ReactNode;
@@ -55,7 +55,7 @@ export function AuthShell({ children, wide = false, badge, logo }: AuthShellProp
           {badge}
           <Link
             href="/"
-            className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-sky-200 bg-white/70 px-3.5 py-2 text-xs font-bold text-sky-900 backdrop-blur transition hover:border-sky-400 hover:bg-white active:scale-95"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-sky-200 bg-white/80 px-3.5 py-2 text-xs font-bold text-sky-900 md:backdrop-blur transition hover:border-sky-400 hover:bg-white active:scale-95"
           >
             <ArrowLeft className="h-4 w-4 text-sky-600" />
             Back to Home
@@ -69,7 +69,7 @@ export function AuthShell({ children, wide = false, badge, logo }: AuthShellProp
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className={`w-full ${wide ? "max-w-xl" : "max-w-md"} overflow-hidden rounded-3xl border border-sky-200 bg-white/85 shadow-[0_20px_60px_-20px_rgba(7,89,133,0.25)] backdrop-blur-xl`}
+          className={`w-full ${wide ? "max-w-xl" : "max-w-md"} overflow-hidden rounded-3xl border border-sky-200 bg-white/95 shadow-[0_20px_60px_-20px_rgba(7,89,133,0.25)] md:bg-white/85 md:backdrop-blur-xl`}
         >
           <div className="h-1.5 w-full bg-gradient-to-r from-sky-500 via-sky-300 to-[#CC310E]" />
           <div className="p-6 sm:p-9">{children}</div>

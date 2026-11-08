@@ -289,7 +289,7 @@ Nothing here is promised. These are the next ideas, in the order they would pay 
 
 **Built by** [Mir Mohammad Sajedul Islam](https://sajedulislam5840.github.io/portfolio/), platform architect and lead developer. [GitHub](https://github.com/sajedulislam5840) · [LinkedIn](https://www.linkedin.com/in/sajedul-islam-data/)
 
-**Academic guidance** by AZS Razon Sir, lead academic mentor for Physics and Chemistry.
+
 
 ## License
 

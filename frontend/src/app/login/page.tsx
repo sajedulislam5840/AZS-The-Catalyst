@@ -6,6 +6,7 @@ import { ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import axios from "axios";
 import api from "@/lib/api";
+import { noResponseText } from "@/components/admin/format";
 import {
   AuthHeading,
   AuthShell,
@@ -65,6 +66,10 @@ function LoginContent() {
         router.replace("/dashboard");
       }
     } catch (err: unknown) {
+      if (axios.isAxiosError(err) && !err.response) {
+        setErrorMsg(noResponseText(err));
+        return;
+      }
       const detail = axios.isAxiosError(err)
         ? (err.response?.data as { detail?: string } | undefined)?.detail
         : undefined;

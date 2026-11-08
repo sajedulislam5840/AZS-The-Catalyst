@@ -41,10 +41,26 @@ export function initials(name: string): string {
   return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
+/** What went wrong when no response came back, including which server was tried. */
+export function noResponseText(err: unknown): string {
+  const e = err as { code?: string; config?: { baseURL?: string; url?: string } } | undefined;
+  let host = "";
+  try {
+    host = new URL(e?.config?.baseURL || e?.config?.url || "").host;
+  } catch {
+    host = "";
+  }
+  const where = host ? ` (${host})` : "";
+  if (e?.code === "ECONNABORTED" || e?.code === "ETIMEDOUT") {
+    return `The server${where} took too long to answer. It may be waking up, so wait a minute and try again.`;
+  }
+  return `Can't reach the server${where}. It may be waking up, or the address may be wrong. Wait a moment and try again.`;
+}
+
 /** The most useful sentence we can show for a failed request. */
 export function errorText(err: unknown, fallback = "Something went wrong. Please try again."): string {
   if (isAxiosError(err)) {
-    if (!err.response) return "Can't reach the server. It may be waking up, so wait a few seconds and try again.";
+    if (!err.response) return noResponseText(err);
     const d = err.response.data?.detail;
     if (typeof d === "string") return d;
     if (d && typeof d === "object" && !Array.isArray(d) && typeof d.message === "string") return d.message;

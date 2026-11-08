@@ -1,717 +1,301 @@
 <div align="center">
 
-<img src="frontend/public/logo.png" alt="AZS: The Catalyst Logo" width="140" height="140" style="border-radius: 28px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);" />
-
-# ⚡ AZS: The Catalyst
-
-### 🧪 *Where Science Meets Smart Technology*
-
-> **Advanced EdTech Student Dashboard · Batch Management · AI Academic Tutor Platform**
+<img src="docs/assets/hero.svg" alt="AZS: The Catalyst. Physics and Chemistry learning platform." width="100%" />
 
 <br/>
 
-<p>
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00D4FF&center=true&vCenter=true&width=700&lines=Physics+%26+Chemistry+Made+Smart;AI-Powered+Learning+Ecosystem;Real-Time+Batch+Management;Next.js+%2B+FastAPI+%3D+%F0%9F%9A%80" alt="Typing SVG" />
-</p>
+<a href="https://azs-the-catalyst.vercel.app/"><img src="https://img.shields.io/badge/LIVE-azs--the--catalyst.vercel.app-075985?style=for-the-badge&logo=vercel&logoColor=white" alt="Live site" /></a>
+<img src="https://img.shields.io/badge/STATUS-pilot_with_real_students-CC310E?style=for-the-badge" alt="Status: pilot" />
 
-<br/>
-
-<p>
-  <img src="https://img.shields.io/badge/Next.js_14-000000?style=for-the-badge&logo=next.js&logoColor=white" />
-  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
-  <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwind-css&logoColor=white" />
-  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" />
-  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" />
-  <img src="https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" />
-  <img src="https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white" />
-</p>
-
-<p>
-  <img src="https://img.shields.io/github/stars/sajedulislam5840/AZS-The-Catalyst?style=social" />
-  <img src="https://img.shields.io/github/forks/sajedulislam5840/AZS-The-Catalyst?style=social" />
-  <img src="https://img.shields.io/github/issues/sajedulislam5840/AZS-The-Catalyst?style=flat-square&color=red" />
-  <img src="https://img.shields.io/github/license/sajedulislam5840/AZS-The-Catalyst?style=flat-square&color=blue" />
-  <img src="https://img.shields.io/badge/Made%20with-❤️-red?style=flat-square" />
-</p>
-
-<br/>
-
-<p>
-  <a href="https://azs-the-catalyst.vercel.app/">
-    <img src="https://img.shields.io/badge/🌐_Live_Demo-AZS_The_Catalyst-00D4FF?style=for-the-badge" />
-  </a>
-  <a href="https://github.com/sajedulislam5840/AZS-The-Catalyst">
-    <img src="https://img.shields.io/badge/💻_Source_Code-GitHub-181717?style=for-the-badge&logo=github" />
-  </a>
-</p>
+<img src="https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=next.js&logoColor=white" alt="Next.js 16" />
+<img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 19" />
+<img src="https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind 4" />
+<img src="https://img.shields.io/badge/FastAPI-async-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
+<img src="https://img.shields.io/badge/PostgreSQL-Neon-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL on Neon" />
+<img src="https://img.shields.io/badge/backend_tests-pytest-16A34A?style=flat-square" alt="Backend tests with pytest" />
+<img src="https://img.shields.io/github/license/sajedulislam5840/AZS-The-Catalyst?style=flat-square&color=075985" alt="License" />
 
 </div>
+
+<br/>
+
+## Mission control
+
+A teacher runs a coaching batch. Students need lectures, notes, a study plan and someone to answer questions at 11 pm. The teacher collects fees in cash and needs to know, at a glance, who has paid. AZS is one system that does all of it, and it is built for the phone in the student's hand.
+
+<div align="center">
+<img src="docs/assets/console.svg" alt="Animated console: the platform boots its modules, then handles a renewal warning." width="92%" />
+</div>
+
+<br/>
+
+> The console above is a visual for the README, not a live terminal. The modules it lists are real parts of the code, described in [The crew](#the-crew).
 
 ---
 
-<div align="center">
-
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=80&section=header&reversal=false" width="100%" />
-
-</div>
-
-## 🎯 What is AZS: The Catalyst?
-
-<table>
-<tr>
-<td>
-
-**AZS: The Catalyst** is a modern **EdTech platform and coaching management system** designed for Secondary and Higher Secondary science education.
-
-The platform brings together **student learning, academic resources, lecture management, progress tracking, personal notes, study planning, AI-powered academic assistance, batch management, and subscription control** into one centralized ecosystem.
-
-Instead of depending on multiple disconnected tools, AZS provides students and instructors with a unified digital environment for managing the complete learning journey.
-
-</td>
-</tr>
-</table>
-
-<div align="center">
-
-| 🎬 Lecture Streaming |    📝 Smart Notes   |     🤖 AI Tutor     | 📊 Progress Tracking | 🗓️ Study Planner |
-| :------------------: | :-----------------: | :-----------------: | :------------------: | :---------------: |
-|  YouTube Integration | Lecture-Based Notes | Academic Assistance |   Chapter Progress   |  Goal Scheduling  |
-
-</div>
-
----
-
-# ✨ Feature Showcase
-
-## 🎓 Student Portal
+## What you can do
 
 <details open>
-<summary><b>🔽 Click to explore Student Features</b></summary>
+<summary><b>As a student</b></summary>
 
 <br/>
 
-<table>
-<tr>
-
-<td width="50%" valign="top">
-
-### 📊 Academic Progress Tracking
-
-> Students can monitor their academic progress through chapter-wise progress information for subjects such as **Physics** and **Chemistry**.
-
-### 🎬 Smart Lecture Streaming
-
-> Integrated **YouTube lecture streaming** allows students to watch recorded classes directly from the platform while maintaining lecture completion and viewing status.
-
-### ▶️ Resume Unfinished Lectures
-
-> Students can identify unfinished lectures and continue their learning without losing track of previously watched content.
-
-### 📝 Personal Lecture Notes
-
-> Students can create personal notes associated with individual lectures, making it easier to record important concepts while studying.
-
-</td>
-
-<td width="50%" valign="top">
-
-### ⏱️ Timestamp-Based Notes
-
-> Notes can be associated with specific points in a lecture, allowing students to quickly return to important moments.
-
-### 📄 Digital Study Materials
-
-> Students can access academic materials including **PDF documents, study sheets, practice resources, and Google Drive materials**.
-
-### 🤖 AI Academic Tutor
-
-> An integrated conversational AI assistant helps students clarify **scientific concepts, formulas, theories, and academic questions**.
-
-### 🗓️ Study Planner
-
-> Students can organize their study activities using a calendar-based planner for revision tasks, study goals, and academic deadlines.
-
-</td>
-
-</tr>
-</table>
+| | |
+|---|---|
+| **Learn** | Watch YouTube lectures grouped by subject and chapter, resume exactly where you stopped, and open study sheets from Google Drive in a preview. |
+| **Track** | Daily streak, weekly goal, course coverage, XP, levels and badges. Progress syncs to the server and keeps working through a flaky connection by queueing changes on the phone. |
+| **Plan** | A study calendar with your own tasks and automatic revision reminders, plus personal notes on every lecture. |
+| **Ask** | An AI tutor with a fast mode and a deep mode, saved chat history, and answers that render maths (KaTeX) and tables properly. |
+| **Play** | A practice lab with four interactive simulations: Projectile Motion, Bohr Atom, Molecule Shapes and a pH Scale. |
+| **Stay informed** | The teacher's notice, plus in-app renewal warnings when a subscription has 7, 3 and 1 days left. |
 
 </details>
-
----
-
-## 🛠️ Instructor & Admin Console
-
-<details open>
-<summary><b>🔽 Click to explore Admin Features</b></summary>
-
-<br/>
-
-<table>
-<tr>
-
-<td width="50%" valign="top">
-
-### 👥 Student Management
-
-> Administrators can manage student information from a centralized administrative interface.
-
-### 🏫 Batch Management
-
-> Students can be organized according to their assigned batches, making it easier to manage different groups of learners.
-
-### 🔎 Search & Filtering
-
-> Admins can search and filter students to quickly locate specific students or batches.
-
-### 💳 Subscription & Fee Control
-
-> Administrators can manage student access through subscription and payment-related controls.
-
-</td>
-
-<td width="50%" valign="top">
-
-### ⏳ Access Expiration
-
-> Subscription access can be provided for defined periods, with expiration tracking helping administrators manage student access.
-
-### 📚 Syllabus Management
-
-> Administrators can organize subjects, chapters, and academic content from the management interface.
-
-### 🔢 Lecture Reordering
-
-> Lectures can be reorganized and reordered to maintain the correct academic sequence.
-
-### 📎 Material Management
-
-> Administrators can upload PDF resources and attach external **Google Drive** materials for students.
-
-</td>
-
-</tr>
-</table>
-
-</details>
-
----
-
-# 🤖 AI Academic Tutor
-
-<div align="center">
-
-```text
-                 ┌─────────────────────────┐
-                 │       👨‍🎓 Student       │
-                 └────────────┬────────────┘
-                              │
-                              ▼
-                 ┌─────────────────────────┐
-                 │     💬 AI Tutor Chat    │
-                 └────────────┬────────────┘
-                              │
-                              ▼
-                 ┌─────────────────────────┐
-                 │      ⚡ FastAPI API      │
-                 │      AI Tutor Route     │
-                 └────────────┬────────────┘
-                              │
-                              ▼
-                 ┌─────────────────────────┐
-                 │     🧠 AI Provider      │
-                 │ Academic Assistance     │
-                 └────────────┬────────────┘
-                              │
-                              ▼
-                 ┌─────────────────────────┐
-                 │      📖 Student         │
-                 │   Learning Experience   │
-                 └─────────────────────────┘
-```
-
-</div>
-
-The AI Tutor is designed as an academic support layer within the platform.
-
-Students can use it to:
-
-* Ask academic questions
-* Clarify difficult concepts
-* Understand scientific theories
-* Discuss formulas
-* Get study assistance
-* Explore topics conversationally
-
-> **The objective is to make academic assistance available whenever students need it.**
-
----
-
-# 🏗️ System Architecture
-
-<div align="center">
-
-```text
-┌───────────────────────────────────────────────────────────────┐
-│                         👤 USERS                              │
-│                                                               │
-│      🎓 Students                    🛠️ Administrators         │
-└───────────────────────────┬───────────────────────────────────┘
-                            │
-                            ▼
-┌───────────────────────────────────────────────────────────────┐
-│                    🎨 NEXT.JS FRONTEND                        │
-│                                                               │
-│   ┌──────────┐  ┌────────────┐  ┌─────────┐  ┌───────────┐  │
-│   │  Login   │  │ Dashboard  │  │  Admin  │  │ Register  │  │
-│   └──────────┘  └────────────┘  └─────────┘  └───────────┘  │
-│                                                               │
-│             React + Tailwind CSS + Axios                     │
-└───────────────────────────────┬───────────────────────────────┘
-                                │
-                         REST API + JWT
-                                │
-                                ▼
-┌───────────────────────────────────────────────────────────────┐
-│                     ⚡ FASTAPI BACKEND                        │
-│                                                               │
-│   ┌──────────┐   ┌─────────────┐   ┌────────────────────┐   │
-│   │ Auth API │   │ Academic API│   │ 🤖 AI Tutor API    │   │
-│   └──────────┘   └─────────────┘   └────────────────────┘   │
-│                                                               │
-│             Pydantic + SQLAlchemy + Python                   │
-└───────────────────────────────┬───────────────────────────────┘
-                                │
-                                ▼
-┌───────────────────────────────────────────────────────────────┐
-│                    🐘 POSTGRESQL DATABASE                      │
-│                                                               │
-│   Students · Batches · Lectures · Notes · Materials          │
-│                  Subscriptions · Progress                     │
-└───────────────────────────────────────────────────────────────┘
-```
-
-</div>
-
----
-
-# 🛠️ Tech Stack Deep Dive
-
-<div align="center">
-
-| Layer                   |  Technology  | Purpose                        |
-| :---------------------- | :----------: | :----------------------------- |
-| 🎨 **Frontend**         |  Next.js 14  | Modern React-based application |
-| ⚛️ **UI Library**       |     React    | Interactive user interfaces    |
-| 🎨 **Styling**          | Tailwind CSS | Responsive modern UI           |
-| 🔗 **API Client**       |     Axios    | Frontend-backend communication |
-| ⚙️ **Backend**          |    FastAPI   | High-performance REST API      |
-| 🐍 **Language**         |    Python    | Backend development            |
-| 📦 **Validation**       |   Pydantic   | API data validation            |
-| 🗄️ **ORM**             |  SQLAlchemy  | Database models and queries    |
-| 🔐 **Authentication**   |      JWT     | Secure authentication          |
-| 🐘 **Database**         |  PostgreSQL  | Relational data storage        |
-| 🎥 **Video**            |    YouTube   | Lecture streaming              |
-| ☁️ **Database Hosting** |     Neon     | Cloud PostgreSQL               |
-| 🚀 **Frontend Hosting** |    Vercel    | Next.js deployment             |
-| 🚀 **Backend Hosting**  |    Render    | FastAPI deployment             |
-
-</div>
-
----
-
-# 📁 Project Structure
 
 <details>
-<summary><b>📂 Click to view project structure</b></summary>
+<summary><b>As the teacher (admin)</b></summary>
 
 <br/>
+
+| | |
+|---|---|
+| **See the whole batch** | An overview with a stacked subscription bar (active, expiring, expired, not paid), a list of students who need attention, a per-batch breakdown, content counts, AI usage and cash recorded this month. |
+| **Open any student** | Tap a name to see their progress by subject and chapter, streak, last 28 days of activity, recent lectures and payment history. |
+| **Handle cash** | Record a payment (30, 60, 90 days or custom), with an optional amount and note. It is logged, double taps are blocked, the latest payment can be undone, and access can be revoked. |
+| **Publish content** | Add lectures (YouTube links) and study sheets (Google Drive links), reorder lectures, hide or show items, and post notices. |
+
+</details>
+
+<details>
+<summary><b>What an unpaid student sees</b></summary>
+
+<br/>
+
+One calm renewal notice in Bangla and nothing else: no lectures, no sheets, no AI tutor. A button opens WhatsApp to the teacher and another re-checks the account after the cash is handed over. The check runs on the server, so it holds even if someone calls the API directly.
+
+</details>
+
+---
+
+## How it fits together
+
+<div align="center">
+<img src="docs/assets/architecture.svg" alt="Architecture: students and the admin use the Next.js app, which talks to the FastAPI backend, which uses Neon PostgreSQL and the Groq language model. Lectures come from YouTube and sheets from Google Drive." width="100%" />
+</div>
+
+<br/>
+
+<details>
+<summary><b>Follow one request through the gate</b></summary>
+
+<br/>
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant S as Student phone
+    participant W as Next.js app
+    participant A as FastAPI
+    participant D as Neon Postgres
+
+    S->>W: Open the dashboard
+    W->>A: GET /auth/me  (Bearer token)
+    A->>D: Load user, check token expiry
+    A-->>W: profile + subscription_status + days_left
+    alt active or expiring
+        W->>A: GET lectures, sheets, notifications
+        A->>D: Query (subscription checked again on the server)
+        A-->>W: Content, plus a warning at 7 / 3 / 1 days left
+    else expired or never paid
+        W-->>S: One renewal notice, nothing else
+        W->>A: Content requests would return 403
+    end
+```
+
+</details>
+
+<details>
+<summary><b>Subscription lifecycle</b></summary>
+
+<br/>
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pending: student registers
+    Pending --> Active: admin records cash payment
+    Active --> Expiring: 7 days or fewer left
+    Expiring --> Active: renewed
+    Expiring --> Expired: end date passes
+    Expired --> Active: renewed
+    Active --> Pending: access revoked
+    Expiring --> Pending: access revoked
+```
+
+Renewing extends from the current end date if the plan is still running, otherwise from today. Undoing the latest payment restores the previous end date.
+
+</details>
+
+---
+
+## The crew
+
+Each part of the backend has one job. Nothing here acts on its own: everything runs when a request arrives.
+
+| Module | Job | Where it lives |
+|---|---|---|
+| **Gatekeeper** | Decides who may do what: admin-only routes, subscriber-only content, token expiry, login throttling. | `backend/app/core/access.py` |
+| **Ledger** | Cash renewals, payment history, double-tap guard, undo. | `backend/app/services/subscription.py` |
+| **Messenger** | Creates in-app warnings at 7, 3 and 1 days left, and notes for expiry and renewal, once each. | `backend/app/api/v1/notifications.py` |
+| **Tracker** | Per-student progress, streaks and the admin's progress view. | `backend/app/services/student_progress.py`, `backend/app/api/v1/progress.py` |
+| **Tutor** | Chooses a model, keeps the tutor on syllabus topics, rate limits, calls the provider. | `backend/app/services/ai_tutor.py` |
+| **Link keeper** | Accepts only YouTube lecture links and Google Drive sheet links, and cleans them. | `backend/app/services/links.py` |
+
+> **Heads up on notifications.** Warnings are created and shown inside the app when the student opens it. There is no email or SMS yet, so a student who never opens the app will not see one.
+
+---
+
+## Security, in plain words
+
+- The admin is one account: the email in `ADMIN_EMAIL`, an admin flag, or an admin role. Every admin route checks it on the server.
+- Lectures, sheets and the AI tutor require an active subscription, checked on the server for every request.
+- Tokens expire. The signing key comes from `SECRET_KEY`; a key that is too short or that is a known published default is refused.
+- Ten wrong passwords in ten minutes pauses logins for that email and address.
+- Server errors return a generic message to the caller and keep the detail in the server log.
+- Dates are normalised to UTC when they are read from the database, so the app behaves the same whichever timestamp type a column uses.
+
+---
+
+## Tech stack
+
+| Layer | What it uses |
+|---|---|
+| **Frontend** | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Framer Motion, Three.js with React Three Fiber on the landing page, lucide-react icons |
+| **AI answers** | react-markdown with KaTeX for maths and tables |
+| **Backend** | FastAPI, async SQLAlchemy 2, asyncpg, Pydantic 2, python-jose (JWT), passlib with bcrypt |
+| **Database** | PostgreSQL (Neon) |
+| **AI** | Groq's OpenAI-compatible API, with models you can change by environment variable |
+| **Hosting** | Vercel for the frontend, Render for the backend |
+
+---
+
+## Project map
 
 ```text
 AZS-The-Catalyst/
-│
-├── 📦 backend/
-│   ├── 📂 app/
-│   │   ├── 📂 api/
-│   │   │   ├── 🔐 Authentication
-│   │   │   ├── 📚 Academic APIs
-│   │   │   └── 🤖 AI Tutor
-│   │   │
-│   │   ├── 📂 models/
-│   │   │   └── Database Models
-│   │   │
-│   │   ├── 📂 core/
-│   │   │   └── Configuration & Security
-│   │   │
-│   │   └── 📂 database/
-│   │       └── Database Connection
-│   │
-│   ├── 📄 main.py
-│   ├── 📄 requirements.txt
-│   └── 📄 .env
-│
-├── 🎨 frontend/
-│   ├── 📂 public/
-│   │   └── 🖼️ logo.png
-│   │
-│   ├── 📂 src/
-│   │   ├── 📂 app/
-│   │   │   ├── 📂 admin/
-│   │   │   ├── 📂 dashboard/
-│   │   │   ├── 📂 login/
-│   │   │   ├── 📂 register/
-│   │   │   ├── 📄 layout.tsx
-│   │   │   └── 📄 page.tsx
-│   │   │
-│   │   ├── 📂 components/
-│   │   └── 📂 lib/
-│   │
-│   ├── 📄 package.json
-│   ├── 📄 tailwind.config.ts
-│   └── 📄 next.config.js
-│
-├── 🐳 docker-compose.yml
-├── 📄 .env.example
-├── 📄 .gitignore
-└── 📄 README.md
-```
-
-</details>
-
----
-
-# ⚙️ Local Development Setup
-
-## 📋 Prerequisites
-
-Before running the project locally, make sure you have:
-
-* **Node.js 18+**
-* **Python 3.10+**
-* **Git**
-* **PostgreSQL / Neon Database**
-* Required AI API credentials
-
----
-
-## 1️⃣ Clone the Repository
-
-```bash
-git clone https://github.com/sajedulislam5840/AZS-The-Catalyst.git
-
-cd AZS-The-Catalyst
+├── frontend/
+│   └── src/
+│       ├── app/                  landing, login, register, dashboard, admin
+│       ├── components/
+│       │   ├── admin/            overview, students, progress drawer, lectures, sheets, notices
+│       │   ├── dashboard/        cards, player, calendar, locked screen, notification banner
+│       │   └── landing/          hero, simulations
+│       ├── hooks/                dashboard data, progress sync, notifications
+│       └── lib/                  API client, progress logic, simulations
+├── backend/
+│   ├── app/
+│   │   ├── api/v1/               auth, academic, admin, chat, progress, notifications
+│   │   ├── core/                 config, access control, database, column types
+│   │   ├── models/               users, content, chat, progress, billing
+│   │   └── services/             subscription, progress, tutor, links, throttle
+│   └── tests/                    pytest suite
+├── docs/assets/                  the animated SVGs used in this README
+└── docker-compose.yml
 ```
 
 ---
 
-## 2️⃣ Start the Backend
+## Run it on your machine
 
-Open a terminal and navigate to the backend:
+You need Node.js 20 or newer, Python 3.11 or newer, and a PostgreSQL database that accepts SSL connections. A free [Neon](https://neon.tech) database works well.
+
+> **Why not the local Postgres in `docker-compose.yml`?** The backend connects with SSL required, which a plain local Postgres container does not offer. Use a Neon database for development.
+
+**1. Backend**
 
 ```bash
 cd backend
-```
-
-Create a Python virtual environment:
-
-```bash
-python -m venv venv
-```
-
-### Windows
-
-```bash
-venv\Scripts\activate
-```
-
-### macOS / Linux
-
-```bash
-source venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
+python -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+
+cp ../.env.example ../.env           # then edit ../.env (see the table below)
+uvicorn app.main:app --reload --port 8000 --env-file ../.env
 ```
 
-Start the FastAPI development server:
+The tables are created on the first start.
 
-```bash
-uvicorn main:app --reload --port 8000
-```
-
-### Backend
-
-```text
-http://localhost:8000
-```
-
-### Swagger API Documentation
-
-```text
-http://localhost:8000/docs
-```
-
----
-
-## 3️⃣ Start the Frontend
-
-Open another terminal:
+**2. Frontend**
 
 ```bash
 cd frontend
-```
-
-Install dependencies:
-
-```bash
 npm install
-```
-
-Start the development server:
-
-```bash
+echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
 npm run dev
 ```
 
-### Frontend
+Open <http://localhost:3000>.
 
-```text
-http://localhost:3000
-```
+**3. Make yourself the admin**
 
----
+Register on the sign-up page with the email you set as `ADMIN_EMAIL` (the default is `rabbi@edutrack.com`). That account opens the admin panel at `/admin`. Every other account is a student and starts locked until you record a payment.
 
-# 🔐 Environment Variables
+### Settings
 
-Create the required environment files according to the project's `.env.example`.
+| Variable | Needed | What it does |
+|---|---|---|
+| `DATABASE_URL` | yes | PostgreSQL connection string. `postgresql://` is converted to the asyncpg form for you. |
+| `SECRET_KEY` | yes in production | Long random string that signs login tokens. If it is missing, a key is derived from `DATABASE_URL` so sessions survive restarts, which is safe enough for development only. |
+| `ADMIN_EMAIL` | no | The one admin address. Default `rabbi@edutrack.com`. |
+| `GROQ_API_KEY` | for the AI tutor | API key from the provider. `AI_API_KEY` also works. |
+| `AI_MODEL_DEEP`, `AI_MODEL_FAST` | no | Models behind the deep and fast buttons. |
+| `AI_API_URL` | no | Another OpenAI-compatible chat endpoint. |
+| `NEXT_PUBLIC_API_URL` | frontend | Where the backend lives. |
 
-### Backend
-
-```env
-DATABASE_URL=your_database_url
-SECRET_KEY=your_secret_key
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
-GROQ_API_KEY=your_groq_api_key
-# Optional: override the AI models (defaults shown)
-AI_MODEL_DEEP=openai/gpt-oss-120b
-AI_MODEL_FAST=qwen/qwen3.6-27b
-```
-
-### Frontend
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
-
-> ⚠️ **Never commit real credentials, API keys, database URLs, or secret keys to GitHub.**
-
----
-
-# 🐳 Docker Support
-
-The repository includes Docker Compose configuration for easier environment setup.
-
-Start the services:
+### Run the tests
 
 ```bash
-docker compose up --build
+cd backend
+pip install pytest pytest-asyncio aiosqlite
+pytest -q
 ```
 
-Stop the services:
-
-```bash
-docker compose down
-```
+The tests run on SQLite. A few behaviours, such as timezone-aware timestamps, only show up on PostgreSQL, so they are covered by unit tests on the column type instead.
 
 ---
 
-# 🚀 Deployment
+## Deploying
 
-AZS is designed around a separated deployment architecture.
+| Part | Service | Notes |
+|---|---|---|
+| Frontend | Vercel | Set `NEXT_PUBLIC_API_URL` to the backend address. |
+| Backend | Render | Set `DATABASE_URL`, `SECRET_KEY`, `ADMIN_EMAIL` and `GROQ_API_KEY`. On the free plan the service sleeps when idle, so the first request after a quiet period can take a minute. |
+| Database | Neon | The free tier is enough for a pilot. |
+
+After changing `SECRET_KEY`, everyone is signed out once. That is expected.
+
+---
+
+## Roadmap
+
+Nothing here is promised. These are the next ideas, in the order they would pay off.
+
+- [ ] Email or WhatsApp renewal reminders for students who do not open the app
+- [ ] Marks tracker for the coaching's own class tests
+- [ ] Chapter-wise MCQ practice with weak-topic tracking
+- [ ] A way for the teacher to send a personal message to one student
+
+---
+
+## People
+
+**Built by** [Mir Mohammad Sajedul Islam](https://sajedulislam5840.github.io/portfolio/), platform architect and lead developer. [GitHub](https://github.com/sajedulislam5840) · [LinkedIn](https://www.linkedin.com/in/sajedul-islam-data/)
+
+**Academic guidance** by AZS Razon Sir, lead academic mentor for Physics and Chemistry.
+
+## License
+
+Released under the [MIT License](LICENSE).
 
 <div align="center">
-
-| Service     |  Platform  | Purpose             |
-| :---------- | :--------: | :------------------ |
-| 🎨 Frontend | **Vercel** | Next.js application |
-| ⚡ Backend   | **Render** | FastAPI API         |
-| 🐘 Database |  **Neon**  | PostgreSQL database |
-
-</div>
-
-### 🌐 Live Application
-
-**AZS: The Catalyst**
-
-https://azs-the-catalyst.vercel.app/
-
----
-
-# 🗺️ Roadmap
-
-The platform is designed to evolve into a larger academic ecosystem.
-
-### 🎓 Student Experience
-
-* [x] Student dashboard
-* [x] Lecture streaming
-* [x] Academic materials
-* [x] Personal lecture notes
-* [x] Progress tracking
-* [x] Study planner
-* [x] AI academic tutor
-* [ ] Online examinations
-* [ ] Automated result publishing
-* [ ] Advanced performance analytics
-* [ ] Personalized AI study plans
-
-### 🛠️ Administration
-
-* [x] Student management
-* [x] Batch management
-* [x] Subscription management
-* [x] Access expiration tracking
-* [x] Chapter management
-* [x] Lecture management
-* [x] PDF material management
-* [x] Google Drive material support
-* [ ] Automated payment reminders
-* [ ] Online payment gateway
-* [ ] Automated invoices
-* [ ] Advanced admin analytics
-
-### 📱 Future Platform Expansion
-
-* [ ] Mobile application
-* [ ] Push notifications
-* [ ] Parent/guardian portal
-* [ ] Student attendance
-* [ ] AI-generated practice questions
-* [ ] AI weak-topic detection
-* [ ] Personalized learning recommendations
-
----
-
-# 🎯 Project Vision
-
-AZS: The Catalyst aims to become more than a traditional coaching management platform.
-
-The long-term vision is to create a complete digital learning ecosystem where:
-
-```text
-                    🎓 STUDENT
-                        │
-        ┌───────────────┼───────────────┐
-        │               │               │
-        ▼               ▼               ▼
-   🎬 Lectures      📚 Materials     📝 Notes
-        │               │               │
-        └───────────────┼───────────────┘
-                        │
-                        ▼
-                  📊 Progress
-                        │
-                        ▼
-                  🗓️ Study Plan
-                        │
-                        ▼
-                   🤖 AI Tutor
-                        │
-                        ▼
-               🚀 Better Learning
-```
-
-The goal is simple:
-
-> **Make education more organized, accessible, intelligent, and student-centered.**
-
----
-
-# 🤝 Contributing
-
-Contributions, suggestions, improvements, and feature ideas are welcome.
-
-### Fork the Repository
-
-```bash
-git clone https://github.com/sajedulislam5840/AZS-The-Catalyst.git
-cd AZS-The-Catalyst
-```
-
-### Create a Feature Branch
-
-```bash
-git checkout -b feature/amazing-feature
-```
-
-### Commit Your Changes
-
-```bash
-git add .
-git commit -m "✨ Add amazing feature"
-```
-
-### Push the Branch
-
-```bash
-git push origin feature/amazing-feature
-```
-
-Then open a **Pull Request** on GitHub.
-
----
-
-# 📜 License
-
-This project is currently maintained as a GitHub project by the developer.
-
-If an open-source license is added to the repository, the terms of that license will apply to the project.
-
----
-
-# 👨‍💻 Developer
-
-<div align="center">
-
-<img src="https://github.com/sajedulislam5840.png" width="120" style="border-radius: 50%;" />
-
-<br/><br/>
-
-### **Mir Mohammad Sajedul Islam**
-
-**Full-Stack Developer · CSE Student · EdTech Enthusiast**
-
 <br/>
-
-<a href="https://github.com/sajedulislam5840">
-  <img src="https://img.shields.io/badge/GitHub-sajedulislam5840-181717?style=for-the-badge&logo=github" />
-</a>
-
-</div>
-
----
-
-<div align="center">
-
-## ⚡ AZS: The Catalyst
-
-### *Where Science Meets Smart Technology*
-
-<br/>
-
-**Built with ❤️, curiosity, and a passion for better education.**
-
-<br/>
-
-⭐ **If you like the project, consider giving it a star!** ⭐
-
-<br/>
-
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=100&section=footer" width="100%" />
-
+<sub>Made for students who study on their phones.</sub>
 </div>

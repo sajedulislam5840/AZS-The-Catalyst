@@ -12,6 +12,8 @@ import BadgesGrid from "@/components/dashboard/BadgesGrid";
 import Celebration, { type CelebrationEvent } from "@/components/dashboard/Celebration";
 import ChapterCard from "@/components/dashboard/ChapterCard";
 import { MobileDock, Sidebar, TopBar } from "@/components/dashboard/Chrome";
+import LockedScreen from "@/components/dashboard/LockedScreen";
+import NotificationBanner from "@/components/dashboard/NotificationBanner";
 import ContinueCard from "@/components/dashboard/ContinueCard";
 import CountUp from "@/components/dashboard/CountUp";
 import DashBackdrop from "@/components/dashboard/DashBackdrop";
@@ -25,7 +27,8 @@ import { DashboardSkeleton, GridSkeleton } from "@/components/dashboard/Skeleton
 import StreakCard from "@/components/dashboard/StreakCard";
 import { DayPlanSheet, DueToday, StudyCalendar } from "@/components/dashboard/StudyCalendar";
 import WeeklyGoal from "@/components/dashboard/WeeklyGoal";
-import { useDashboardData } from "@/hooks/useDashboardData";
+import { CONTENT_KEY, useDashboardData } from "@/hooks/useDashboardData";
+import { useNotifications } from "@/hooks/useNotifications";
 import { useProgress } from "@/hooks/useProgress";
 import { simForChapter, type SimId } from "@/lib/chapter-sims";
 import type { Material, Subject, UserProfile, VideoLecture, View } from "@/lib/dashboard-types";
@@ -133,7 +136,7 @@ function DashboardContent() {
         router.replace("/admin");
         return;
       }
-      setServerProfile({ full_name: d.full_name, email: d.email, batch_no: d.batch_no, grade_class: d.grade_class, school: d.school, days_left: d.days_left, is_approved: d.is_approved });
+      setServerProfile({ full_name: d.full_name, email: d.email, batch_no: d.batch_no, grade_class: d.grade_class, school: d.school, days_left: d.days_left, is_approved: d.is_approved, subscription_status: d.subscription_status });
       if (d.full_name) localStorage.setItem("user_name", d.full_name);
       if (d.batch_no) localStorage.setItem("batch_no", d.batch_no);
     },
@@ -151,8 +154,22 @@ function DashboardContent() {
   const fullName = serverProfile.full_name || session?.name || "Student";
   const batch = serverProfile.batch_no || session?.batch || "General Batch";
   const daysLeft = serverProfile.days_left !== undefined ? serverProfile.days_left : 30;
-  const isExpired = daysLeft <= 0 || serverProfile.is_approved === false;
-  const isExpiringSoon = daysLeft > 0 && daysLeft <= 3;
+  const subStatus = serverProfile.subscription_status;
+  // The server decides; the day count is only a fallback for an older API that does not send the status.
+  const isExpired = subStatus ? subStatus === "expired" || subStatus === "pending" : daysLeft <= 0 || serverProfile.is_approved === false;
+  const isExpiringSoon = !isExpired && daysLeft > 0 && daysLeft <= 7;
+  const { items: notifications, markAllRead } = useNotifications(active && !isExpired);
+  const [rechecking, setRechecking] = useState(false);
+
+  // A locked student must not keep seeing lectures that were saved on this phone while they were paying.
+  useEffect(() => {
+    if (!isExpired) return;
+    try {
+      localStorage.removeItem(CONTENT_KEY);
+    } catch {
+      // ignore
+    }
+  }, [isExpired]);
 
   // ---- numbers shown on screen
   const streak = useMemo(() => computeStreak(state.days, today), [state.days, today]);
@@ -305,6 +322,21 @@ function DashboardContent() {
 
   if (!mounted || !active) return null;
 
+  if (isExpired) {
+    return (
+      <LockedScreen
+        name={fullName}
+        status={subStatus === "expired" ? "expired" : "pending"}
+        checking={rechecking}
+        onRecheck={() => {
+          setRechecking(true);
+          void reload().finally(() => setRechecking(false));
+        }}
+        onLogout={logout}
+      />
+    );
+  }
+
   const first = fullName.trim().split(/\s+/)[0] || "there";
   const chapterSim = chapter ? simForChapter(chapter, subject) : null;
   const showSkeleton = loading && videos.length === 0;
@@ -368,7 +400,9 @@ function DashboardContent() {
           onBell={openNotice}
         />
 
-        {(isExpired || isExpiringSoon) && (
+        <NotificationBanner items={notifications} onDismiss={() => void markAllRead()} />
+
+        {isExpiringSoon && (
           <div className={`flex flex-col items-start justify-between gap-4 border-b px-4 py-4 sm:flex-row sm:items-center sm:px-8 ${isExpired ? "border-rose-200 bg-rose-50 text-rose-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
             <div className="flex items-center gap-3">
               <ShieldAlert className="h-6 w-6 shrink-0 text-rose-600" />

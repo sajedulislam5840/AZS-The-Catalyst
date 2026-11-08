@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import api from "@/lib/api";
 import type { Material, Notice, UserProfile, VideoLecture } from "@/lib/dashboard-types";
 
-const CONTENT_KEY = "azs_content_v1";
+export const CONTENT_KEY = "azs_content_v1";
 
 interface Cached {
   videos: VideoLecture[];

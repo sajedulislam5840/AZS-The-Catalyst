@@ -10,6 +10,7 @@ export interface UserProfile {
   role?: string;
   days_left?: number;
   is_approved?: boolean;
+  subscription_status?: "active" | "expiring" | "expired" | "pending";
 }
 
 export interface VideoLecture extends LectureLite {
@@ -34,3 +35,12 @@ export interface Notice {
 
 export type Subject = "PHYSICS" | "CHEMISTRY";
 export type View = "dashboard" | "lectures" | "materials" | "ai";
+
+export interface AppNotification {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  created_at: string;
+  read: boolean;
+}

@@ -1,7 +1,8 @@
 import uuid
 from enum import Enum
 from datetime import datetime
-from sqlalchemy import Column, String, Boolean, DateTime, Enum as SQLEnum
+from app.core.dbtypes import UtcDateTime
+from sqlalchemy import Column, String, Boolean, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from app.core.database import Base
 
@@ -30,6 +31,6 @@ class User(Base):
     grade_class = Column(String, nullable=True)
     batch_no = Column(String, nullable=True)
     is_approved = Column(Boolean, default=False)
-    subscription_end_date = Column(DateTime, nullable=True)
+    subscription_end_date = Column(UtcDateTime, nullable=True)
     current_session_token = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(UtcDateTime, default=datetime.utcnow)

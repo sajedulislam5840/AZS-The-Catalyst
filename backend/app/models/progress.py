@@ -1,11 +1,11 @@
 import uuid
 from datetime import datetime
+from app.core.dbtypes import UtcDateTime
 from sqlalchemy import (
     Column,
     String,
     Integer,
     Boolean,
-    DateTime,
     Text,
     ForeignKey,
     UniqueConstraint,
@@ -30,10 +30,10 @@ class LectureProgress(Base):
     )
     lecture_id = Column(String(64), nullable=False)
     completed = Column(Boolean, default=False, nullable=False)
-    completed_at = Column(DateTime, nullable=True)
+    completed_at = Column(UtcDateTime, nullable=True)
     position = Column(Integer, default=0, nullable=False)  # seconds into the video
     duration = Column(Integer, default=0, nullable=False)  # seconds, 0 = unknown
-    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(UtcDateTime, default=datetime.utcnow, nullable=False)
 
 
 class LectureNote(Base):
@@ -49,7 +49,7 @@ class LectureNote(Base):
     )
     lecture_id = Column(String(64), nullable=False)
     content = Column(Text, default="", nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(UtcDateTime, default=datetime.utcnow, nullable=False)
 
 
 class StudyPlan(Base):
@@ -67,7 +67,7 @@ class StudyPlan(Base):
     title = Column(String(200), nullable=False)
     time = Column(String(40), nullable=True)
     source = Column(String(10), default="manual", nullable=False)  # manual | auto
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(UtcDateTime, default=datetime.utcnow, nullable=False)
 
 
 class StudyActivity(Base):

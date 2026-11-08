@@ -10,6 +10,7 @@ from jose import JWTError, jwt
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.dbtypes import naive_utc
 from app.core.config import ADMIN_EMAIL, ALGORITHM, SECRET_KEY
 from app.core.database import get_db
 from app.models.user import User
@@ -31,7 +32,7 @@ def is_admin_user(user: User) -> bool:
 
 def days_left(user: User, now: Optional[datetime] = None) -> int:
     now = now or datetime.utcnow()
-    end = user.subscription_end_date
+    end = naive_utc(user.subscription_end_date)
     if end and end > now:
         return (end - now).days + 1
     return 0
@@ -40,9 +41,10 @@ def days_left(user: User, now: Optional[datetime] = None) -> int:
 def subscription_status(user: User, now: Optional[datetime] = None) -> str:
     """active | expiring (7 days or fewer) | expired (paid before, lapsed) | pending (never paid / revoked)."""
     now = now or datetime.utcnow()
-    if not user.is_approved or not user.subscription_end_date:
+    end = naive_utc(user.subscription_end_date)
+    if not user.is_approved or not end:
         return "pending"
-    if user.subscription_end_date <= now:
+    if end <= now:
         return "expired"
     return "expiring" if days_left(user, now) <= EXPIRING_DAYS else "active"
 

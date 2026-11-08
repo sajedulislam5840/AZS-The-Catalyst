@@ -1,7 +1,8 @@
 import uuid
 import enum
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Enum as SQLEnum
+from app.core.dbtypes import UtcDateTime
+from sqlalchemy import Column, String, Integer, Boolean, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 
 # Database Base ইমপোর্ট করা হলো
@@ -23,7 +24,7 @@ class Material(Base):
     subject = Column(SQLEnum(SubjectEnum), nullable=False)
     pdf_url = Column(String, nullable=False)
     is_published = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(UtcDateTime, default=datetime.utcnow)
 
 
 class VideoLecture(Base):
@@ -36,7 +37,7 @@ class VideoLecture(Base):
     subject = Column(SQLEnum(SubjectEnum), nullable=False)
     youtube_url = Column(String, nullable=False)
     is_published = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(UtcDateTime, default=datetime.utcnow)
 
 
 class Notice(Base):
@@ -44,4 +45,4 @@ class Notice(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     content = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(UtcDateTime, default=datetime.utcnow)

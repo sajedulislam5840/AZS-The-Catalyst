@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Atom, Bot, CreditCard, ExternalLink, FlaskConical, Loader2, Lock, Megaphone, MessageCircle, RefreshCw, SearchX, ShieldAlert, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Atom, Bot, ExternalLink, FlaskConical, Loader2, Lock, Megaphone, MessageCircle, RefreshCw, SearchX, ShieldAlert, Sparkles } from "lucide-react";
 import EduTrackAiChat from "@/components/EduTrackAiChat";
 import SiteFooter from "@/components/SiteFooter";
 import GlowIcon from "@/components/ui/GlowIcon";
@@ -400,24 +400,18 @@ function DashboardContent() {
           onBell={openNotice}
         />
 
-        <NotificationBanner items={notifications} onDismiss={() => void markAllRead()} />
+        <NotificationBanner items={notifications} onDismiss={() => void markAllRead()} renewHref={TEACHER.whatsapp} />
 
-        {isExpiringSoon && (
-          <div className={`flex flex-col items-start justify-between gap-4 border-b px-4 py-4 sm:flex-row sm:items-center sm:px-8 ${isExpired ? "border-rose-200 bg-rose-50 text-rose-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
-            <div className="flex items-center gap-3">
-              <ShieldAlert className="h-6 w-6 shrink-0 text-rose-600" />
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider">{isExpired ? "Subscription Expired — Content Locked" : `Payment Reminder: ${daysLeft} ${daysLeft === 1 ? "Day" : "Days"} Remaining`}</h4>
-                <p className="mt-0.5 text-xs text-slate-600">{isExpired ? "Your coaching pass has ended. Streaming and materials are locked until payment is cleared." : "Please renew your account subscription before expiration to avoid interruption."}</p>
-              </div>
-            </div>
-            <a href={TEACHER.whatsapp} target="_blank" rel="noopener noreferrer" className="flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-[#CC310E] px-6 text-xs font-bold text-white shadow-md sm:w-auto">
-              <CreditCard className="h-4 w-4" /> Pay / Renew via WhatsApp
-            </a>
-          </div>
+        {/* One slim reminder once the message above has been dismissed (or was never created). */}
+        {isExpiringSoon && !notifications.some((n) => !n.read) && (
+          <a href={TEACHER.whatsapp} target="_blank" rel="noopener noreferrer" className="flex min-h-[44px] items-center justify-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-900 active:bg-amber-100">
+            <ShieldAlert className="h-4 w-4 shrink-0 text-[#CC310E]" />
+            <span>Subscription ends in {daysLeft} {daysLeft === 1 ? "day" : "days"}</span>
+            <span className="text-[#CC310E] underline underline-offset-2">Renew on WhatsApp</span>
+          </a>
         )}
 
-        <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 p-4 pb-28 sm:p-8 md:pb-12">
+        <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 p-4 pb-28 sm:space-y-8 sm:p-8 md:pb-12">
           {isExpired && (
             <div className="dash-card space-y-6 p-8 text-center sm:p-12">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 text-rose-600">
@@ -478,7 +472,7 @@ function DashboardContent() {
 
           {/* ---------------- HOME ---------------- */}
           {!isExpired && !searching && view === "dashboard" && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-8">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-5 sm:space-y-8">
               {heading(`${greeting(new Date().getHours())}, ${first}`, weeklyDone >= goal ? "You hit your weekly goal. Everything from here is a bonus." : `${toGo} more lecture${toGo === 1 ? "" : "s"} to reach your weekly goal.`)}
 
               {showSkeleton ? (
@@ -500,12 +494,14 @@ function DashboardContent() {
 
                   <ContinueCard resume={resume} duration={resume.lecture ? state.lectures[resume.lecture.id]?.duration ?? 0 : 0} loading={loading} hasLectures={videos.length > 0} onOpen={openLecture} onLab={() => document.getElementById("practice-lab")?.scrollIntoView({ behavior: "smooth" })} />
 
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <StreakCard streak={streak} dots={dots} />
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
+                    <div className="col-span-2 md:col-span-1">
+                      <StreakCard streak={streak} dots={dots} />
+                    </div>
                     <WeeklyGoal done={weeklyDone} goal={goal} onGoal={setGoal} />
-                    <section className="dash-card flex items-center gap-4 p-5" aria-label="Overall coverage">
-                      <ProgressRing value={coverage} size={96} stroke={10} color="#CC310E" label={`${coverage} percent of all lectures watched`}>
-                        <span className="text-xl font-black text-slate-900"><CountUp value={coverage} suffix="%" /></span>
+                    <section className="dash-card flex flex-col items-center justify-center gap-3 p-4 text-center sm:p-5 md:flex-row md:gap-4 md:text-left" aria-label="Overall coverage">
+                      <ProgressRing value={coverage} size={84} stroke={9} color="#CC310E" label={`${coverage} percent of all lectures watched`}>
+                        <span className="text-lg font-black text-slate-900"><CountUp value={coverage} suffix="%" /></span>
                       </ProgressRing>
                       <div>
                         <p className="text-sm font-black text-[#075985]">Course coverage</p>
@@ -630,14 +626,14 @@ function DashboardContent() {
               ) : (
                 <div className="space-y-6">
                   {chapterSim && <ChapterSimBanner simId={chapterSim} onOpen={setSimId} />}
-                  <div className="flex flex-wrap items-center gap-2" aria-label="Ask the AI tutor">
-                    <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-slate-500"><Sparkles className="h-3.5 w-3.5 text-[#CC310E]" /> Ask AI</span>
+                  <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0" aria-label="Ask the AI tutor">
+                    <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-slate-500"><Sparkles className="h-3.5 w-3.5 text-[#CC310E]" /> Ask AI</span>
                     {[
                       ["Explain simply", `"${chapter}" অধ্যায়ের মূল ধারণাগুলো সহজ ভাষায় বুঝিয়ে দাও।`],
                       ["Practice questions", `"${chapter}" অধ্যায় থেকে ৫টি অনুশীলনী প্রশ্ন দাও (উত্তরসহ)।`],
                       ["Common mistakes", `"${chapter}" অধ্যায়ে শিক্ষার্থীরা সাধারণত কী কী ভুল করে এবং কীভাবে এড়ানো যায়?`],
                     ].map(([label, prompt]) => (
-                      <button key={label} type="button" onClick={() => askAi(prompt)} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-[#D3E3EF] bg-white px-4 text-xs font-bold text-[#075985] shadow-sm active:scale-95">
+                      <button key={label} type="button" onClick={() => askAi(prompt)} className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#D3E3EF] bg-white px-4 text-xs font-bold text-[#075985] shadow-sm active:scale-95">
                         <Bot className="h-3.5 w-3.5" /> {label}
                       </button>
                     ))}

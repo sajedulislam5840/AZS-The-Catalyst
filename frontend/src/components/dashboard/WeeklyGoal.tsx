@@ -11,16 +11,16 @@ export default function WeeklyGoal({ done, goal, onGoal }: { done: number; goal:
   const reached = done >= goal;
   const pct = Math.min(100, Math.round((done / goal) * 100));
   return (
-    <section className="dash-card flex flex-col justify-between p-5" aria-label="Weekly goal">
-      <div className="flex items-center gap-4">
-        <ProgressRing value={pct} size={76} stroke={8} color={reached ? "#CC310E" : "#0369A1"} label={`${done} of ${goal} lectures this week`}>
+    <section className="dash-card flex flex-col justify-between p-4 sm:p-5" aria-label="Weekly goal">
+      <div className="flex flex-col items-center gap-3 text-center md:flex-row md:gap-4 md:text-left">
+        <ProgressRing value={pct} size={84} stroke={9} color={reached ? "#CC310E" : "#0369A1"} label={`${done} of ${goal} lectures this week`}>
           <span className="text-lg font-black text-slate-900">
             <CountUp value={done} />
             <span className="text-xs font-bold text-slate-400">/{goal}</span>
           </span>
         </ProgressRing>
         <div>
-          <p className="flex items-center gap-1.5 text-sm font-black text-[#075985]">
+          <p className="flex items-center justify-center gap-1.5 text-sm font-black text-[#075985] md:justify-start">
             <Target className="h-4 w-4 text-[#CC310E]" /> Weekly goal
           </p>
           <p className="mt-1 text-xs font-semibold text-slate-600">{reached ? "Goal reached. Great week!" : `${goal - done} more lecture${goal - done === 1 ? "" : "s"} to go`}</p>
@@ -36,7 +36,7 @@ export default function WeeklyGoal({ done, goal, onGoal }: { done: number; goal:
         >
           <Minus className="h-4 w-4" />
         </button>
-        <span className="text-xs font-bold text-slate-600">{goal} lectures a week</span>
+        <span className="whitespace-nowrap px-1 text-center text-[11px] font-bold text-slate-600 sm:text-xs">{goal}/week</span>
         <button
           type="button"
           onClick={() => onGoal(Math.min(MAX_GOAL, goal + 1))}

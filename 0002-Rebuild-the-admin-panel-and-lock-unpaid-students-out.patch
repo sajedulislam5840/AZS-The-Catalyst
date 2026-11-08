@@ -1,0 +1,4290 @@
+From bc0267d593ece09ba85a63685a5a8289b4cd7b5b Mon Sep 17 00:00:00 2001
+From: Mir Mohammad Sajedul Islam <mohammad.sajedul.islam@g.bracu.ac.bd>
+Date: Sun, 8 Nov 2026 06:30:17 +0000
+Subject: [PATCH 2/2] Rebuild the admin panel and lock unpaid students out
+
+Admin (mobile first)
+- Overview with a subscription bar (active, expiring, expired, not paid),
+  key numbers, who needs attention and a batch breakdown.
+- Students list with search, status filters, batch filter and sorting.
+  Tapping a name opens their progress by subject and chapter, streak,
+  28-day activity and payment history, with cash renewal, undo, edit,
+  revoke access and delete.
+- Lectures (YouTube), study sheets (Google Drive) and notices tabs.
+
+Students
+- Unpaid or expired students see one renewal notice in Bangla and nothing
+  else; saved lecture lists on the phone are cleared.
+- Renewal warnings and renewal confirmations show as a banner.
+---
+ frontend/src/app/admin/page.tsx               | 2019 ++---------------
+ frontend/src/app/dashboard/page.tsx           |   44 +-
+ frontend/src/components/admin/LecturesTab.tsx |  243 ++
+ .../src/components/admin/MaterialsTab.tsx     |  167 ++
+ frontend/src/components/admin/NoticesTab.tsx  |   95 +
+ frontend/src/components/admin/OverviewTab.tsx |  252 ++
+ .../src/components/admin/StudentDrawer.tsx    |  462 ++++
+ frontend/src/components/admin/StudentsTab.tsx |  208 ++
+ frontend/src/components/admin/format.ts       |   80 +
+ frontend/src/components/admin/types.ts        |  101 +
+ frontend/src/components/admin/ui.tsx          |  234 ++
+ .../src/components/dashboard/LockedScreen.tsx |   56 +
+ .../dashboard/NotificationBanner.tsx          |   26 +
+ frontend/src/hooks/useDashboardData.ts        |    2 +-
+ frontend/src/hooks/useNotifications.ts        |   42 +
+ frontend/src/lib/dashboard-types.ts           |   10 +
+ 16 files changed, 2202 insertions(+), 1839 deletions(-)
+ create mode 100644 frontend/src/components/admin/LecturesTab.tsx
+ create mode 100644 frontend/src/components/admin/MaterialsTab.tsx
+ create mode 100644 frontend/src/components/admin/NoticesTab.tsx
+ create mode 100644 frontend/src/components/admin/OverviewTab.tsx
+ create mode 100644 frontend/src/components/admin/StudentDrawer.tsx
+ create mode 100644 frontend/src/components/admin/StudentsTab.tsx
+ create mode 100644 frontend/src/components/admin/format.ts
+ create mode 100644 frontend/src/components/admin/types.ts
+ create mode 100644 frontend/src/components/admin/ui.tsx
+ create mode 100644 frontend/src/components/dashboard/LockedScreen.tsx
+ create mode 100644 frontend/src/components/dashboard/NotificationBanner.tsx
+ create mode 100644 frontend/src/hooks/useNotifications.ts
+
+diff --git a/frontend/src/app/admin/page.tsx b/frontend/src/app/admin/page.tsx
+index 137ed42..0ccc0a7 100644
+--- a/frontend/src/app/admin/page.tsx
++++ b/frontend/src/app/admin/page.tsx
+@@ -1,1881 +1,234 @@
+ "use client";
+ 
+-import React, { useState, useEffect, useMemo } from "react";
++import React, { useCallback, useEffect, useState } from "react";
+ import { useRouter } from "next/navigation";
+-import {
+-  ShieldCheck,
+-  RefreshCw,
+-  LogOut,
+-  Loader2,
+-  Trash2,
+-  Upload,
+-  Link as LinkIcon,
+-  Eye,
+-  EyeOff,
+-  ExternalLink,
+-  Users,
+-  Layers,
+-  CheckCircle2,
+-  XCircle,
+-  Search,
+-  Edit2,
+-  X,
+-  BookOpen,
+-  ArrowUp,
+-  ArrowDown,
+-  ListOrdered,
+-  Sparkles,
+-  Video,
+-  FileText,
+-  GraduationCap,
+-} from "lucide-react";
++import { BarChart3, FileText, LogOut, Megaphone, RefreshCw, ShieldCheck, Users, Video } from "lucide-react";
++import api from "@/lib/api";
+ import SiteFooter from "@/components/SiteFooter";
+-
+-interface Student {
+-  id: string;
+-  full_name: string;
+-  email: string;
+-  school?: string;
+-  grade_class?: string;
+-  batch_no?: string;
+-  is_approved: boolean;
+-  subscription_end_date?: string;
+-  days_left: number;
+-}
+-
+-interface LectureItem {
+-  id: string;
+-  lecture_no: number;
+-  title: string;
+-  subject: string;
+-  chapter: string;
+-  video_url: string;
+-  is_published?: boolean;
+-}
+-
+-interface MaterialItem {
+-  id: string;
+-  title: string;
+-  subject: string;
+-  chapter: string;
+-  file_url: string;
+-  is_published?: boolean;
+-}
+-
+-const BACKEND_URL = "https://edutrack-backend-qjxg.onrender.com";
+-
+-export default function AdminPage() {
+-  const router = useRouter();
+-  const [activeTab, setActiveTab] = useState<"students" | "video" | "sheet">(
+-    "students"
+-  );
+-  const [selectedBatch, setSelectedBatch] = useState<string>("ALL");
+-  const [searchStudentQuery, setSearchStudentQuery] = useState("");
+-  const [students, setStudents] = useState<Student[]>([]);
+-  const [lectures, setLectures] = useState<LectureItem[]>([]);
+-  const [materials, setMaterials] = useState<MaterialItem[]>([]);
++import LecturesTab from "@/components/admin/LecturesTab";
++import MaterialsTab from "@/components/admin/MaterialsTab";
++import NoticesTab from "@/components/admin/NoticesTab";
++import OverviewTab from "@/components/admin/OverviewTab";
++import StudentDrawer from "@/components/admin/StudentDrawer";
++import StudentsTab from "@/components/admin/StudentsTab";
++import { errorText, httpStatus } from "@/components/admin/format";
++import type { Lecture, MaterialRow, NoticeRow, Overview, Student, SubStatus } from "@/components/admin/types";
++import { AdminUiProvider, Spinner } from "@/components/admin/ui";
++
++type Tab = "overview" | "students" | "lectures" | "materials" | "notices";
++
++const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
++  { id: "overview", label: "Overview", icon: <BarChart3 className="h-4 w-4" /> },
++  { id: "students", label: "Students", icon: <Users className="h-4 w-4" /> },
++  { id: "lectures", label: "Lectures", icon: <Video className="h-4 w-4" /> },
++  { id: "materials", label: "Sheets", icon: <FileText className="h-4 w-4" /> },
++  { id: "notices", label: "Notices", icon: <Megaphone className="h-4 w-4" /> },
++];
++
++/** Loads one admin list. The server is the real gatekeeper: 401 means sign in again, 403 means not an admin. */
++function useAdminData<T>(path: string, enabled: boolean, onAuthFail: (status: number) => void) {
++  const [data, setData] = useState<T | null>(null);
+   const [loading, setLoading] = useState(true);
+-  const [actionLoadingId, setActionLoadingId] = useState<
+-    string | number | null
+-  >(null);
+-  const [currentYear, setCurrentYear] = useState<number>(2026);
+-  const [sessionEmail, setSessionEmail] = useState("Admin");
+-
+-  const [filterVideoSubject, setFilterVideoSubject] = useState<string>("ALL");
+-  const [filterVideoChapter, setFilterVideoChapter] = useState<string>("ALL");
+-  const [reordering, setReordering] = useState(false);
+-
+-  const [lectureForm, setLectureForm] = useState({
+-    lecture_no: 1,
+-    title: "",
+-    topic: "",
+-    chapter: "",
+-    subject: "Physics",
+-    video_url: "",
+-  });
+-
+-  const [uploadMode, setUploadMode] = useState<"file" | "link">("file");
+-  const [sheetForm, setSheetForm] = useState({
+-    title: "",
+-    chapter: "",
+-    subject: "Physics",
+-    file_url: "",
+-  });
+-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+-  const [submittingSheet, setSubmittingSheet] = useState(false);
+-
+-  const [editingLecture, setEditingLecture] = useState<LectureItem | null>(
+-    null
+-  );
+-  const [editingMaterial, setEditingMaterial] = useState<MaterialItem | null>(
+-    null
+-  );
+-  const [savingEdit, setSavingEdit] = useState(false);
+-
+-  const backendUrl = (
+-    process.env.NEXT_PUBLIC_API_URL || BACKEND_URL
+-  ).replace(/\/$/, "");
+-
+-  const getToken = () => {
+-    if (typeof window === "undefined") return "";
+-    return (
+-      localStorage.getItem("token") ||
+-      localStorage.getItem("access_token") ||
+-      ""
+-    );
+-  };
++  const [error, setError] = useState<string | null>(null);
+ 
+-  const fetchStudents = async () => {
+-    setLoading(true);
+-    const token = getToken();
++  const load = useCallback(async () => {
+     try {
+-      const res = await fetch(`${backendUrl}/api/v1/admin/students`, {
+-        headers: { Authorization: `Bearer ${token}` },
+-      });
+-      if (res.ok) {
+-        const data = await res.json();
+-        setStudents(Array.isArray(data) ? data : []);
+-      }
++      const res = await api.get<T>(path);
++      setData(res.data);
++      setError(null);
+     } catch (err) {
+-      console.error(err);
+-    } fontinally: {
++      const status = httpStatus(err);
++      if (status === 401 || status === 403) onAuthFail(status);
++      setError(errorText(err));
++    } finally {
+       setLoading(false);
+     }
+-  };
++  }, [path, onAuthFail]);
+ 
+-  const fetchLectures = async () => {
+-    const token = getToken();
+-    try {
+-      const res = await fetch(`${backendUrl}/api/v1/admin/lectures`, {
+-        headers: { Authorization: `Bearer ${token}` },
+-      });
+-      if (res.ok) {
+-        const data = await res.json();
+-        setLectures(Array.isArray(data) ? data : []);
+-      }
+-    } catch (err) {
+-      console.error(err);
+-    }
+-  };
++  useEffect(() => {
++    if (!enabled) return;
++    // eslint-disable-next-line react-hooks/set-state-in-effect
++    void load();
++  }, [enabled, load]);
+ 
+-  const fetchMaterials = async () => {
+-    const token = getToken();
+-    try {
+-      const res = await fetch(`${backendUrl}/api/v1/admin/materials`, {
+-        headers: { Authorization: `Bearer ${token}` },
+-      });
+-      if (res.ok) {
+-        const data = await res.json();
+-        setMaterials(Array.isArray(data) ? data : []);
+-      }
+-    } catch (err) {
+-      console.error(err);
+-    }
+-  };
++  const retry = useCallback(() => {
++    setLoading(true);
++    void load();
++  }, [load]);
+ 
+-  useEffect(() => {
+-    setCurrentYear(new Date().getFullYear());
++  return { data, loading, error, reload: load, retry };
++}
++
++export default function AdminPage() {
++  return (
++    <AdminUiProvider>
++      <AdminShell />
++    </AdminUiProvider>
++  );
++}
+ 
+-    const token = getToken();
++function AdminShell() {
++  const router = useRouter();
++  const [ready, setReady] = useState(false);
++  const [email, setEmail] = useState("");
++  const [tab, setTab] = useState<Tab>("overview");
++  const [filter, setFilter] = useState<SubStatus | "ALL">("ALL");
++  const [openId, setOpenId] = useState<string | null>(null);
++  const [refreshing, setRefreshing] = useState(false);
++
++  useEffect(() => {
++    const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+     if (!token) {
+-      router.push("/login");
++      router.replace("/login");
+       return;
+     }
+-
+     const role = (localStorage.getItem("user_role") || "").toUpperCase();
+-    const email = (localStorage.getItem("user_email") || "").toLowerCase();
+-    setSessionEmail(email || localStorage.getItem("user_name") || "Admin");
+-
+-    if (role !== "ADMIN" && email !== "rabbi@edutrack.com") {
++    const mail = (localStorage.getItem("user_email") || "").toLowerCase();
++    // Only a convenience: the API checks admin rights on every request regardless of this.
++    if (!role.endsWith("ADMIN") && mail !== "rabbi@edutrack.com") {
+       router.replace("/dashboard");
+       return;
+     }
+-
+-    fetchStudents();
+-    fetchLectures();
+-    fetchMaterials();
++    // eslint-disable-next-line react-hooks/set-state-in-effect
++    setEmail(mail);
++    setReady(true);
+   }, [router]);
+ 
+-  const batchList = useMemo(() => {
+-    const set = new Set<string>();
+-    students.forEach((s) => {
+-      if (s.batch_no && s.batch_no.trim()) {
+-        set.add(s.batch_no.trim());
++  const onAuthFail = useCallback(
++    (status: number) => {
++      if (status === 401) {
++        localStorage.clear();
++        router.replace("/login");
+       } else {
+-        set.add("General");
+-      }
+-    });
+-    return Array.from(set).sort();
+-  }, [students]);
+-
+-  const uniqueChapters = useMemo(() => {
+-    const set = new Set<string>();
+-    lectures.forEach((l) => {
+-      if (l.chapter && l.chapter.trim()) {
+-        set.add(l.chapter.trim());
++        router.replace("/dashboard");
+       }
+-    });
+-    return Array.from(set).sort();
+-  }, [lectures]);
+-
+-  const sortedAndFilteredLectures = useMemo(() => {
+-    return lectures
+-      .filter((lec) => {
+-        const lecSubj = (lec.subject || "").trim().toLowerCase();
+-        const filtSubj = filterVideoSubject.trim().toLowerCase();
+-        const matchSubj =
+-          filterVideoSubject === "ALL" || lecSubj === filtSubj;
+-
+-        const lecChap = (lec.chapter || "").trim().toLowerCase();
+-        const filtChap = filterVideoChapter.trim().toLowerCase();
+-        const matchChap =
+-          filterVideoChapter === "ALL" || lecChap === filtChap;
+-
+-        return matchSubj && matchChap;
+-      })
+-      .sort((a, b) => a.lecture_no - b.lecture_no);
+-  }, [lectures, filterVideoSubject, filterVideoChapter]);
+-
+-  const filteredStudents = useMemo(() => {
+-    return students.filter((s) => {
+-      const b = (s.batch_no && s.batch_no.trim()) || "General";
+-      const matchBatch =
+-        selectedBatch === "ALL" ||
+-        b.toLowerCase() === selectedBatch.toLowerCase();
+-
+-      const q = searchStudentQuery.toLowerCase().trim();
+-      const matchSearch =
+-        !q ||
+-        s.full_name.toLowerCase().includes(q) ||
+-        s.email.toLowerCase().includes(q) ||
+-        (s.school && s.school.toLowerCase().includes(q)) ||
+-        (s.grade_class && s.grade_class.toLowerCase().includes(q));
+-
+-      return matchBatch && matchSearch;
+-    });
+-  }, [students, selectedBatch, searchStudentQuery]);
+-
+-  const totalPaidInView = useMemo(
+-    () =>
+-      filteredStudents.filter((s) => s.is_approved && s.days_left > 0).length,
+-    [filteredStudents]
++    },
++    [router]
+   );
+-  const totalUnpaidInView = filteredStudents.length - totalPaidInView;
+ 
+-  const handleMarkPaid = async (studentId: string) => {
+-    setActionLoadingId(studentId);
+-    const token = getToken();
+-    try {
+-      const res = await fetch(
+-        `${backendUrl}/api/v1/admin/students/${studentId}/approve-and-pay`,
+-        {
+-          method: "POST",
+-          headers: { Authorization: `Bearer ${token}` },
+-        }
+-      );
+-      if (res.ok) fetchStudents();
+-    } catch (err) {
+-      console.error(err);
+-    } finally {
+-      setActionLoadingId(null);
+-    }
+-  };
+-
+-  const handleMarkUnpaid = async (studentId: string) => {
+-    if (
+-      !confirm(
+-        "Are you sure you want to mark this student as Unpaid? Access will be revoked."
+-      )
+-    )
+-      return;
+-    setActionLoadingId(studentId);
+-    const token = getToken();
+-    try {
+-      const res = await fetch(
+-        `${backendUrl}/api/v1/admin/students/${studentId}/revoke-access`,
+-        {
+-          method: "POST",
+-          headers: { Authorization: `Bearer ${token}` },
+-        }
+-      );
+-      if (res.ok) fetchStudents();
+-    } catch (err) {
+-      console.error(err);
+-    } finally {
+-      setActionLoadingId(null);
+-    }
+-  };
+-
+-  const handleDeleteStudent = async (studentId: string, email: string) => {
+-    if (
+-      !confirm(
+-        `Are you sure you want to permanently delete student "${email}"?`
+-      )
+-    )
+-      return;
+-    setActionLoadingId(studentId);
+-    const token = getToken();
+-    try {
+-      const res = await fetch(
+-        `${backendUrl}/api/v1/admin/students/${studentId}`,
+-        {
+-          method: "DELETE",
+-          headers: { Authorization: `Bearer ${token}` },
+-        }
+-      );
+-      if (res.ok) fetchStudents();
+-    } catch (err) {
+-      console.error(err);
+-    } finally {
+-      setActionLoadingId(null);
+-    }
+-  };
+-
+-  const handleCreateLecture = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    const token = getToken();
+-    try {
+-      const res = await fetch(`${backendUrl}/api/v1/admin/lectures`, {
+-        method: "POST",
+-        headers: {
+-          "Content-Type": "application/json",
+-          Authorization: `Bearer ${token}`,
+-        },
+-        body: JSON.stringify(lectureForm),
+-      });
+-      if (res.ok) {
+-        alert("Video lecture published successfully!");
+-        setLectureForm({
+-          lecture_no: lectureForm.lecture_no + 1,
+-          title: "",
+-          topic: "",
+-          chapter: "",
+-          subject: "Physics",
+-          video_url: "",
+-        });
+-        fetchLectures();
+-      } else {
+-        const d = await res.json();
+-        alert(d.detail || "Failed to save lecture.");
+-      }
+-    } catch (err) {
+-      alert("Error saving lecture.");
+-    }
+-  };
+-
+-  const handleUpdateLecture = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    if (!editingLecture) return;
+-    setSavingEdit(true);
+-    const token = getToken();
+-    try {
+-      const res = await fetch(
+-        `${backendUrl}/api/v1/admin/lectures/${editingLecture.id}`,
+-        {
+-          method: "PUT",
+-          headers: {
+-            "Content-Type": "application/json",
+-            Authorization: `Bearer ${token}`,
+-          },
+-          body: JSON.stringify(editingLecture),
+-        }
+-      );
+-      if (res.ok) {
+-        alert("Lecture details updated successfully!");
+-        setEditingLecture(null);
+-        fetchLectures();
+-      } else {
+-        const d = await res.json();
+-        alert(d.detail || "Failed to update lecture.");
+-      }
+-    } catch (err) {
+-      alert("Error updating lecture.");
+-    } finally {
+-      setSavingEdit(false);
+-    }
+-  };
+-
+-  const handleSwapOrder = async (id1: string, id2: string) => {
+-    setReordering(true);
+-    const token = getToken();
+-    try {
+-      const res = await fetch(
+-        `${backendUrl}/api/v1/admin/lectures/swap-order`,
+-        {
+-          method: "POST",
+-          headers: {
+-            "Content-Type": "application/json",
+-            Authorization: `Bearer ${token}`,
+-          },
+-          body: JSON.stringify({ lecture_id_1: id1, lecture_id_2: id2 }),
+-        }
+-      );
+-      if (res.ok) {
+-        await fetchLectures();
+-      } else {
+-        const err = await res.json();
+-        alert(err.detail || "Failed to reorder.");
+-      }
+-    } catch (err) {
+-      console.error(err);
+-    } finally {
+-      setReordering(false);
+-    }
+-  };
+-
+-  const handleNormalizeChapter = async () => {
+-    if (filterVideoChapter === "ALL") {
+-      alert("Please select a specific chapter to auto-renumber.");
+-      return;
+-    }
+-    if (
+-      !confirm(
+-        `Auto-renumber all lectures in chapter "${filterVideoChapter}" from 1 to N?`
+-      )
+-    )
+-      return;
++  const overview = useAdminData<Overview>("/api/v1/admin/overview", ready, onAuthFail);
++  const students = useAdminData<Student[]>("/api/v1/admin/students", ready, onAuthFail);
++  const lectures = useAdminData<Lecture[]>("/api/v1/admin/lectures", ready, onAuthFail);
++  const materials = useAdminData<MaterialRow[]>("/api/v1/admin/materials", ready, onAuthFail);
++  const notices = useAdminData<NoticeRow[]>("/api/v1/admin/notices", ready, onAuthFail);
+ 
+-    setReordering(true);
+-    const token = getToken();
+-    try {
+-      const res = await fetch(
+-        `${backendUrl}/api/v1/admin/lectures/normalize-order`,
+-        {
+-          method: "POST",
+-          headers: {
+-            "Content-Type": "application/json",
+-            Authorization: `Bearer ${token}`,
+-          },
+-          body: JSON.stringify({
+-            subject:
+-              filterVideoSubject === "ALL" ? "PHYSICS" : filterVideoSubject,
+-            chapter: filterVideoChapter,
+-          }),
+-        }
+-      );
+-      if (res.ok) {
+-        alert("Chapter lectures sequentially renumbered!");
+-        await fetchLectures();
+-      }
+-    } catch (err) {
+-      alert("Failed to normalize sequence.");
+-    } finally {
+-      setReordering(false);
+-    }
+-  };
++  const studentsChanged = useCallback(() => {
++    void overview.reload();
++    void students.reload();
++  }, [overview, students]);
+ 
+-  const handleToggleLecturePublish = async (id: string) => {
+-    const token = getToken();
+-    try {
+-      const res = await fetch(
+-        `${backendUrl}/api/v1/admin/lectures/${id}/toggle-publish`,
+-        {
+-          method: "PATCH",
+-          headers: { Authorization: `Bearer ${token}` },
+-        }
+-      );
+-      if (res.ok) fetchLectures();
+-    } catch (err) {
+-      console.error(err);
+-    }
++  const refreshAll = async () => {
++    setRefreshing(true);
++    await Promise.allSettled([overview.reload(), students.reload(), lectures.reload(), materials.reload(), notices.reload()]);
++    setRefreshing(false);
+   };
+ 
+-  const handleDeleteLecture = async (id: string) => {
+-    if (!confirm("Are you sure you want to delete this lecture?")) return;
+-    setActionLoadingId(id);
+-    const token = getToken();
+-    try {
+-      const res = await fetch(`${backendUrl}/api/v1/admin/lectures/${id}`, {
+-        method: "DELETE",
+-        headers: { Authorization: `Bearer ${token}` },
+-      });
+-      if (res.ok) fetchLectures();
+-    } catch (err) {
+-      console.error(err);
+-    } finally {
+-      setActionLoadingId(null);
+-    }
++  const logout = () => {
++    localStorage.clear();
++    router.replace("/login");
+   };
+ 
+-  const handleSubmitSheet = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    const token = getToken();
+-    setSubmittingSheet(true);
+-
+-    try {
+-      if (uploadMode === "file") {
+-        if (!selectedFile) {
+-          alert("Please select a PDF file from your computer.");
+-          setSubmittingSheet(false);
+-          return;
+-        }
+-
+-        const formData = new FormData();
+-        formData.append("title", sheetForm.title);
+-        formData.append("chapter", sheetForm.chapter);
+-        formData.append("subject", sheetForm.subject);
+-        formData.append("file", selectedFile);
+-
+-        const res = await fetch(
+-          `${backendUrl}/api/v1/academic/materials/upload`,
+-          {
+-            method: "POST",
+-            headers: { Authorization: `Bearer ${token}` },
+-            body: formData,
+-          }
+-        );
+-
+-        if (res.ok) {
+-          alert("PDF uploaded successfully from PC!");
+-          setSheetForm({
+-            title: "",
+-            chapter: "",
+-            subject: "Physics",
+-            file_url: "",
+-          });
+-          setSelectedFile(null);
+-          fetchMaterials();
+-        } else {
+-          const errData = await res.json();
+-          alert(errData.detail || "Failed to upload PDF.");
+-        }
+-      } else {
+-        if (!sheetForm.file_url) {
+-          alert("Please enter a valid document/Drive URL.");
+-          setSubmittingSheet(false);
+-          return;
+-        }
+-
+-        const res = await fetch(`${backendUrl}/api/v1/admin/materials`, {
+-          method: "POST",
+-          headers: {
+-            "Content-Type": "application/json",
+-            Authorization: `Bearer ${token}`,
+-          },
+-          body: JSON.stringify(sheetForm),
+-        });
+-
+-        if (res.ok) {
+-          alert("Material link saved successfully!");
+-          setSheetForm({
+-            title: "",
+-            chapter: "",
+-            subject: "Physics",
+-            file_url: "",
+-          });
+-          fetchMaterials();
+-        } else {
+-          const errData = await res.json();
+-          alert(errData.detail || "Failed to save link.");
+-        }
+-      }
+-    } catch (err) {
+-      alert("Network error processing material.");
+-    } finally {
+-      setSubmittingSheet(false);
+-    }
+-  };
+-
+-  const handleUpdateMaterial = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    if (!editingMaterial) return;
+-    setSavingEdit(true);
+-    const token = getToken();
+-    try {
+-      const res = await fetch(
+-        `${backendUrl}/api/v1/admin/materials/${editingMaterial.id}`,
+-        {
+-          method: "PUT",
+-          headers: {
+-            "Content-Type": "application/json",
+-            Authorization: `Bearer ${token}`,
+-          },
+-          body: JSON.stringify(editingMaterial),
+-        }
+-      );
+-      if (res.ok) {
+-        alert("Material sheet updated successfully!");
+-        setEditingMaterial(null);
+-        fetchMaterials();
+-      } else {
+-        const d = await res.json();
+-        alert(d.detail || "Failed to update material.");
+-      }
+-    } catch (err) {
+-      alert("Error updating material.");
+-    } finally {
+-      setSavingEdit(false);
+-    }
+-  };
+-
+-  const handleToggleMaterialPublish = async (id: string) => {
+-    const token = getToken();
+-    try {
+-      const res = await fetch(
+-        `${backendUrl}/api/v1/admin/materials/${id}/toggle-publish`,
+-        {
+-          method: "PATCH",
+-          headers: { Authorization: `Bearer ${token}` },
+-        }
+-      );
+-      if (res.ok) fetchMaterials();
+-    } catch (err) {
+-      console.error(err);
+-    }
+-  };
+-
+-  const handleDeleteMaterial = async (id: string) => {
+-    if (!confirm("Are you sure you want to delete this PDF material?")) return;
+-    setActionLoadingId(id);
+-    const token = getToken();
+-    try {
+-      const res = await fetch(`${backendUrl}/api/v1/admin/materials/${id}`, {
+-        method: "DELETE",
+-        headers: { Authorization: `Bearer ${token}` },
+-      });
+-      if (res.ok) fetchMaterials();
+-    } catch (err) {
+-      console.error(err);
+-    } finally {
+-      setActionLoadingId(null);
+-    }
+-  };
+-
+-  const totalStudentsCount = students.length;
+-  const totalActivePaidCount = useMemo(
+-    () => students.filter((s) => s.is_approved && s.days_left > 0).length,
+-    [students]
+-  );
++  if (!ready) {
++    return (
++      <div className="flex min-h-screen items-center justify-center bg-[#F3F8FC]">
++        <Spinner className="h-6 w-6 text-[#075985]" />
++      </div>
++    );
++  }
+ 
+   return (
+-    <div className="min-h-screen bg-[#F3F8FC] text-[#0F172A] flex flex-col font-sans antialiased selection:bg-sky-100">
+-      {/* HEADER BAR */}
+-      <header className="border-b border-[#D3E3EF] bg-[#075985] text-white sticky top-0 z-30 shadow-md">
+-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3 min-h-[64px]">
+-          <div className="flex items-center space-x-3.5">
+-            <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0 p-1">
+-              <img
+-                src="/logo.png"
+-                alt="AZS Logo"
+-                className="w-full h-full object-contain"
+-                onError={(e) => {
+-                  (e.target as HTMLElement).style.display = "none";
+-                }}
+-              />
+-            </div>
+-            <div>
+-              <div className="flex items-center gap-2">
+-                <span className="font-extrabold text-lg text-white tracking-tight">
+-                  AZS
+-                </span>
+-                <span className="text-[10px] text-[#075985] font-mono px-2 py-0.5 bg-white rounded-md font-bold uppercase tracking-wider">
+-                  Admin Console
+-                </span>
+-              </div>
+-              <span className="text-xs text-sky-100 font-medium">
+-                The Catalyst Instructor Hub
+-              </span>
+-            </div>
++    <div className="min-h-screen bg-[#F3F8FC] text-[#0F172A]">
++      <header className="sticky top-0 z-40 border-b border-[#D3E3EF] bg-white/95 backdrop-blur">
++        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2.5">
++          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#075985] text-white">
++            <ShieldCheck className="h-5 w-5" />
++          </span>
++          <div className="min-w-0 flex-1">
++            <h1 className="truncate text-base font-black leading-tight text-[#075985]">AZS Admin</h1>
++            <p className="truncate text-[11px] text-slate-500">{email}</p>
+           </div>
+-
+-          <div className="order-3 w-full lg:order-none lg:w-auto flex items-center space-x-1.5 bg-[#0F172A]/20 p-1.5 rounded-2xl border border-white/20 overflow-x-auto">
+-            <button
+-              onClick={() => setActiveTab("students")}
+-              className={`flex items-center gap-2 px-4 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-colors ${activeTab === "students"
+-                  ? "bg-white text-[#075985] shadow-sm"
+-                  : "text-white/80 hover:text-white hover:bg-white/10"
+-                }`}
+-            >
+-              <Users className="w-4 h-4" />
+-              <span>Batch & Fees</span>
+-            </button>
+-            <button
+-              onClick={() => setActiveTab("video")}
+-              className={`flex items-center gap-2 px-4 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-colors ${activeTab === "video"
+-                  ? "bg-white text-[#075985] shadow-sm"
+-                  : "text-white/80 hover:text-white hover:bg-white/10"
+-                }`}
+-            >
+-              <Video className="w-4 h-4" />
+-              <span>Lectures</span>
+-            </button>
+-            <button
+-              onClick={() => setActiveTab("sheet")}
+-              className={`flex items-center gap-2 px-4 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-colors ${activeTab === "sheet"
+-                  ? "bg-white text-[#075985] shadow-sm"
+-                  : "text-white/80 hover:text-white hover:bg-white/10"
++          <button type="button" onClick={() => void refreshAll()} aria-label="Refresh everything" className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100">
++            <RefreshCw className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`} />
++          </button>
++          <button type="button" onClick={logout} aria-label="Log out" className="flex h-11 w-11 items-center justify-center rounded-xl text-[#CC310E] hover:bg-rose-50">
++            <LogOut className="h-5 w-5" />
++          </button>
++        </div>
++        <nav className="mx-auto max-w-5xl overflow-x-auto px-3" aria-label="Admin sections">
++          <div className="flex min-w-max gap-1 pb-2" role="tablist">
++            {TABS.map((t) => (
++              <button
++                key={t.id}
++                type="button"
++                role="tab"
++                aria-selected={tab === t.id}
++                onClick={() => setTab(t.id)}
++                className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl px-4 text-sm font-bold transition-colors ${
++                  tab === t.id ? "bg-[#075985] text-white" : "text-slate-600 hover:bg-slate-100"
+                 }`}
+-            >
+-              <FileText className="w-4 h-4" />
+-              <span>Materials</span>
+-            </button>
+-          </div>
+-
+-          <div className="flex items-center space-x-3">
+-            <div className="hidden md:flex flex-col text-right">
+-              <span className="text-xs font-bold text-white">
+-                {sessionEmail}
+-              </span>
+-              <span className="text-[10px] text-sky-300 font-medium flex items-center justify-end gap-1">
+-                <span className="w-1.5 h-1.5 rounded-full bg-sky-300 animate-pulse" />
+-                Active Admin
+-              </span>
+-            </div>
+-
+-            <button
+-              onClick={() => {
+-                localStorage.clear();
+-                router.push("/login");
+-              }}
+-              className="min-h-[48px] min-w-[48px] flex items-center justify-center rounded-xl bg-white/10 border border-white/20 text-white hover:bg-rose-600 hover:border-rose-600 transition-colors shadow-sm"
+-              title="Sign Out"
+-              aria-label="Sign Out"
+-            >
+-              <LogOut className="w-4 h-4" />
+-            </button>
++              >
++                {t.icon} {t.label}
++              </button>
++            ))}
+           </div>
+-        </div>
++        </nav>
+       </header>
+ 
+-      {/* MAIN ADMIN WORKSPACE */}
+-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+-        {/* METRIC OVERVIEW CARDS */}
+-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+-          <div
+-            onClick={() => setActiveTab("students")}
+-            className="bg-white border border-[#D3E3EF] hover:border-[#075985] rounded-2xl p-5 shadow-sm hover:shadow-md flex items-center justify-between cursor-pointer transition-all group min-h-[96px]"
+-          >
+-            <div>
+-              <p className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
+-                Total Students
+-              </p>
+-              <p className="text-2xl font-black text-[#075985] mt-1">
+-                {totalStudentsCount}
+-              </p>
+-              <p className="text-[10px] text-[#94A3B8] mt-0.5">
+-                Click to manage batches
+-              </p>
+-            </div>
+-            <div className="w-12 h-12 rounded-xl bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-[#075985] font-bold shrink-0">
+-              <GraduationCap className="w-6 h-6" />
+-            </div>
+-          </div>
+-
+-          <div
+-            onClick={() => setActiveTab("students")}
+-            className="bg-white border border-[#D3E3EF] hover:border-[#CC310E] rounded-2xl p-5 shadow-sm hover:shadow-md flex items-center justify-between cursor-pointer transition-all group min-h-[96px]"
+-          >
+-            <div>
+-              <p className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
+-                Active Paid Pass
+-              </p>
+-              <p className="text-2xl font-black text-[#CC310E] mt-1">
+-                {totalActivePaidCount}
+-              </p>
+-              <p className="text-[10px] text-[#94A3B8] mt-0.5">
+-                Click for fee approvals
+-              </p>
+-            </div>
+-            <div className="w-12 h-12 rounded-xl bg-[#FEF3EF] border border-[#FAC3B0] flex items-center justify-center text-[#CC310E] font-bold shrink-0">
+-              <CheckCircle2 className="w-6 h-6" />
+-            </div>
+-          </div>
+-
+-          <div
+-            onClick={() => setActiveTab("video")}
+-            className="bg-white border border-[#D3E3EF] hover:border-[#0369A1] rounded-2xl p-5 shadow-sm hover:shadow-md flex items-center justify-between cursor-pointer transition-all group min-h-[96px]"
+-          >
+-            <div>
+-              <p className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
+-                Recorded Lectures
+-              </p>
+-              <p className="text-2xl font-black text-[#0369A1] mt-1">
+-                {lectures.length}
+-              </p>
+-              <p className="text-[10px] text-[#94A3B8] mt-0.5">
+-                Click to manage videos
+-              </p>
+-            </div>
+-            <div className="w-12 h-12 rounded-xl bg-[#F0F9FF] border border-[#BAE6FD] flex items-center justify-center text-[#0369A1] font-bold shrink-0">
+-              <Video className="w-6 h-6" />
+-            </div>
+-          </div>
+-
+-          <div
+-            onClick={() => setActiveTab("sheet")}
+-            className="bg-white border border-[#D3E3EF] hover:border-[#075985] rounded-2xl p-5 shadow-sm hover:shadow-md flex items-center justify-between cursor-pointer transition-all group min-h-[96px]"
+-          >
+-            <div>
+-              <p className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
+-                Handouts & Sheets
+-              </p>
+-              <p className="text-2xl font-black text-[#075985] mt-1">
+-                {materials.length}
+-              </p>
+-              <p className="text-[10px] text-[#94A3B8] mt-0.5">
+-                Click to manage PDFs
+-              </p>
+-            </div>
+-            <div className="w-12 h-12 rounded-xl bg-[#F8FAFC] border border-[#D3E3EF] flex items-center justify-center text-[#075985] font-bold shrink-0">
+-              <FileText className="w-6 h-6" />
+-            </div>
+-          </div>
+-        </div>
+-
+-        {/* TAB 1: BATCH REGISTRY & ACCESS CONTROL */}
+-        {activeTab === "students" && (
+-          <div className="space-y-6">
+-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+-              <div>
+-                <h1 className="text-2xl font-black text-[#075985] flex items-center gap-2.5">
+-                  <Layers className="w-6 h-6 text-[#0369A1]" />
+-                  <span>Batch Registry & Access Control</span>
+-                </h1>
+-                <p className="text-[#64748B] text-xs mt-1">
+-                  Instant batch segregation, real-time student search, and access
+-                  control.
+-                </p>
+-              </div>
+-
+-              <div className="flex items-center gap-3">
+-                <div className="flex items-center gap-2 bg-white border border-[#D3E3EF] px-3.5 h-11 rounded-xl text-xs font-mono shadow-sm">
+-                  <span className="text-[#CC310E] font-bold">
+-                    {totalPaidInView} Paid
+-                  </span>
+-                  <span className="text-[#94A3B8]">|</span>
+-                  <span className="text-amber-600 font-bold">
+-                    {totalUnpaidInView} Due
+-                  </span>
+-                </div>
+-                <button
+-                  onClick={fetchStudents}
+-                  className="flex items-center space-x-1.5 px-4 min-h-[48px] bg-white hover:bg-[#F3F8FC] text-xs font-bold text-[#075985] rounded-xl transition-colors shadow-sm border border-[#D3E3EF]"
+-                >
+-                  <RefreshCw className="w-4 h-4" />
+-                  <span>Refresh</span>
+-                </button>
+-              </div>
+-            </div>
+-
+-            {/* Batch Pill Bar & Search Filter */}
+-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#D3E3EF] shadow-sm">
+-              <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
+-                <button
+-                  onClick={() => setSelectedBatch("ALL")}
+-                  className={`flex items-center gap-2 px-3.5 min-h-[44px] text-xs font-bold rounded-xl transition-colors ${selectedBatch === "ALL"
+-                      ? "bg-[#075985] text-white shadow-sm"
+-                      : "text-[#64748B] hover:text-[#075985] hover:bg-[#F3F8FC]"
+-                    }`}
+-                >
+-                  <Users className="w-3.5 h-3.5" />
+-                  <span>All Batches</span>
+-                  <span className="px-1.5 py-0.5 bg-[#F3F8FC] border border-[#D3E3EF] rounded-full text-[10px] text-[#334155] font-mono">
+-                    {students.length}
+-                  </span>
+-                </button>
+-
+-                {batchList.map((batchName) => {
+-                  const count = students.filter(
+-                    (s) =>
+-                      ((s.batch_no && s.batch_no.trim()) || "General").toLowerCase() ===
+-                      batchName.toLowerCase()
+-                  ).length;
+-
+-                  return (
+-                    <button
+-                      key={batchName}
+-                      onClick={() => setSelectedBatch(batchName)}
+-                      className={`flex items-center gap-2 px-3.5 min-h-[44px] text-xs font-bold rounded-xl transition-colors shrink-0 ${selectedBatch.toLowerCase() === batchName.toLowerCase()
+-                          ? "bg-[#075985] text-white shadow-sm"
+-                          : "text-[#64748B] hover:text-[#075985] hover:bg-[#F3F8FC]"
+-                        }`}
+-                    >
+-                      <span>{batchName}</span>
+-                      <span className="px-1.5 py-0.5 bg-[#F3F8FC] border border-[#D3E3EF] rounded-full text-[10px] text-[#334155] font-mono">
+-                        {count}
+-                      </span>
+-                    </button>
+-                  );
+-                })}
+-              </div>
+-
+-              <div className="relative min-w-[280px]">
+-                <Search className="w-4 h-4 text-[#94A3B8] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+-                <input
+-                  type="text"
+-                  placeholder="Search by student name, email or school..."
+-                  value={searchStudentQuery}
+-                  onChange={(e) => setSearchStudentQuery(e.target.value)}
+-                  className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl pl-10 pr-3.5 min-h-[48px] text-xs text-[#0F172A] focus:outline-none focus:border-[#075985] placeholder-[#94A3B8]"
+-                />
+-              </div>
+-            </div>
+-
+-            {/* Students Table */}
+-            {loading ? (
+-              <div className="py-24 flex flex-col items-center justify-center text-[#64748B] space-y-3">
+-                <Loader2 className="w-8 h-8 animate-spin text-[#0369A1]" />
+-                <p className="text-xs font-medium">Loading batch records...</p>
+-              </div>
+-            ) : filteredStudents.length === 0 ? (
+-              <div className="bg-white border border-[#D3E3EF] rounded-2xl p-16 text-center text-[#64748B] text-xs space-y-2 shadow-sm">
+-                <p className="font-bold text-sm text-[#0F172A]">
+-                  No students found matching your criteria
+-                </p>
+-                <p>
+-                  Try clearing your search query or selecting a different batch
+-                  filter.
+-                </p>
+-              </div>
+-            ) : (
+-              <div className="bg-white border border-[#D3E3EF] rounded-2xl overflow-hidden shadow-sm">
+-                <div className="overflow-x-auto">
+-                  <table className="w-full text-left text-xs">
+-                    <thead className="bg-[#F3F8FC] text-[#075985] text-[11px] font-bold uppercase tracking-wider border-b border-[#D3E3EF]">
+-                      <tr>
+-                        <th className="py-4 px-5">#</th>
+-                        <th className="py-4 px-5">Student Information</th>
+-                        <th className="py-4 px-5">Institution & Class</th>
+-                        <th className="py-4 px-5">Batch ID</th>
+-                        <th className="py-4 px-5">Subscription Status</th>
+-                        <th className="py-4 px-5">Days Left</th>
+-                        <th className="py-4 px-5 text-right">
+-                          Fee & Access Actions
+-                        </th>
+-                      </tr>
+-                    </thead>
+-                    <tbody className="divide-y divide-[#D3E3EF] font-sans">
+-                      {filteredStudents.map((student, index) => {
+-                        const isPaid =
+-                          student.is_approved && student.days_left > 0;
+-
+-                        return (
+-                          <tr
+-                            key={student.id}
+-                            className="hover:bg-[#F3F8FC] transition-colors"
+-                          >
+-                            <td className="py-4 px-5 font-mono text-[#94A3B8]">
+-                              {index + 1}
+-                            </td>
+-                            <td className="py-4 px-5">
+-                              <div className="font-bold text-[#0F172A] text-[13px]">
+-                                {student.full_name}
+-                              </div>
+-                              <div className="text-[11px] text-[#64748B] font-mono mt-0.5">
+-                                {student.email}
+-                              </div>
+-                            </td>
+-                            <td className="py-4 px-5 text-[#334155]">
+-                              <div className="font-medium">
+-                                {student.school || "N/A"}
+-                              </div>
+-                              <div className="text-[10px] text-[#64748B] font-medium">
+-                                {student.grade_class || "Unassigned"}
+-                              </div>
+-                            </td>
+-                            <td className="py-4 px-5">
+-                              <span className="px-2.5 py-1 bg-[#F3F8FC] border border-[#D3E3EF] rounded-lg text-[11px] font-mono font-bold text-[#075985]">
+-                                {student.batch_no || "General"}
+-                              </span>
+-                            </td>
+-                            <td className="py-4 px-5">
+-                              {isPaid ? (
+-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[#FEF3EF] border border-[#FAC3B0] text-[#CC310E]">
+-                                  <CheckCircle2 className="w-3.5 h-3.5" />
+-                                  <span>Active Paid</span>
+-                                </span>
+-                              ) : (
+-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-50 border border-amber-200 text-amber-800">
+-                                  <XCircle className="w-3.5 h-3.5 text-amber-600" />
+-                                  <span>Payment Due</span>
+-                                </span>
+-                              )}
+-                            </td>
+-                            <td className="py-4 px-5 font-mono text-xs">
+-                              {isPaid ? (
+-                                <span className="text-[#CC310E] font-bold">
+-                                  {student.days_left} Days
+-                                </span>
+-                              ) : (
+-                                <span className="text-rose-600 font-bold">
+-                                  0 Days
+-                                </span>
+-                              )}
+-                            </td>
+-                            <td className="py-4 px-5 text-right">
+-                              <div className="flex items-center justify-end space-x-2">
+-                                {!isPaid ? (
+-                                  <button
+-                                    onClick={() => handleMarkPaid(student.id)}
+-                                    disabled={actionLoadingId === student.id}
+-                                    className="px-3.5 min-h-[44px] rounded-xl text-xs font-bold bg-[#CC310E] hover:bg-[#A8270B] text-white transition-colors shadow-sm flex items-center gap-1"
+-                                    title="Mark as Paid and grant 30-day access"
+-                                  >
+-                                    {actionLoadingId === student.id ? (
+-                                      <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" />
+-                                    ) : (
+-                                      <span>Mark as Paid</span>
+-                                    )}
+-                                  </button>
+-                                ) : (
+-                                  <button
+-                                    onClick={() => handleMarkUnpaid(student.id)}
+-                                    disabled={actionLoadingId === student.id}
+-                                    className="px-3.5 min-h-[44px] rounded-xl text-xs font-bold bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100 transition-colors flex items-center gap-1"
+-                                    title="Revoke active access and mark unpaid"
+-                                  >
+-                                    <span>Mark as Unpaid</span>
+-                                  </button>
+-                                )}
+-
+-                                <button
+-                                  onClick={() =>
+-                                    handleDeleteStudent(
+-                                      student.id,
+-                                      student.email
+-                                    )
+-                                  }
+-                                  disabled={actionLoadingId === student.id}
+-                                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white transition-colors"
+-                                  title="Permanently delete account"
+-                                  aria-label="Delete student"
+-                                >
+-                                  <Trash2 className="w-4 h-4" />
+-                                </button>
+-                              </div>
+-                            </td>
+-                          </tr>
+-                        );
+-                      })}
+-                    </tbody>
+-                  </table>
+-                </div>
+-              </div>
+-            )}
+-          </div>
++      <main className="mx-auto max-w-5xl px-4 py-5">
++        {tab === "overview" && (
++          <OverviewTab
++            data={overview.data}
++            loading={overview.loading}
++            error={overview.error}
++            onRetry={overview.retry}
++            onOpenStudent={setOpenId}
++            onFilter={(f) => {
++              setFilter(f);
++              setTab("students");
++            }}
++            onTab={setTab}
++          />
+         )}
+-
+-        {/* TAB 2: LECTURES PUBLISHING & SEQUENCE */}
+-        {activeTab === "video" && (
+-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+-            {/* Publish Form Panel */}
+-            <div className="lg:col-span-5 bg-white border border-[#D3E3EF] rounded-2xl p-6 shadow-sm space-y-4">
+-              <div>
+-                <h2 className="text-lg font-black text-[#075985]">
+-                  Publish Video Lecture
+-                </h2>
+-                <p className="text-xs text-[#64748B] mt-0.5">
+-                  Upload a new recorded class to the syllabus
+-                </p>
+-              </div>
+-
+-              <form onSubmit={handleCreateLecture} className="space-y-4">
+-                <div className="grid grid-cols-2 gap-3">
+-                  <div>
+-                    <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                      Lecture Number
+-                    </label>
+-                    <input
+-                      type="number"
+-                      required
+-                      value={lectureForm.lecture_no}
+-                      onChange={(e) =>
+-                        setLectureForm({
+-                          ...lectureForm,
+-                          lecture_no: Number(e.target.value),
+-                        })
+-                      }
+-                      className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                    />
+-                  </div>
+-                  <div>
+-                    <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                      Subject
+-                    </label>
+-                    <select
+-                      value={lectureForm.subject}
+-                      onChange={(e) =>
+-                        setLectureForm({
+-                          ...lectureForm,
+-                          subject: e.target.value,
+-                        })
+-                      }
+-                      className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                    >
+-                      <option value="Physics">Physics</option>
+-                      <option value="Chemistry">Chemistry</option>
+-                      <option value="Higher Math">Higher Math</option>
+-                    </select>
+-                  </div>
+-                </div>
+-
+-                <div>
+-                  <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                    Chapter Name
+-                  </label>
+-                  <input
+-                    type="text"
+-                    required
+-                    placeholder="e.g. আলোর প্রতিফলন"
+-                    value={lectureForm.chapter}
+-                    onChange={(e) =>
+-                      setLectureForm({
+-                        ...lectureForm,
+-                        chapter: e.target.value,
+-                      })
+-                    }
+-                    className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                  />
+-                </div>
+-
+-                <div>
+-                  <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                    Lecture Title / Topic
+-                  </label>
+-                  <input
+-                    type="text"
+-                    required
+-                    placeholder="e.g. Lecture 01 - Basics"
+-                    value={lectureForm.title}
+-                    onChange={(e) =>
+-                      setLectureForm({
+-                        ...lectureForm,
+-                        title: e.target.value,
+-                        topic: e.target.value,
+-                      })
+-                    }
+-                    className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                  />
+-                </div>
+-
+-                <div>
+-                  <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                    YouTube URL
+-                  </label>
+-                  <input
+-                    type="url"
+-                    required
+-                    placeholder="https://www.youtube.com/watch?v=..."
+-                    value={lectureForm.video_url}
+-                    onChange={(e) =>
+-                      setLectureForm({
+-                        ...lectureForm,
+-                        video_url: e.target.value,
+-                      })
+-                    }
+-                    className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                  />
+-                </div>
+-
+-                <button
+-                  type="submit"
+-                  className="w-full min-h-[48px] bg-[#075985] hover:bg-[#0C4A6E] text-white rounded-xl text-sm font-bold transition-colors shadow-sm"
+-                >
+-                  Publish to Syllabus
+-                </button>
+-              </form>
+-            </div>
+-
+-            {/* Sequence & Chapter Manager Panel */}
+-            <div className="lg:col-span-7 bg-white border border-[#D3E3EF] rounded-2xl p-6 shadow-sm space-y-4">
+-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#D3E3EF] pb-4">
+-                <div>
+-                  <h2 className="text-lg font-black text-[#075985] flex items-center gap-2">
+-                    <ListOrdered className="w-5 h-5 text-[#0369A1]" />
+-                    <span>Sequence & Chapter Manager</span>
+-                  </h2>
+-                  <p className="text-xs text-[#64748B]">
+-                    Order lectures using Up/Down arrows or auto-renumber
+-                    sequentially
+-                  </p>
+-                </div>
+-                <button
+-                  onClick={fetchLectures}
+-                  className="text-xs font-bold text-[#075985] hover:text-[#0369A1] flex items-center space-x-1"
+-                >
+-                  <RefreshCw className="w-3.5 h-3.5" />
+-                  <span>Refresh</span>
+-                </button>
+-              </div>
+-
+-              {/* Filter controls */}
+-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-[#F3F8FC] p-3 rounded-xl border border-[#D3E3EF]">
+-                <div>
+-                  <label className="text-[10px] text-[#64748B] uppercase font-bold block mb-1">
+-                    Subject
+-                  </label>
+-                  <select
+-                    value={filterVideoSubject}
+-                    onChange={(e) => setFilterVideoSubject(e.target.value)}
+-                    className="w-full bg-white border border-[#D3E3EF] rounded-xl px-2.5 min-h-[44px] text-xs text-[#0F172A]"
+-                  >
+-                    <option value="ALL">All Subjects</option>
+-                    <option value="Physics">Physics</option>
+-                    <option value="Chemistry">Chemistry</option>
+-                    <option value="Higher Math">Higher Math</option>
+-                  </select>
+-                </div>
+-
+-                <div>
+-                  <label className="text-[10px] text-[#64748B] uppercase font-bold block mb-1">
+-                    Chapter
+-                  </label>
+-                  <select
+-                    value={filterVideoChapter}
+-                    onChange={(e) => setFilterVideoChapter(e.target.value)}
+-                    className="w-full bg-white border border-[#D3E3EF] rounded-xl px-2.5 min-h-[44px] text-xs text-[#0F172A]"
+-                  >
+-                    <option value="ALL">
+-                      All Chapters ({uniqueChapters.length})
+-                    </option>
+-                    {uniqueChapters.map((ch) => (
+-                      <option key={ch} value={ch}>
+-                        {ch}
+-                      </option>
+-                    ))}
+-                  </select>
+-                </div>
+-
+-                <div className="flex items-end">
+-                  <button
+-                    onClick={handleNormalizeChapter}
+-                    disabled={filterVideoChapter === "ALL" || reordering}
+-                    className="w-full min-h-[44px] px-3 bg-[#EFF6FF] text-[#075985] border border-[#BFDBFE] hover:bg-sky-100 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40"
+-                    title="Auto-renumber lectures in selected chapter 1, 2, 3..."
+-                  >
+-                    <Sparkles className="w-3.5 h-3.5 text-[#0369A1]" />
+-                    <span>Auto-Renumber (1..N)</span>
+-                  </button>
+-                </div>
+-              </div>
+-
+-              {/* Lectures List */}
+-              {sortedAndFilteredLectures.length === 0 ? (
+-                <p className="text-xs text-[#64748B] py-10 text-center">
+-                  No video lectures found in this filter.
+-                </p>
+-              ) : (
+-                <div className="space-y-2.5 max-h-[550px] overflow-y-auto pr-1 no-scrollbar">
+-                  {sortedAndFilteredLectures.map((lec, idx) => {
+-                    const isFirst = idx === 0;
+-                    const isLast =
+-                      idx === sortedAndFilteredLectures.length - 1;
+-
+-                    return (
+-                      <div
+-                        key={lec.id}
+-                        className="bg-[#F3F8FC] border border-[#D3E3EF] hover:border-[#075985] rounded-2xl p-3.5 flex items-center justify-between transition-colors"
+-                      >
+-                        <div className="flex items-center space-x-3">
+-                          <div className="flex flex-col space-y-1">
+-                            <button
+-                              onClick={() =>
+-                                handleSwapOrder(
+-                                  lec.id,
+-                                  sortedAndFilteredLectures[idx - 1].id
+-                                )
+-                              }
+-                              disabled={isFirst || reordering}
+-                              className="p-1.5 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg bg-white border border-[#D3E3EF] text-[#334155] hover:bg-[#075985] hover:text-white disabled:opacity-20 transition-colors"
+-                              title="Move Up"
+-                              aria-label="Move Up"
+-                            >
+-                              <ArrowUp className="w-3.5 h-3.5" />
+-                            </button>
+-                            <button
+-                              onClick={() =>
+-                                handleSwapOrder(
+-                                  lec.id,
+-                                  sortedAndFilteredLectures[idx + 1].id
+-                                )
+-                              }
+-                              disabled={isLast || reordering}
+-                              className="p-1.5 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg bg-white border border-[#D3E3EF] text-[#334155] hover:bg-[#075985] hover:text-white disabled:opacity-20 transition-colors"
+-                              title="Move Down"
+-                              aria-label="Move Down"
+-                            >
+-                              <ArrowDown className="w-3.5 h-3.5" />
+-                            </button>
+-                          </div>
+-
+-                          <div>
+-                            <div className="flex items-center space-x-2 mb-1">
+-                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#EFF6FF] text-[#075985] border border-[#BFDBFE]">
+-                                #{lec.lecture_no}
+-                              </span>
+-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white border border-[#D3E3EF] text-[#334155]">
+-                                {lec.subject}
+-                              </span>
+-                              {lec.is_published === false && (
+-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+-                                  Hidden
+-                                </span>
+-                              )}
+-                            </div>
+-                            <h4 className="text-xs font-bold text-[#0F172A] leading-tight">
+-                              {lec.title}
+-                            </h4>
+-                            <p className="text-[11px] text-[#64748B] mt-0.5">
+-                              {lec.chapter}
+-                            </p>
+-                          </div>
+-                        </div>
+-
+-                        <div className="flex items-center space-x-1.5">
+-                          <button
+-                            onClick={() => setEditingLecture(lec)}
+-                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-white border border-[#D3E3EF] text-[#334155] hover:text-[#075985] transition-colors"
+-                            title="Edit details"
+-                            aria-label="Edit lecture"
+-                          >
+-                            <Edit2 className="w-4 h-4" />
+-                          </button>
+-
+-                          <button
+-                            onClick={() => handleToggleLecturePublish(lec.id)}
+-                            className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-xs font-semibold border transition-colors ${lec.is_published === false
+-                                ? "bg-amber-50 border-amber-200 text-amber-800"
+-                                : "bg-white border-[#D3E3EF] text-[#334155] hover:text-[#0F172A]"
+-                              }`}
+-                            title={
+-                              lec.is_published === false ? "Publish" : "Unpublish"
+-                            }
+-                            aria-label="Toggle publish"
+-                          >
+-                            {lec.is_published === false ? (
+-                              <EyeOff className="w-4 h-4" />
+-                            ) : (
+-                              <Eye className="w-4 h-4" />
+-                            )}
+-                          </button>
+-
+-                          <a
+-                            href={lec.video_url}
+-                            target="_blank"
+-                            rel="noreferrer"
+-                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-white border border-[#D3E3EF] text-[#334155] hover:text-[#075985] transition-colors"
+-                            title="Watch video"
+-                            aria-label="Open YouTube Video"
+-                          >
+-                            <ExternalLink className="w-4 h-4" />
+-                          </a>
+-
+-                          <button
+-                            onClick={() => handleDeleteLecture(lec.id)}
+-                            disabled={actionLoadingId === lec.id}
+-                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white transition-colors"
+-                            title="Delete permanently"
+-                            aria-label="Delete lecture"
+-                          >
+-                            <Trash2 className="w-4 h-4" />
+-                          </button>
+-                        </div>
+-                      </div>
+-                    );
+-                  })}
+-                </div>
+-              )}
+-            </div>
+-          </div>
++        {tab === "students" && (
++          <StudentsTab
++            students={students.data ?? []}
++            loading={students.loading}
++            error={students.error}
++            filter={filter}
++            onFilter={setFilter}
++            onOpen={setOpenId}
++            onChanged={studentsChanged}
++            onRetry={students.retry}
++          />
+         )}
+-
+-        {/* TAB 3: STUDY MATERIALS & HANDOUTS */}
+-        {activeTab === "sheet" && (
+-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+-            {/* Sheet Upload Form Panel */}
+-            <div className="lg:col-span-5 bg-white border border-[#D3E3EF] rounded-2xl p-6 shadow-sm space-y-4">
+-              <div>
+-                <h2 className="text-lg font-black text-[#075985]">
+-                  Upload Lecture Sheet
+-                </h2>
+-                <p className="text-xs text-[#64748B] mt-0.5">
+-                  Upload local PDF files or attach Google Drive documents
+-                </p>
+-              </div>
+-
+-              <div className="flex bg-[#F3F8FC] p-1.5 rounded-2xl border border-[#D3E3EF]">
+-                <button
+-                  type="button"
+-                  onClick={() => setUploadMode("file")}
+-                  className={`flex-1 min-h-[44px] text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5 transition-colors ${uploadMode === "file"
+-                      ? "bg-[#075985] text-white shadow-sm"
+-                      : "text-[#64748B] hover:text-[#075985]"
+-                    }`}
+-                >
+-                  <Upload className="w-4 h-4" />
+-                  <span>Upload from PC</span>
+-                </button>
+-                <button
+-                  type="button"
+-                  onClick={() => setUploadMode("link")}
+-                  className={`flex-1 min-h-[44px] text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5 transition-colors ${uploadMode === "link"
+-                      ? "bg-[#075985] text-white shadow-sm"
+-                      : "text-[#64748B] hover:text-[#075985]"
+-                    }`}
+-                >
+-                  <LinkIcon className="w-4 h-4" />
+-                  <span>Google Drive Link</span>
+-                </button>
+-              </div>
+-
+-              <form onSubmit={handleSubmitSheet} className="space-y-4">
+-                <div>
+-                  <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                    Subject
+-                  </label>
+-                  <select
+-                    value={sheetForm.subject}
+-                    onChange={(e) =>
+-                      setSheetForm({ ...sheetForm, subject: e.target.value })
+-                    }
+-                    className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                  >
+-                    <option value="Physics">Physics</option>
+-                    <option value="Chemistry">Chemistry</option>
+-                    <option value="Higher Math">Higher Math</option>
+-                  </select>
+-                </div>
+-
+-                <div>
+-                  <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                    Chapter Name
+-                  </label>
+-                  <input
+-                    type="text"
+-                    required
+-                    placeholder="e.g. আলোর প্রতিফলন"
+-                    value={sheetForm.chapter}
+-                    onChange={(e) =>
+-                      setSheetForm({ ...sheetForm, chapter: e.target.value })
+-                    }
+-                    className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                  />
+-                </div>
+-
+-                <div>
+-                  <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                    Material Title
+-                  </label>
+-                  <input
+-                    type="text"
+-                    required
+-                    placeholder="e.g. CQ Solution Sheet 01"
+-                    value={sheetForm.title}
+-                    onChange={(e) =>
+-                      setSheetForm({ ...sheetForm, title: e.target.value })
+-                    }
+-                    className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                  />
+-                </div>
+-
+-                {uploadMode === "file" ? (
+-                  <div>
+-                    <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                      Select PDF File
+-                    </label>
+-                    <input
+-                      type="file"
+-                      accept=".pdf,application/pdf"
+-                      required
+-                      onChange={(e) => {
+-                        if (e.target.files && e.target.files[0]) {
+-                          setSelectedFile(e.target.files[0]);
+-                        }
+-                      }}
+-                      className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 py-2 text-xs text-[#0F172A] file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#075985] file:text-white hover:file:bg-[#0C4A6E] cursor-pointer min-h-[48px]"
+-                    />
+-                  </div>
+-                ) : (
+-                  <div>
+-                    <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                      Document / Drive URL
+-                    </label>
+-                    <input
+-                      type="url"
+-                      required
+-                      placeholder="https://drive.google.com/file/d/..."
+-                      value={sheetForm.file_url}
+-                      onChange={(e) =>
+-                        setSheetForm({
+-                          ...sheetForm,
+-                          file_url: e.target.value,
+-                        })
+-                      }
+-                      className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                    />
+-                  </div>
+-                )}
+-
+-                <button
+-                  type="submit"
+-                  disabled={submittingSheet}
+-                  className="w-full min-h-[48px] bg-[#075985] hover:bg-[#0C4A6E] text-white rounded-xl text-sm font-bold transition-colors shadow-sm flex items-center justify-center space-x-2"
+-                >
+-                  {submittingSheet ? (
+-                    <>
+-                      <Loader2 className="w-4 h-4 animate-spin" />
+-                      <span>Uploading Document...</span>
+-                    </>
+-                  ) : (
+-                    <span>
+-                      {uploadMode === "file"
+-                        ? "Upload PDF File"
+-                        : "Save Drive Link"}
+-                    </span>
+-                  )}
+-                </button>
+-              </form>
+-            </div>
+-
+-            {/* Sheets List Panel */}
+-            <div className="lg:col-span-7 bg-white border border-[#D3E3EF] rounded-2xl p-6 shadow-sm space-y-4">
+-              <div className="flex items-center justify-between border-b border-[#D3E3EF] pb-4">
+-                <h2 className="text-lg font-black text-[#075985]">
+-                  Uploaded Sheets ({materials.length})
+-                </h2>
+-                <button
+-                  onClick={fetchMaterials}
+-                  className="text-xs font-bold text-[#075985] hover:text-[#0369A1] flex items-center space-x-1"
+-                >
+-                  <RefreshCw className="w-3.5 h-3.5" />
+-                  <span>Refresh</span>
+-                </button>
+-              </div>
+-
+-              {materials.length === 0 ? (
+-                <p className="text-xs text-[#64748B] py-10 text-center">
+-                  No PDF sheets uploaded yet.
+-                </p>
+-              ) : (
+-                <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1 no-scrollbar">
+-                  {materials.map((mat) => (
+-                    <div
+-                      key={mat.id}
+-                      className="bg-[#F3F8FC] border border-[#D3E3EF] rounded-2xl p-4 flex items-center justify-between"
+-                    >
+-                      <div>
+-                        <div className="flex items-center space-x-2 mb-1">
+-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#EFF6FF] text-[#075985] border border-[#BFDBFE]">
+-                            {mat.subject}
+-                          </span>
+-                          {mat.is_published === false && (
+-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+-                              Hidden
+-                            </span>
+-                          )}
+-                        </div>
+-                        <h4 className="text-sm font-bold text-[#0F172A]">
+-                          {mat.title}
+-                        </h4>
+-                        <p className="text-xs text-[#64748B] mt-0.5">
+-                          {mat.chapter}
+-                        </p>
+-                      </div>
+-
+-                      <div className="flex items-center space-x-1.5">
+-                        <button
+-                          onClick={() => setEditingMaterial(mat)}
+-                          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-white border border-[#D3E3EF] text-[#334155] hover:text-[#075985] transition-colors"
+-                          title="Edit sheet details"
+-                          aria-label="Edit material"
+-                        >
+-                          <Edit2 className="w-4 h-4" />
+-                        </button>
+-
+-                        <button
+-                          onClick={() => handleToggleMaterialPublish(mat.id)}
+-                          className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-xs font-semibold border transition-colors ${mat.is_published === false
+-                              ? "bg-amber-50 border-amber-200 text-amber-800"
+-                              : "bg-white border-[#D3E3EF] text-[#334155] hover:text-[#0F172A]"
+-                            }`}
+-                          title={
+-                            mat.is_published === false ? "Publish" : "Unpublish"
+-                          }
+-                          aria-label="Toggle publish material"
+-                        >
+-                          {mat.is_published === false ? (
+-                            <EyeOff className="w-4 h-4" />
+-                          ) : (
+-                            <Eye className="w-4 h-4" />
+-                          )}
+-                        </button>
+-
+-                        <a
+-                          href={mat.file_url}
+-                          target="_blank"
+-                          rel="noreferrer"
+-                          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-white border border-[#D3E3EF] text-[#334155] hover:text-[#075985] transition-colors"
+-                          title="Open PDF"
+-                          aria-label="Open PDF Document"
+-                        >
+-                          <ExternalLink className="w-4 h-4" />
+-                        </a>
+-
+-                        <button
+-                          onClick={() => handleDeleteMaterial(mat.id)}
+-                          disabled={actionLoadingId === mat.id}
+-                          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white transition-colors"
+-                          title="Delete permanently"
+-                          aria-label="Delete material"
+-                        >
+-                          <Trash2 className="w-4 h-4" />
+-                        </button>
+-                      </div>
+-                    </div>
+-                  ))}
+-                </div>
+-              )}
+-            </div>
+-          </div>
++        {tab === "lectures" && (
++          <LecturesTab
++            lectures={lectures.data ?? []}
++            loading={lectures.loading}
++            error={lectures.error}
++            onChanged={() => {
++              void lectures.reload();
++              void overview.reload();
++            }}
++            onRetry={lectures.retry}
++          />
+         )}
++        {tab === "materials" && (
++          <MaterialsTab
++            materials={materials.data ?? []}
++            loading={materials.loading}
++            error={materials.error}
++            onChanged={() => {
++              void materials.reload();
++              void overview.reload();
++            }}
++            onRetry={materials.retry}
++          />
++        )}
++        {tab === "notices" && <NoticesTab notices={notices.data ?? []} loading={notices.loading} error={notices.error} onChanged={() => void notices.reload()} onRetry={notices.retry} />}
+       </main>
+ 
+-      {/* EDIT LECTURE MODAL */}
+-      {editingLecture && (
+-        <div className="fixed inset-0 bg-[#0F172A]/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+-          <div className="bg-white border border-[#D3E3EF] rounded-3xl max-w-lg w-full p-6 shadow-xl space-y-4 text-[#0F172A]">
+-            <div className="flex items-center justify-between border-b border-[#D3E3EF] pb-3">
+-              <h3 className="text-base font-bold text-[#075985] flex items-center gap-2">
+-                <Edit2 className="w-4 h-4 text-[#0369A1]" />
+-                <span>Edit Video Lecture</span>
+-              </h3>
+-              <button
+-                onClick={() => setEditingLecture(null)}
+-                className="min-h-[40px] min-w-[40px] flex items-center justify-center text-[#64748B] hover:text-[#0F172A] rounded-xl hover:bg-[#F3F8FC]"
+-              >
+-                <X className="w-5 h-5" />
+-              </button>
+-            </div>
+-
+-            <form onSubmit={handleUpdateLecture} className="space-y-4">
+-              <div className="grid grid-cols-2 gap-3">
+-                <div>
+-                  <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                    Lecture Number
+-                  </label>
+-                  <input
+-                    type="number"
+-                    required
+-                    value={editingLecture.lecture_no}
+-                    onChange={(e) =>
+-                      setEditingLecture({
+-                        ...editingLecture,
+-                        lecture_no: Number(e.target.value),
+-                      })
+-                    }
+-                    className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                  />
+-                </div>
+-                <div>
+-                  <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                    Subject
+-                  </label>
+-                  <select
+-                    value={editingLecture.subject}
+-                    onChange={(e) =>
+-                      setEditingLecture({
+-                        ...editingLecture,
+-                        subject: e.target.value,
+-                      })
+-                    }
+-                    className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                  >
+-                    <option value="Physics">Physics</option>
+-                    <option value="Chemistry">Chemistry</option>
+-                    <option value="Higher Math">Higher Math</option>
+-                  </select>
+-                </div>
+-              </div>
+-
+-              <div>
+-                <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                  Chapter
+-                </label>
+-                <input
+-                  type="text"
+-                  required
+-                  value={editingLecture.chapter}
+-                  onChange={(e) =>
+-                    setEditingLecture({
+-                      ...editingLecture,
+-                      chapter: e.target.value,
+-                    })
+-                  }
+-                  className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                />
+-              </div>
+-
+-              <div>
+-                <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                  Topic / Title
+-                </label>
+-                <input
+-                  type="text"
+-                  required
+-                  value={editingLecture.title}
+-                  onChange={(e) =>
+-                    setEditingLecture({
+-                      ...editingLecture,
+-                      title: e.target.value,
+-                    })
+-                  }
+-                  className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                />
+-              </div>
+-
+-              <div>
+-                <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                  YouTube URL
+-                </label>
+-                <input
+-                  type="url"
+-                  required
+-                  value={editingLecture.video_url}
+-                  onChange={(e) =>
+-                    setEditingLecture({
+-                      ...editingLecture,
+-                      video_url: e.target.value,
+-                    })
+-                  }
+-                  className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                />
+-              </div>
+-
+-              <div className="flex items-center justify-end space-x-2 pt-2">
+-                <button
+-                  type="button"
+-                  onClick={() => setEditingLecture(null)}
+-                  className="px-4 min-h-[48px] rounded-xl text-xs font-semibold text-[#64748B] hover:text-[#0F172A] bg-[#F3F8FC] border border-[#D3E3EF]"
+-                >
+-                  Cancel
+-                </button>
+-                <button
+-                  type="submit"
+-                  disabled={savingEdit}
+-                  className="px-5 min-h-[48px] rounded-xl text-xs font-bold text-white bg-[#075985] hover:bg-[#0C4A6E] shadow-sm"
+-                >
+-                  {savingEdit ? "Saving..." : "Save Changes"}
+-                </button>
+-              </div>
+-            </form>
+-          </div>
+-        </div>
+-      )}
+-
+-      {/* EDIT MATERIAL MODAL */}
+-      {editingMaterial && (
+-        <div className="fixed inset-0 bg-[#0F172A]/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+-          <div className="bg-white border border-[#D3E3EF] rounded-3xl max-w-lg w-full p-6 shadow-xl space-y-4 text-[#0F172A]">
+-            <div className="flex items-center justify-between border-b border-[#D3E3EF] pb-3">
+-              <h3 className="text-base font-bold text-[#075985] flex items-center gap-2">
+-                <BookOpen className="w-4 h-4 text-[#0369A1]" />
+-                <span>Edit Study Material Sheet</span>
+-              </h3>
+-              <button
+-                onClick={() => setEditingMaterial(null)}
+-                className="min-h-[40px] min-w-[40px] flex items-center justify-center text-[#64748B] hover:text-[#0F172A] rounded-xl hover:bg-[#F3F8FC]"
+-              >
+-                <X className="w-5 h-5" />
+-              </button>
+-            </div>
+-
+-            <form onSubmit={handleUpdateMaterial} className="space-y-4">
+-              <div>
+-                <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                  Subject
+-                </label>
+-                <select
+-                  value={editingMaterial.subject}
+-                  onChange={(e) =>
+-                    setEditingMaterial({
+-                      ...editingMaterial,
+-                      subject: e.target.value,
+-                    })
+-                  }
+-                  className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                >
+-                  <option value="Physics">Physics</option>
+-                  <option value="Chemistry">Chemistry</option>
+-                  <option value="Higher Math">Higher Math</option>
+-                </select>
+-              </div>
+-
+-              <div>
+-                <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                  Chapter
+-                </label>
+-                <input
+-                  type="text"
+-                  required
+-                  value={editingMaterial.chapter}
+-                  onChange={(e) =>
+-                    setEditingMaterial({
+-                      ...editingMaterial,
+-                      chapter: e.target.value,
+-                    })
+-                  }
+-                  className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                />
+-              </div>
+-
+-              <div>
+-                <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                  Material Title
+-                </label>
+-                <input
+-                  type="text"
+-                  required
+-                  value={editingMaterial.title}
+-                  onChange={(e) =>
+-                    setEditingMaterial({
+-                      ...editingMaterial,
+-                      title: e.target.value,
+-                    })
+-                  }
+-                  className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                />
+-              </div>
+-
+-              <div>
+-                <label className="text-xs font-bold text-[#64748B] block mb-1">
+-                  PDF File / Google Drive URL
+-                </label>
+-                <input
+-                  type="url"
+-                  required
+-                  value={editingMaterial.file_url}
+-                  onChange={(e) =>
+-                    setEditingMaterial({
+-                      ...editingMaterial,
+-                      file_url: e.target.value,
+-                    })
+-                  }
+-                  className="w-full bg-[#F3F8FC] border border-[#D3E3EF] rounded-xl px-3 min-h-[48px] text-sm text-[#0F172A] focus:outline-none focus:border-[#075985]"
+-                />
+-              </div>
+-
+-              <div className="flex items-center justify-end space-x-2 pt-2">
+-                <button
+-                  type="button"
+-                  onClick={() => setEditingMaterial(null)}
+-                  className="px-4 min-h-[48px] rounded-xl text-xs font-semibold text-[#64748B] hover:text-[#0F172A] bg-[#F3F8FC] border border-[#D3E3EF]"
+-                >
+-                  Cancel
+-                </button>
+-                <button
+-                  type="submit"
+-                  disabled={savingEdit}
+-                  className="px-5 min-h-[48px] rounded-xl text-xs font-bold text-white bg-[#075985] hover:bg-[#0C4A6E] shadow-sm"
+-                >
+-                  {savingEdit ? "Saving..." : "Save Changes"}
+-                </button>
+-              </div>
+-            </form>
+-          </div>
+-        </div>
+-      )}
+-
+-      {/* UNIFIED SITE FOOTER */}
++      <StudentDrawer key={openId ?? "none"} studentId={openId} onClose={() => setOpenId(null)} onChanged={studentsChanged} />
+       <SiteFooter />
+     </div>
+   );
+diff --git a/frontend/src/app/dashboard/page.tsx b/frontend/src/app/dashboard/page.tsx
+index 67c1f43..5a481a0 100644
+--- a/frontend/src/app/dashboard/page.tsx
++++ b/frontend/src/app/dashboard/page.tsx
+@@ -12,6 +12,8 @@ import BadgesGrid from "@/components/dashboard/BadgesGrid";
+ import Celebration, { type CelebrationEvent } from "@/components/dashboard/Celebration";
+ import ChapterCard from "@/components/dashboard/ChapterCard";
+ import { MobileDock, Sidebar, TopBar } from "@/components/dashboard/Chrome";
++import LockedScreen from "@/components/dashboard/LockedScreen";
++import NotificationBanner from "@/components/dashboard/NotificationBanner";
+ import ContinueCard from "@/components/dashboard/ContinueCard";
+ import CountUp from "@/components/dashboard/CountUp";
+ import DashBackdrop from "@/components/dashboard/DashBackdrop";
+@@ -25,7 +27,8 @@ import { DashboardSkeleton, GridSkeleton } from "@/components/dashboard/Skeleton
+ import StreakCard from "@/components/dashboard/StreakCard";
+ import { DayPlanSheet, DueToday, StudyCalendar } from "@/components/dashboard/StudyCalendar";
+ import WeeklyGoal from "@/components/dashboard/WeeklyGoal";
+-import { useDashboardData } from "@/hooks/useDashboardData";
++import { CONTENT_KEY, useDashboardData } from "@/hooks/useDashboardData";
++import { useNotifications } from "@/hooks/useNotifications";
+ import { useProgress } from "@/hooks/useProgress";
+ import { simForChapter, type SimId } from "@/lib/chapter-sims";
+ import type { Material, Subject, UserProfile, VideoLecture, View } from "@/lib/dashboard-types";
+@@ -133,7 +136,7 @@ function DashboardContent() {
+         router.replace("/admin");
+         return;
+       }
+-      setServerProfile({ full_name: d.full_name, email: d.email, batch_no: d.batch_no, grade_class: d.grade_class, school: d.school, days_left: d.days_left, is_approved: d.is_approved });
++      setServerProfile({ full_name: d.full_name, email: d.email, batch_no: d.batch_no, grade_class: d.grade_class, school: d.school, days_left: d.days_left, is_approved: d.is_approved, subscription_status: d.subscription_status });
+       if (d.full_name) localStorage.setItem("user_name", d.full_name);
+       if (d.batch_no) localStorage.setItem("batch_no", d.batch_no);
+     },
+@@ -151,8 +154,22 @@ function DashboardContent() {
+   const fullName = serverProfile.full_name || session?.name || "Student";
+   const batch = serverProfile.batch_no || session?.batch || "General Batch";
+   const daysLeft = serverProfile.days_left !== undefined ? serverProfile.days_left : 30;
+-  const isExpired = daysLeft <= 0 || serverProfile.is_approved === false;
+-  const isExpiringSoon = daysLeft > 0 && daysLeft <= 3;
++  const subStatus = serverProfile.subscription_status;
++  // The server decides; the day count is only a fallback for an older API that does not send the status.
++  const isExpired = subStatus ? subStatus === "expired" || subStatus === "pending" : daysLeft <= 0 || serverProfile.is_approved === false;
++  const isExpiringSoon = !isExpired && daysLeft > 0 && daysLeft <= 7;
++  const { items: notifications, markAllRead } = useNotifications(active && !isExpired);
++  const [rechecking, setRechecking] = useState(false);
++
++  // A locked student must not keep seeing lectures that were saved on this phone while they were paying.
++  useEffect(() => {
++    if (!isExpired) return;
++    try {
++      localStorage.removeItem(CONTENT_KEY);
++    } catch {
++      // ignore
++    }
++  }, [isExpired]);
+ 
+   // ---- numbers shown on screen
+   const streak = useMemo(() => computeStreak(state.days, today), [state.days, today]);
+@@ -305,6 +322,21 @@ function DashboardContent() {
+ 
+   if (!mounted || !active) return null;
+ 
++  if (isExpired) {
++    return (
++      <LockedScreen
++        name={fullName}
++        status={subStatus === "expired" ? "expired" : "pending"}
++        checking={rechecking}
++        onRecheck={() => {
++          setRechecking(true);
++          void reload().finally(() => setRechecking(false));
++        }}
++        onLogout={logout}
++      />
++    );
++  }
++
+   const first = fullName.trim().split(/\s+/)[0] || "there";
+   const chapterSim = chapter ? simForChapter(chapter, subject) : null;
+   const showSkeleton = loading && videos.length === 0;
+@@ -368,7 +400,9 @@ function DashboardContent() {
+           onBell={openNotice}
+         />
+ 
+-        {(isExpired || isExpiringSoon) && (
++        <NotificationBanner items={notifications} onDismiss={() => void markAllRead()} />
++
++        {isExpiringSoon && (
+           <div className={`flex flex-col items-start justify-between gap-4 border-b px-4 py-4 sm:flex-row sm:items-center sm:px-8 ${isExpired ? "border-rose-200 bg-rose-50 text-rose-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+             <div className="flex items-center gap-3">
+               <ShieldAlert className="h-6 w-6 shrink-0 text-rose-600" />
+diff --git a/frontend/src/components/admin/LecturesTab.tsx b/frontend/src/components/admin/LecturesTab.tsx
+new file mode 100644
+index 0000000..cc9ceab
+--- /dev/null
++++ b/frontend/src/components/admin/LecturesTab.tsx
+@@ -0,0 +1,243 @@
++"use client";
++
++import React, { useMemo, useState } from "react";
++import { ArrowDown, ArrowUp, Eye, EyeOff, ListOrdered, Pencil, Plus, Trash2 } from "lucide-react";
++import api from "@/lib/api";
++import { errorText, SUBJECT_COLOR, subjectLabel, youtubeId } from "./format";
++import type { Lecture } from "./types";
++import { btnAccent, btnGhost, btnPrimary, Card, inputClass, Modal, Skeleton, Spinner, useUi } from "./ui";
++
++const SUBJECTS = ["PHYSICS", "CHEMISTRY", "HIGHER_MATH"];
++
++interface Draft {
++  id: string | null;
++  lecture_no: string;
++  title: string;
++  chapter: string;
++  subject: string;
++  video_url: string;
++}
++const blank = (subject = "PHYSICS", chapter = ""): Draft => ({ id: null, lecture_no: "", title: "", chapter, subject, video_url: "" });
++
++interface Props {
++  lectures: Lecture[];
++  loading: boolean;
++  error: string | null;
++  onChanged: () => void;
++  onRetry: () => void;
++}
++
++export default function LecturesTab({ lectures, loading, error, onChanged, onRetry }: Props) {
++  const { toast, confirm } = useUi();
++  const [subject, setSubject] = useState("ALL");
++  const [chapter, setChapter] = useState("ALL");
++  const [draft, setDraft] = useState<Draft | null>(null);
++  const [saving, setSaving] = useState(false);
++  const [busyId, setBusyId] = useState<string | null>(null);
++
++  const chapters = useMemo(
++    () => Array.from(new Set(lectures.filter((l) => subject === "ALL" || l.subject === subject).map((l) => l.chapter))).sort(),
++    [lectures, subject]
++  );
++
++  const rows = useMemo(
++    () =>
++      lectures
++        .filter((l) => (subject === "ALL" || l.subject === subject) && (chapter === "ALL" || l.chapter === chapter))
++        .sort((a, b) => a.subject.localeCompare(b.subject) || a.chapter.localeCompare(b.chapter) || a.lecture_no - b.lecture_no),
++    [lectures, subject, chapter]
++  );
++
++  const run = async (id: string, fn: () => Promise<unknown>, ok?: string) => {
++    setBusyId(id);
++    try {
++      await fn();
++      if (ok) toast("success", ok);
++      onChanged();
++    } catch (err) {
++      toast("error", errorText(err));
++    } finally {
++      setBusyId(null);
++    }
++  };
++
++  const togglePublish = (l: Lecture) =>
++    run(l.id, () => api.patch(`/api/v1/admin/lectures/${l.id}/toggle-publish`), l.is_published ? "Hidden from students." : "Now visible to students.");
++
++  const remove = async (l: Lecture) => {
++    const ok = await confirm({
++      title: "Delete this lecture?",
++      message: `"${l.title}" and every student's progress on it will be removed.`,
++      confirmLabel: "Delete",
++      danger: true,
++    });
++    if (ok) await run(l.id, () => api.delete(`/api/v1/admin/lectures/${l.id}`), "Lecture deleted.");
++  };
++
++  const move = (a: Lecture, b: Lecture | undefined) => {
++    if (!b) return;
++    void run(a.id, () => api.post("/api/v1/admin/lectures/swap-order", { lecture_id_1: a.id, lecture_id_2: b.id }));
++  };
++
++  const renumber = async () => {
++    if (subject === "ALL" || chapter === "ALL") return;
++    const ok = await confirm({
++      title: "Renumber this chapter?",
++      message: `Lectures in "${chapter}" will be numbered 1, 2, 3... in their current order.`,
++      confirmLabel: "Renumber",
++    });
++    if (ok) await run("renumber", () => api.post("/api/v1/admin/lectures/normalize-order", { subject, chapter }), "Chapter renumbered.");
++  };
++
++  const save = async () => {
++    if (!draft) return;
++    const title = draft.title.trim();
++    const ch = draft.chapter.trim();
++    const no = Number(draft.lecture_no);
++    if (!title || !ch) return toast("error", "Title and chapter are required.");
++    if (!Number.isInteger(no) || no < 1) return toast("error", "Lecture number must be 1 or more.");
++    if (!youtubeId(draft.video_url)) return toast("error", "Paste a valid YouTube link (youtube.com or youtu.be).");
++    const body = { lecture_no: no, title, topic: title, chapter: ch, subject: draft.subject, video_url: draft.video_url.trim() };
++    setSaving(true);
++    try {
++      if (draft.id) await api.put(`/api/v1/admin/lectures/${draft.id}`, body);
++      else await api.post("/api/v1/admin/lectures", body);
++      toast("success", draft.id ? "Lecture updated." : "Lecture added. Publish it when ready.");
++      setDraft(null);
++      onChanged();
++    } catch (err) {
++      toast("error", errorText(err));
++    } finally {
++      setSaving(false);
++    }
++  };
++
++  const openNew = () => {
++    const inChapter = lectures.filter((l) => l.subject === (subject === "ALL" ? "PHYSICS" : subject) && l.chapter === chapter);
++    const next = inChapter.length ? Math.max(...inChapter.map((l) => l.lecture_no)) + 1 : 1;
++    setDraft({ ...blank(subject === "ALL" ? "PHYSICS" : subject, chapter === "ALL" ? "" : chapter), lecture_no: String(next) });
++  };
++
++  const vid = draft ? youtubeId(draft.video_url) : null;
++
++  return (
++    <div className="space-y-4">
++      <Card className="space-y-3">
++        <div className="grid grid-cols-2 gap-2">
++          <select value={subject} onChange={(e) => { setSubject(e.target.value); setChapter("ALL"); }} aria-label="Subject" className={inputClass}>
++            <option value="ALL">All subjects</option>
++            {SUBJECTS.map((s) => (
++              <option key={s} value={s}>{subjectLabel(s)}</option>
++            ))}
++          </select>
++          <select value={chapter} onChange={(e) => setChapter(e.target.value)} aria-label="Chapter" className={inputClass}>
++            <option value="ALL">All chapters</option>
++            {chapters.map((c) => (
++              <option key={c} value={c}>{c}</option>
++            ))}
++          </select>
++        </div>
++        <div className="grid grid-cols-2 gap-2">
++          <button type="button" onClick={openNew} className={btnAccent}>
++            <Plus className="h-4 w-4" /> Add lecture
++          </button>
++          <button type="button" onClick={() => void renumber()} disabled={subject === "ALL" || chapter === "ALL" || busyId === "renumber"} className={btnGhost} title="Pick a subject and a chapter first">
++            {busyId === "renumber" ? <Spinner /> : <ListOrdered className="h-4 w-4" />} Renumber
++          </button>
++        </div>
++      </Card>
++
++      {loading && lectures.length === 0 ? (
++        <div className="space-y-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
++      ) : error && lectures.length === 0 ? (
++        <Card className="text-center">
++          <p className="text-sm font-semibold text-slate-600">{error}</p>
++          <button type="button" onClick={onRetry} className={`${btnGhost} mt-3`}>Try again</button>
++        </Card>
++      ) : rows.length === 0 ? (
++        <Card className="py-10 text-center text-sm text-slate-500">{lectures.length === 0 ? "No lectures yet. Add the first one." : "No lectures match this filter."}</Card>
++      ) : (
++        <ul className="space-y-2">
++          {rows.map((l, i) => {
++            const prev = rows[i - 1] && rows[i - 1].subject === l.subject && rows[i - 1].chapter === l.chapter ? rows[i - 1] : undefined;
++            const next = rows[i + 1] && rows[i + 1].subject === l.subject && rows[i + 1].chapter === l.chapter ? rows[i + 1] : undefined;
++            const busy = busyId === l.id;
++            return (
++              <li key={l.id} className={`rounded-2xl border border-[#D3E3EF] bg-white p-3 shadow-sm ${l.is_published ? "" : "opacity-70"}`}>
++                <div className="flex items-start gap-3">
++                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black text-white" style={{ backgroundColor: SUBJECT_COLOR[l.subject] || "#0369A1" }}>
++                    {l.lecture_no}
++                  </span>
++                  <div className="min-w-0 flex-1">
++                    <p className="truncate text-sm font-extrabold text-[#0F172A]">{l.title}</p>
++                    <p className="truncate text-[11px] text-slate-500">{subjectLabel(l.subject)} · {l.chapter}</p>
++                    {!l.is_published && <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">Hidden from students</span>}
++                  </div>
++                  <div className="flex shrink-0 flex-col">
++                    <IconBtn label="Move up" disabled={!prev || busy} onClick={() => move(l, prev)}><ArrowUp className="h-4 w-4" /></IconBtn>
++                    <IconBtn label="Move down" disabled={!next || busy} onClick={() => move(l, next)}><ArrowDown className="h-4 w-4" /></IconBtn>
++                  </div>
++                </div>
++                <div className="mt-2 grid grid-cols-3 gap-2">
++                  <button type="button" onClick={() => void togglePublish(l)} disabled={busy} className={`${btnGhost} !min-h-[44px] text-xs`}>
++                    {busy ? <Spinner /> : l.is_published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />} {l.is_published ? "Hide" : "Publish"}
++                  </button>
++                  <button type="button" onClick={() => setDraft({ id: l.id, lecture_no: String(l.lecture_no), title: l.title, chapter: l.chapter, subject: l.subject, video_url: l.video_url })} className={`${btnGhost} !min-h-[44px] text-xs`}>
++                    <Pencil className="h-4 w-4" /> Edit
++                  </button>
++                  <button type="button" onClick={() => void remove(l)} disabled={busy} className={`${btnGhost} !min-h-[44px] text-xs text-rose-700`}>
++                    <Trash2 className="h-4 w-4" /> Delete
++                  </button>
++                </div>
++              </li>
++            );
++          })}
++        </ul>
++      )}
++
++      <Modal open={!!draft} onClose={() => !saving && setDraft(null)} title={draft?.id ? "Edit lecture" : "Add lecture"}>
++        {draft && (
++          <div className="space-y-3">
++            <div className="grid grid-cols-2 gap-2">
++              <label className="text-xs font-bold text-slate-500">Subject
++                <select value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} className={`${inputClass} mt-1`}>
++                  {SUBJECTS.map((s) => <option key={s} value={s}>{subjectLabel(s)}</option>)}
++                </select>
++              </label>
++              <label className="text-xs font-bold text-slate-500">Lecture no.
++                <input type="number" inputMode="numeric" min={1} value={draft.lecture_no} onChange={(e) => setDraft({ ...draft, lecture_no: e.target.value })} className={`${inputClass} mt-1`} />
++              </label>
++            </div>
++            <label className="block text-xs font-bold text-slate-500">Chapter
++              <input list="chapter-options" value={draft.chapter} onChange={(e) => setDraft({ ...draft, chapter: e.target.value })} className={`${inputClass} mt-1`} />
++              <datalist id="chapter-options">
++                {Array.from(new Set(lectures.filter((l) => l.subject === draft.subject).map((l) => l.chapter))).map((c) => <option key={c} value={c} />)}
++              </datalist>
++            </label>
++            <label className="block text-xs font-bold text-slate-500">Title
++              <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} className={`${inputClass} mt-1`} />
++            </label>
++            <label className="block text-xs font-bold text-slate-500">YouTube link
++              <input type="url" inputMode="url" value={draft.video_url} onChange={(e) => setDraft({ ...draft, video_url: e.target.value })} placeholder="https://youtu.be/..." className={`${inputClass} mt-1`} />
++            </label>
++            {draft.video_url.trim() !== "" && (
++              <p className={`text-xs font-semibold ${vid ? "text-emerald-700" : "text-rose-700"}`}>{vid ? "YouTube link looks good." : "This is not a YouTube link."}</p>
++            )}
++            <div className="flex gap-2 pt-1">
++              <button type="button" onClick={() => setDraft(null)} disabled={saving} className={`${btnGhost} flex-1`}>Cancel</button>
++              <button type="button" onClick={() => void save()} disabled={saving} className={`${btnPrimary} flex-1`}>{saving ? <Spinner /> : null} Save</button>
++            </div>
++          </div>
++        )}
++      </Modal>
++    </div>
++  );
++}
++
++function IconBtn({ label, disabled, onClick, children }: { label: string; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
++  return (
++    <button type="button" aria-label={label} disabled={disabled} onClick={onClick} className="flex h-[22px] w-11 items-center justify-center text-slate-500 hover:text-[#075985] disabled:opacity-30">
++      {children}
++    </button>
++  );
++}
+diff --git a/frontend/src/components/admin/MaterialsTab.tsx b/frontend/src/components/admin/MaterialsTab.tsx
+new file mode 100644
+index 0000000..61f342c
+--- /dev/null
++++ b/frontend/src/components/admin/MaterialsTab.tsx
+@@ -0,0 +1,167 @@
++"use client";
++
++import React, { useMemo, useState } from "react";
++import { ExternalLink, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
++import api from "@/lib/api";
++import { errorText, isDriveLink, SUBJECT_COLOR, subjectLabel } from "./format";
++import type { MaterialRow } from "./types";
++import { btnAccent, btnGhost, btnPrimary, Card, inputClass, Modal, Skeleton, Spinner, useUi } from "./ui";
++
++const SUBJECTS = ["PHYSICS", "CHEMISTRY", "HIGHER_MATH"];
++
++interface Draft {
++  id: string | null;
++  title: string;
++  chapter: string;
++  subject: string;
++  file_url: string;
++}
++
++interface Props {
++  materials: MaterialRow[];
++  loading: boolean;
++  error: string | null;
++  onChanged: () => void;
++  onRetry: () => void;
++}
++
++export default function MaterialsTab({ materials, loading, error, onChanged, onRetry }: Props) {
++  const { toast, confirm } = useUi();
++  const [subject, setSubject] = useState("ALL");
++  const [draft, setDraft] = useState<Draft | null>(null);
++  const [saving, setSaving] = useState(false);
++  const [busyId, setBusyId] = useState<string | null>(null);
++
++  const rows = useMemo(
++    () => materials.filter((m) => subject === "ALL" || m.subject === subject).sort((a, b) => a.subject.localeCompare(b.subject) || a.chapter.localeCompare(b.chapter) || a.title.localeCompare(b.title)),
++    [materials, subject]
++  );
++
++  const act = async (id: string, fn: () => Promise<unknown>, ok: string) => {
++    setBusyId(id);
++    try {
++      await fn();
++      toast("success", ok);
++      onChanged();
++    } catch (err) {
++      toast("error", errorText(err));
++    } finally {
++      setBusyId(null);
++    }
++  };
++
++  const remove = async (m: MaterialRow) => {
++    const ok = await confirm({ title: "Delete this sheet?", message: `"${m.title}" will disappear for every student.`, confirmLabel: "Delete", danger: true });
++    if (ok) await act(m.id, () => api.delete(`/api/v1/admin/materials/${m.id}`), "Sheet deleted.");
++  };
++
++  const save = async () => {
++    if (!draft) return;
++    const title = draft.title.trim();
++    const chapter = draft.chapter.trim();
++    if (!title || !chapter) return toast("error", "Title and chapter are required.");
++    if (!isDriveLink(draft.file_url.trim())) return toast("error", "Use a Google Drive link. Upload the PDF to Drive and share it as 'Anyone with the link'.");
++    const body = { title, chapter, subject: draft.subject, file_url: draft.file_url.trim() };
++    setSaving(true);
++    try {
++      if (draft.id) await api.put(`/api/v1/admin/materials/${draft.id}`, body);
++      else await api.post("/api/v1/admin/materials", body);
++      toast("success", draft.id ? "Sheet updated." : "Sheet added.");
++      setDraft(null);
++      onChanged();
++    } catch (err) {
++      toast("error", errorText(err));
++    } finally {
++      setSaving(false);
++    }
++  };
++
++  const linkOk = draft ? isDriveLink(draft.file_url.trim()) : false;
++
++  return (
++    <div className="space-y-4">
++      <Card className="grid grid-cols-2 gap-2">
++        <select value={subject} onChange={(e) => setSubject(e.target.value)} aria-label="Subject" className={inputClass}>
++          <option value="ALL">All subjects</option>
++          {SUBJECTS.map((s) => <option key={s} value={s}>{subjectLabel(s)}</option>)}
++        </select>
++        <button type="button" onClick={() => setDraft({ id: null, title: "", chapter: "", subject: subject === "ALL" ? "PHYSICS" : subject, file_url: "" })} className={btnAccent}>
++          <Plus className="h-4 w-4" /> Add sheet
++        </button>
++        <p className="col-span-2 text-[11px] text-slate-500">Sheets are stored on Google Drive. Share the file as &quot;Anyone with the link can view&quot;, then paste the link here.</p>
++      </Card>
++
++      {loading && materials.length === 0 ? (
++        <div className="space-y-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
++      ) : error && materials.length === 0 ? (
++        <Card className="text-center">
++          <p className="text-sm font-semibold text-slate-600">{error}</p>
++          <button type="button" onClick={onRetry} className={`${btnGhost} mt-3`}>Try again</button>
++        </Card>
++      ) : rows.length === 0 ? (
++        <Card className="py-10 text-center text-sm text-slate-500">{materials.length === 0 ? "No study sheets yet." : "No sheets for this subject."}</Card>
++      ) : (
++        <ul className="space-y-2">
++          {rows.map((m) => {
++            const busy = busyId === m.id;
++            return (
++              <li key={m.id} className={`rounded-2xl border border-[#D3E3EF] bg-white p-3 shadow-sm ${m.is_published ? "" : "opacity-70"}`}>
++                <div className="flex items-start gap-3">
++                  <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: SUBJECT_COLOR[m.subject] || "#0369A1" }} />
++                  <div className="min-w-0 flex-1">
++                    <p className="truncate text-sm font-extrabold text-[#0F172A]">{m.title}</p>
++                    <p className="truncate text-[11px] text-slate-500">{subjectLabel(m.subject)} · {m.chapter}</p>
++                    {!m.is_published && <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">Hidden from students</span>}
++                  </div>
++                  <a href={m.file_url} target="_blank" rel="noopener noreferrer" aria-label="Open in Drive" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-50 hover:text-[#075985]">
++                    <ExternalLink className="h-4 w-4" />
++                  </a>
++                </div>
++                <div className="mt-2 grid grid-cols-3 gap-2">
++                  <button type="button" disabled={busy} onClick={() => void act(m.id, () => api.patch(`/api/v1/admin/materials/${m.id}/toggle-publish`), m.is_published ? "Hidden from students." : "Now visible to students.")} className={`${btnGhost} !min-h-[44px] text-xs`}>
++                    {busy ? <Spinner /> : m.is_published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />} {m.is_published ? "Hide" : "Publish"}
++                  </button>
++                  <button type="button" onClick={() => setDraft({ id: m.id, title: m.title, chapter: m.chapter, subject: m.subject, file_url: m.file_url })} className={`${btnGhost} !min-h-[44px] text-xs`}>
++                    <Pencil className="h-4 w-4" /> Edit
++                  </button>
++                  <button type="button" disabled={busy} onClick={() => void remove(m)} className={`${btnGhost} !min-h-[44px] text-xs text-rose-700`}>
++                    <Trash2 className="h-4 w-4" /> Delete
++                  </button>
++                </div>
++              </li>
++            );
++          })}
++        </ul>
++      )}
++
++      <Modal open={!!draft} onClose={() => !saving && setDraft(null)} title={draft?.id ? "Edit sheet" : "Add sheet"}>
++        {draft && (
++          <div className="space-y-3">
++            <label className="block text-xs font-bold text-slate-500">Subject
++              <select value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} className={`${inputClass} mt-1`}>
++                {SUBJECTS.map((s) => <option key={s} value={s}>{subjectLabel(s)}</option>)}
++              </select>
++            </label>
++            <label className="block text-xs font-bold text-slate-500">Chapter
++              <input list="material-chapters" value={draft.chapter} onChange={(e) => setDraft({ ...draft, chapter: e.target.value })} className={`${inputClass} mt-1`} />
++              <datalist id="material-chapters">
++                {Array.from(new Set(materials.filter((m) => m.subject === draft.subject).map((m) => m.chapter))).map((c) => <option key={c} value={c} />)}
++              </datalist>
++            </label>
++            <label className="block text-xs font-bold text-slate-500">Title
++              <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} className={`${inputClass} mt-1`} />
++            </label>
++            <label className="block text-xs font-bold text-slate-500">Google Drive link
++              <input type="url" inputMode="url" value={draft.file_url} onChange={(e) => setDraft({ ...draft, file_url: e.target.value })} placeholder="https://drive.google.com/file/d/..." className={`${inputClass} mt-1`} />
++            </label>
++            {draft.file_url.trim() !== "" && <p className={`text-xs font-semibold ${linkOk ? "text-emerald-700" : "text-rose-700"}`}>{linkOk ? "Drive link looks good." : "This is not a Google Drive link."}</p>}
++            <div className="flex gap-2 pt-1">
++              <button type="button" onClick={() => setDraft(null)} disabled={saving} className={`${btnGhost} flex-1`}>Cancel</button>
++              <button type="button" onClick={() => void save()} disabled={saving} className={`${btnPrimary} flex-1`}>{saving ? <Spinner /> : null} Save</button>
++            </div>
++          </div>
++        )}
++      </Modal>
++    </div>
++  );
++}
+diff --git a/frontend/src/components/admin/NoticesTab.tsx b/frontend/src/components/admin/NoticesTab.tsx
+new file mode 100644
+index 0000000..287ce34
+--- /dev/null
++++ b/frontend/src/components/admin/NoticesTab.tsx
+@@ -0,0 +1,95 @@
++"use client";
++
++import React, { useState } from "react";
++import { Megaphone, Trash2 } from "lucide-react";
++import api from "@/lib/api";
++import { errorText, fmtDate } from "./format";
++import type { NoticeRow } from "./types";
++import { btnAccent, btnGhost, Card, inputClass, SectionTitle, Skeleton, Spinner, useUi } from "./ui";
++
++const MAX = 500;
++
++interface Props {
++  notices: NoticeRow[];
++  loading: boolean;
++  error: string | null;
++  onChanged: () => void;
++  onRetry: () => void;
++}
++
++export default function NoticesTab({ notices, loading, error, onChanged, onRetry }: Props) {
++  const { toast, confirm } = useUi();
++  const [text, setText] = useState("");
++  const [posting, setPosting] = useState(false);
++  const [busyId, setBusyId] = useState<string | null>(null);
++
++  const post = async () => {
++    const content = text.trim();
++    if (!content) return;
++    setPosting(true);
++    try {
++      await api.post("/api/v1/admin/notices", { content });
++      toast("success", "Notice posted. Students see the newest one.");
++      setText("");
++      onChanged();
++    } catch (err) {
++      toast("error", errorText(err));
++    } finally {
++      setPosting(false);
++    }
++  };
++
++  const remove = async (n: NoticeRow) => {
++    const ok = await confirm({ title: "Delete this notice?", message: "Students will stop seeing it.", confirmLabel: "Delete", danger: true });
++    if (!ok) return;
++    setBusyId(n.id);
++    try {
++      await api.delete(`/api/v1/admin/notices/${n.id}`);
++      toast("success", "Notice deleted.");
++      onChanged();
++    } catch (err) {
++      toast("error", errorText(err));
++    } finally {
++      setBusyId(null);
++    }
++  };
++
++  return (
++    <div className="space-y-4">
++      <Card>
++        <SectionTitle aside={<span className={`text-xs font-bold ${text.length > MAX - 40 ? "text-[#CC310E]" : "text-slate-400"}`}>{text.length}/{MAX}</span>}>New notice</SectionTitle>
++        <textarea value={text} onChange={(e) => setText(e.target.value.slice(0, MAX))} rows={4} placeholder="Write a short message for all students" aria-label="Notice text" className={`${inputClass} py-2`} />
++        <button type="button" onClick={() => void post()} disabled={posting || !text.trim()} className={`${btnAccent} mt-3 w-full`}>
++          {posting ? <Spinner /> : <Megaphone className="h-4 w-4" />} Post notice
++        </button>
++        <p className="mt-2 text-[11px] text-slate-500">Only the newest notice is shown to paying students. Unpaid students see the renewal message instead.</p>
++      </Card>
++
++      {loading && notices.length === 0 ? (
++        <Skeleton className="h-20 w-full" />
++      ) : error && notices.length === 0 ? (
++        <Card className="text-center">
++          <p className="text-sm font-semibold text-slate-600">{error}</p>
++          <button type="button" onClick={onRetry} className={`${btnGhost} mt-3`}>Try again</button>
++        </Card>
++      ) : notices.length === 0 ? (
++        <Card className="py-8 text-center text-sm text-slate-500">No notices yet.</Card>
++      ) : (
++        <ul className="space-y-2">
++          {notices.map((n, i) => (
++            <li key={n.id} className="flex items-start gap-3 rounded-2xl border border-[#D3E3EF] bg-white p-3 shadow-sm">
++              <div className="min-w-0 flex-1">
++                {i === 0 && <span className="mb-1 inline-block rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700">Showing now</span>}
++                <p className="whitespace-pre-wrap break-words text-sm text-[#0F172A]">{n.content}</p>
++                <p className="mt-1 text-[11px] text-slate-500">{fmtDate(n.created_at)}</p>
++              </div>
++              <button type="button" aria-label="Delete notice" disabled={busyId === n.id} onClick={() => void remove(n)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-rose-700 hover:bg-rose-50 disabled:opacity-50">
++                {busyId === n.id ? <Spinner /> : <Trash2 className="h-4 w-4" />}
++              </button>
++            </li>
++          ))}
++        </ul>
++      )}
++    </div>
++  );
++}
+diff --git a/frontend/src/components/admin/OverviewTab.tsx b/frontend/src/components/admin/OverviewTab.tsx
+new file mode 100644
+index 0000000..a693b95
+--- /dev/null
++++ b/frontend/src/components/admin/OverviewTab.tsx
+@@ -0,0 +1,252 @@
++"use client";
++
++import React from "react";
++import { AlertTriangle, BrainCircuit, CheckCircle2, FileText, GraduationCap, Hourglass, Video, Wallet } from "lucide-react";
++import { STATUS_META, subjectLabel } from "./format";
++import type { Overview, SubStatus } from "./types";
++import { btnGhost, Card, Skeleton, SectionTitle, StatusPill } from "./ui";
++
++const ORDER: SubStatus[] = ["active", "expiring", "expired", "pending"];
++
++const REASON_TEXT = {
++  expiring: (d: number) => (d <= 1 ? "Ends today or tomorrow" : `${d} days left`),
++  recently_expired: () => "Expired in the last 2 weeks",
++  new_unpaid: () => "New sign-up, not paid yet",
++} as const;
++
++interface Props {
++  data: Overview | null;
++  loading: boolean;
++  error: string | null;
++  onRetry: () => void;
++  onOpenStudent: (id: string) => void;
++  onFilter: (status: SubStatus | "ALL") => void;
++  onTab: (tab: "lectures" | "materials") => void;
++}
++
++export default function OverviewTab({ data, loading, error, onRetry, onOpenStudent, onFilter, onTab }: Props) {
++  if (loading && !data) {
++    return (
++      <div className="space-y-4" aria-busy="true">
++        <Skeleton className="h-40 w-full" />
++        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
++          {[0, 1, 2, 3].map((i) => (
++            <Skeleton key={i} className="h-24 w-full" />
++          ))}
++        </div>
++        <Skeleton className="h-48 w-full" />
++      </div>
++    );
++  }
++  if (!data) {
++    return (
++      <Card className="text-center">
++        <p className="text-sm font-semibold text-slate-600">{error || "Could not load the overview."}</p>
++        <button type="button" onClick={onRetry} className={`${btnGhost} mt-3`}>
++          Try again
++        </button>
++      </Card>
++    );
++  }
++
++  const t = data.totals;
++  const total = t.students;
++  const pct = (n: number) => (total ? Math.round((100 * n) / total) : 0);
++  const needPayment = t.expired + t.pending;
++
++  return (
++    <div className="space-y-4">
++      {/* ---- the subscription bar ---- */}
++      <Card>
++        <SectionTitle aside={<span className="text-xs font-semibold text-slate-500">{total} students</span>}>Subscriptions</SectionTitle>
++        {total === 0 ? (
++          <p className="py-6 text-center text-sm text-slate-500">No students yet. They show up here as soon as they register.</p>
++        ) : (
++          <>
++            <div className="flex h-5 w-full overflow-hidden rounded-full bg-[#E2EDF5]" role="img" aria-label={ORDER.map((s) => `${STATUS_META[s].label} ${t[s]}`).join(", ")}>
++              {ORDER.map((s) =>
++                t[s] > 0 ? (
++                  <button
++                    key={s}
++                    type="button"
++                    title={`${STATUS_META[s].label}: ${t[s]}`}
++                    aria-label={`Show ${STATUS_META[s].label} students`}
++                    onClick={() => onFilter(s)}
++                    className="h-full transition-[width] duration-500 hover:opacity-80"
++                    style={{ width: `${(100 * t[s]) / total}%`, backgroundColor: STATUS_META[s].bar }}
++                  />
++                ) : null
++              )}
++            </div>
++            <ul className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
++              {ORDER.map((s) => (
++                <li key={s}>
++                  <button
++                    type="button"
++                    onClick={() => onFilter(s)}
++                    className="flex min-h-[56px] w-full items-center gap-3 rounded-xl border border-[#E2EDF5] bg-[#F8FBFD] px-3 py-2 text-left transition-colors hover:border-[#0369A1]"
++                  >
++                    <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: STATUS_META[s].bar }} />
++                    <span className="min-w-0">
++                      <span className="block text-lg font-black leading-none text-[#0F172A]">
++                        {t[s]} <span className="text-xs font-bold text-slate-500">· {pct(t[s])}%</span>
++                      </span>
++                      <span className="mt-1 block truncate text-[11px] font-bold uppercase tracking-wide text-slate-500">{STATUS_META[s].label}</span>
++                    </span>
++                  </button>
++                </li>
++              ))}
++            </ul>
++          </>
++        )}
++      </Card>
++
++      {/* ---- key numbers ---- */}
++      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
++        <Stat icon={<GraduationCap className="h-5 w-5" />} label="Total students" value={total} note={`${data.new_this_week} new this week`} onClick={() => onFilter("ALL")} />
++        <Stat icon={<CheckCircle2 className="h-5 w-5" />} label="Paid right now" value={t.paid_now} note={`${pct(t.paid_now)}% of students`} tone="sky" onClick={() => onFilter("active")} />
++        <Stat icon={<Hourglass className="h-5 w-5" />} label="Ending in 7 days" value={t.expiring} note="Warned automatically" tone={t.expiring ? "amber" : "slate"} onClick={() => onFilter("expiring")} />
++        <Stat icon={<AlertTriangle className="h-5 w-5" />} label="Need to pay" value={needPayment} note="Locked out until renewed" tone={needPayment ? "red" : "slate"} onClick={() => onFilter(t.expired ? "expired" : "pending")} />
++      </div>
++
++      {/* ---- who needs a call ---- */}
++      <Card>
++        <SectionTitle>Needs your attention</SectionTitle>
++        {data.attention.length === 0 ? (
++          <p className="py-4 text-center text-sm text-slate-500">Nobody needs attention right now. 🎉</p>
++        ) : (
++          <ul className="divide-y divide-[#E2EDF5]">
++            {data.attention.map((a) => (
++              <li key={a.id} className="flex items-center gap-3 py-3">
++                <div className="min-w-0 flex-1">
++                  <button type="button" onClick={() => onOpenStudent(a.id)} className="block max-w-full truncate text-left text-sm font-extrabold text-[#075985] hover:underline">
++                    {a.full_name}
++                  </button>
++                  <p className="truncate text-xs text-slate-500">
++                    {a.batch_no} · {REASON_TEXT[a.reason](a.days_left)}
++                  </p>
++                </div>
++                <StatusPill status={a.status} small />
++                <button type="button" onClick={() => onOpenStudent(a.id)} className="min-h-[44px] shrink-0 rounded-xl bg-[#CC310E] px-3 text-xs font-bold text-white hover:bg-[#A8270B]">
++                  Renew
++                </button>
++              </li>
++            ))}
++          </ul>
++        )}
++      </Card>
++
++      {/* ---- batches ---- */}
++      {data.batches.length > 0 && (
++        <Card>
++          <SectionTitle>By batch</SectionTitle>
++          <ul className="space-y-3">
++            {data.batches.map((b) => (
++              <li key={b.batch}>
++                <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
++                  <span className="truncate font-bold text-[#0F172A]">{b.batch}</span>
++                  <span className="shrink-0 text-xs text-slate-500">
++                    {b.paid} paid · {b.expired} expired · {b.pending} not paid
++                  </span>
++                </div>
++                <div className="flex h-3 w-full overflow-hidden rounded-full bg-[#E2EDF5]">
++                  <div style={{ width: `${(100 * b.paid) / b.total}%`, backgroundColor: STATUS_META.active.bar }} />
++                  <div style={{ width: `${(100 * b.expired) / b.total}%`, backgroundColor: STATUS_META.expired.bar }} />
++                  <div style={{ width: `${(100 * b.pending) / b.total}%`, backgroundColor: STATUS_META.pending.bar }} />
++                </div>
++              </li>
++            ))}
++          </ul>
++        </Card>
++      )}
++
++      {/* ---- the rest of the platform ---- */}
++      <div className="grid gap-3 sm:grid-cols-3">
++        <MiniCard icon={<Video className="h-5 w-5" />} title="Lectures" onClick={() => onTab("lectures")}>
++          <b>{data.lectures.published}</b> live{data.lectures.total > data.lectures.published ? ` · ${data.lectures.total - data.lectures.published} hidden` : ""}
++          <Subjects counts={data.lectures.by_subject} />
++        </MiniCard>
++        <MiniCard icon={<FileText className="h-5 w-5" />} title="Study sheets" onClick={() => onTab("materials")}>
++          <b>{data.materials.published}</b> live{data.materials.total > data.materials.published ? ` · ${data.materials.total - data.materials.published} hidden` : ""}
++          <Subjects counts={data.materials.by_subject} />
++        </MiniCard>
++        <MiniCard icon={<BrainCircuit className="h-5 w-5" />} title="AI tutor, last 7 days">
++          <b>{data.ai.messages_7d}</b> questions
++          <span className="block text-xs text-slate-500">from {data.ai.students_7d} students</span>
++        </MiniCard>
++      </div>
++
++      {data.collected_this_month.amounts_recorded > 0 && (
++        <MiniCard icon={<Wallet className="h-5 w-5" />} title="Cash recorded this month">
++          <b>৳{data.collected_this_month.amount.toLocaleString("en-US")}</b>
++          <span className="block text-xs text-slate-500">
++            from {data.collected_this_month.payments} renewals ({data.collected_this_month.amounts_recorded} with an amount entered)
++          </span>
++        </MiniCard>
++      )}
++    </div>
++  );
++}
++
++function Stat({
++  icon,
++  label,
++  value,
++  note,
++  tone = "slate",
++  onClick,
++}: {
++  icon: React.ReactNode;
++  label: string;
++  value: number;
++  note: string;
++  tone?: "slate" | "sky" | "amber" | "red";
++  onClick?: () => void;
++}) {
++  const tones = {
++    slate: "bg-slate-50 text-slate-600 border-slate-200",
++    sky: "bg-sky-50 text-sky-700 border-sky-200",
++    amber: "bg-amber-50 text-amber-700 border-amber-200",
++    red: "bg-rose-50 text-[#CC310E] border-rose-200",
++  };
++  return (
++    <button type="button" onClick={onClick} className="flex min-h-[96px] items-center justify-between gap-3 rounded-2xl border border-[#D3E3EF] bg-white p-4 text-left shadow-sm transition-colors hover:border-[#0369A1]">
++      <span className="min-w-0">
++        <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">{label}</span>
++        <span className="mt-1 block text-3xl font-black leading-none text-[#0F172A]">{value}</span>
++        <span className="mt-1 block truncate text-[11px] text-slate-500">{note}</span>
++      </span>
++      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${tones[tone]}`}>{icon}</span>
++    </button>
++  );
++}
++
++function MiniCard({ icon, title, children, onClick }: { icon: React.ReactNode; title: string; children: React.ReactNode; onClick?: () => void }) {
++  const body = (
++    <>
++      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-700">{icon}</span>
++      <span className="min-w-0 text-sm text-[#0F172A]">
++        <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">{title}</span>
++        {children}
++      </span>
++    </>
++  );
++  const cls = "flex items-center gap-3 rounded-2xl border border-[#D3E3EF] bg-white p-4 text-left shadow-sm";
++  return onClick ? (
++    <button type="button" onClick={onClick} className={`${cls} transition-colors hover:border-[#0369A1]`}>
++      {body}
++    </button>
++  ) : (
++    <div className={cls}>{body}</div>
++  );
++}
++
++function Subjects({ counts }: { counts: Record<string, number> }) {
++  const entries = Object.entries(counts);
++  if (!entries.length) return null;
++  return (
++    <span className="mt-0.5 block text-xs text-slate-500">
++      {entries.map(([s, n]) => `${subjectLabel(s)} ${n}`).join(" · ")}
++    </span>
++  );
++}
+diff --git a/frontend/src/components/admin/StudentDrawer.tsx b/frontend/src/components/admin/StudentDrawer.tsx
+new file mode 100644
+index 0000000..02cae16
+--- /dev/null
++++ b/frontend/src/components/admin/StudentDrawer.tsx
+@@ -0,0 +1,462 @@
++"use client";
++
++import React, { useCallback, useEffect, useState } from "react";
++import { Ban, BookOpen, Flame, Pencil, RefreshCw, Trash2, Undo2 } from "lucide-react";
++import api from "@/lib/api";
++import { errorText, fmtDate, SUBJECT_COLOR, subjectLabel, timeAgo } from "./format";
++import type { PaymentRow, StudentDetail } from "./types";
++import { Bar, btnAccent, btnGhost, Card, inputClass, SectionTitle, Sheet, Skeleton, Spinner, StatusPill, useUi } from "./ui";
++
++const PRESETS = [30, 60, 90];
++
++interface Props {
++  studentId: string | null;
++  onClose: () => void;
++  onChanged: () => void;
++}
++
++export default function StudentDrawer({ studentId, onClose, onChanged }: Props) {
++  const { toast, confirm } = useUi();
++  const [detail, setDetail] = useState<StudentDetail | null>(null);
++  const [loading, setLoading] = useState(!!studentId);
++  const [error, setError] = useState<string | null>(null);
++
++  const [days, setDays] = useState(30);
++  const [amount, setAmount] = useState("");
++  const [note, setNote] = useState("");
++  const [busy, setBusy] = useState<string | null>(null);
++
++  const [editing, setEditing] = useState(false);
++  const [form, setForm] = useState({ full_name: "", school: "", grade_class: "", batch_no: "" });
++
++  const fetchDetail = useCallback(async () => {
++    try {
++      const { data } = await api.get<StudentDetail>(`/api/v1/admin/students/${studentId}`);
++      setDetail(data);
++      setError(null);
++    } catch (err) {
++      setError(errorText(err));
++    } finally {
++      setLoading(false);
++    }
++  }, [studentId]);
++
++  // Retry button: called from an event handler, so setting state first is fine.
++  const load = useCallback(() => {
++    setLoading(true);
++    setError(null);
++    return fetchDetail();
++  }, [fetchDetail]);
++
++  useEffect(() => {
++    // The parent remounts this component (key=studentId) per student, so state starts clean.
++    // eslint-disable-next-line react-hooks/set-state-in-effect
++    if (studentId) void fetchDetail();
++  }, [studentId, fetchDetail]);
++
++  const refresh = async () => {
++    await load();
++    onChanged();
++  };
++
++  const renew = async () => {
++    if (!detail) return;
++    const s = detail.student;
++    const ok = await confirm({
++      title: `Add ${days} days for ${s.full_name}?`,
++      message: "Confirm that you have received the cash. This is saved in the payment history.",
++      confirmLabel: "Yes, cash received",
++    });
++    if (!ok) return;
++    setBusy("renew");
++    try {
++      const body: { days: number; amount?: number; note?: string } = { days };
++      if (amount.trim() !== "" && Number.isFinite(Number(amount))) body.amount = Math.max(0, Math.round(Number(amount)));
++      if (note.trim()) body.note = note.trim();
++      const { data } = await api.post(`/api/v1/admin/students/${s.id}/renew`, body);
++      toast("success", `Active until ${fmtDate(data.subscription_end_date)}.`);
++      setAmount("");
++      setNote("");
++      await refresh();
++    } catch (err) {
++      toast("error", errorText(err));
++    } finally {
++      setBusy(null);
++    }
++  };
++
++  const undo = async (p: PaymentRow) => {
++    const ok = await confirm({
++      title: "Undo this renewal?",
++      message: `This takes back ${p.days_added} days and restores the previous end date (${fmtDate(p.previous_end)}).`,
++      confirmLabel: "Undo renewal",
++      danger: true,
++    });
++    if (!ok) return;
++    setBusy(`undo-${p.id}`);
++    try {
++      await api.post(`/api/v1/admin/payments/${p.id}/undo`);
++      toast("success", "Renewal undone.");
++      await refresh();
++    } catch (err) {
++      toast("error", errorText(err));
++    } finally {
++      setBusy(null);
++    }
++  };
++
++  const revoke = async () => {
++    if (!detail) return;
++    const ok = await confirm({
++      title: `Lock ${detail.student.full_name} out now?`,
++      message: "They will see the renewal notice and cannot open anything until you renew them again.",
++      confirmLabel: "Revoke access",
++      danger: true,
++    });
++    if (!ok) return;
++    setBusy("revoke");
++    try {
++      await api.post(`/api/v1/admin/students/${detail.student.id}/revoke-access`);
++      toast("success", "Access revoked.");
++      await refresh();
++    } catch (err) {
++      toast("error", errorText(err));
++    } finally {
++      setBusy(null);
++    }
++  };
++
++  const remove = async () => {
++    if (!detail) return;
++    const ok = await confirm({
++      title: `Delete ${detail.student.full_name}?`,
++      message: "Their account, progress, notes and payment history are removed for good. This cannot be undone.",
++      confirmLabel: "Delete forever",
++      danger: true,
++    });
++    if (!ok) return;
++    setBusy("delete");
++    try {
++      await api.delete(`/api/v1/admin/students/${detail.student.id}`);
++      toast("success", "Student deleted.");
++      onChanged();
++      onClose();
++    } catch (err) {
++      toast("error", errorText(err));
++    } finally {
++      setBusy(null);
++    }
++  };
++
++  const startEdit = () => {
++    if (!detail) return;
++    const s = detail.student;
++    setForm({ full_name: s.full_name, school: s.school || "", grade_class: s.grade_class || "", batch_no: s.batch_no || "" });
++    setEditing(true);
++  };
++
++  const saveEdit = async () => {
++    if (!detail) return;
++    if (!form.full_name.trim()) {
++      toast("error", "Name cannot be empty.");
++      return;
++    }
++    setBusy("edit");
++    try {
++      await api.patch(`/api/v1/admin/students/${detail.student.id}`, {
++        full_name: form.full_name.trim(),
++        school: form.school.trim(),
++        grade_class: form.grade_class.trim(),
++        batch_no: form.batch_no.trim(),
++      });
++      toast("success", "Details saved.");
++      setEditing(false);
++      await refresh();
++    } catch (err) {
++      toast("error", errorText(err));
++    } finally {
++      setBusy(null);
++    }
++  };
++
++  const s = detail?.student;
++  const p = detail?.progress;
++
++  return (
++    <Sheet open={!!studentId} onClose={onClose} title={s?.full_name || "Student"}>
++      {loading && !detail ? (
++        <div className="space-y-3" aria-busy="true">
++          <Skeleton className="h-24 w-full" />
++          <Skeleton className="h-40 w-full" />
++          <Skeleton className="h-32 w-full" />
++        </div>
++      ) : error && !detail ? (
++        <Card className="text-center">
++          <p className="text-sm font-semibold text-slate-600">{error}</p>
++          <button type="button" onClick={() => void load()} className={`${btnGhost} mt-3`}>
++            <RefreshCw className="h-4 w-4" /> Try again
++          </button>
++        </Card>
++      ) : s && p ? (
++        <>
++          {/* identity + subscription */}
++          <Card>
++            <div className="flex items-start justify-between gap-3">
++              <div className="min-w-0">
++                <p className="truncate text-sm font-semibold text-slate-600">{s.email}</p>
++                <p className="mt-0.5 text-xs text-slate-500">
++                  {[s.batch_no || "General", s.grade_class, s.school].filter(Boolean).join(" · ")}
++                </p>
++              </div>
++              <StatusPill status={s.status} />
++            </div>
++            <p className="mt-3 rounded-xl bg-[#F3F8FC] px-3 py-2 text-sm font-semibold text-[#075985]">
++              {s.status === "pending"
++                ? "Has not paid yet. Locked out."
++                : s.days_left > 0
++                  ? `Active until ${fmtDate(s.subscription_end_date)} (${s.days_left} day${s.days_left === 1 ? "" : "s"} left)`
++                  : `Ended on ${fmtDate(s.subscription_end_date)}. Locked out.`}
++            </p>
++          </Card>
++
++          {/* renew */}
++          <Card>
++            <SectionTitle>Record cash payment</SectionTitle>
++            <div className="mb-3 grid grid-cols-3 gap-2">
++              {PRESETS.map((d) => (
++                <button
++                  key={d}
++                  type="button"
++                  onClick={() => setDays(d)}
++                  aria-pressed={days === d}
++                  className={`min-h-[44px] rounded-xl border text-sm font-bold transition-colors ${
++                    days === d ? "border-[#075985] bg-[#075985] text-white" : "border-[#D3E3EF] bg-white text-slate-700 hover:bg-slate-50"
++                  }`}
++                >
++                  {d} days
++                </button>
++              ))}
++            </div>
++            <div className="grid grid-cols-2 gap-2">
++              <label className="text-xs font-bold text-slate-500">
++                Days
++                <input type="number" inputMode="numeric" min={1} max={366} value={days} onChange={(e) => setDays(Math.min(366, Math.max(1, Number(e.target.value) || 1)))} className={`${inputClass} mt-1`} />
++              </label>
++              <label className="text-xs font-bold text-slate-500">
++                Amount received (৳)
++                <input type="number" inputMode="numeric" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="optional" className={`${inputClass} mt-1`} />
++              </label>
++            </div>
++            <label className="mt-2 block text-xs font-bold text-slate-500">
++              Note
++              <input type="text" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} placeholder="optional, e.g. paid to Sir at class" className={`${inputClass} mt-1`} />
++            </label>
++            <button type="button" onClick={() => void renew()} disabled={busy !== null} className={`${btnAccent} mt-3 w-full`}>
++              {busy === "renew" ? <Spinner /> : null} Add {days} days
++            </button>
++            <p className="mt-2 text-[11px] text-slate-500">If the subscription is still running, the days are added after the current end date.</p>
++          </Card>
++
++          {/* progress */}
++          <Card>
++            <SectionTitle aside={<span className="text-sm font-black text-[#0F172A]">{p.percent}%</span>}>Progress</SectionTitle>
++            <Bar percent={p.percent} height="h-3" color={p.percent >= 100 ? "#16A34A" : "#0369A1"} />
++            <p className="mt-2 text-xs text-slate-500">
++              {p.completed_lectures} of {p.total_lectures} published lectures finished · last active {timeAgo(p.last_active).toLowerCase()}
++            </p>
++
++            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
++              <MiniStat icon={<Flame className="h-4 w-4" />} value={p.streak} label="day streak" />
++              <MiniStat icon={<BookOpen className="h-4 w-4" />} value={p.active_days_28} label="active days (28d)" />
++              <MiniStat icon={<Pencil className="h-4 w-4" />} value={p.notes_count} label="notes" />
++            </div>
++
++            {p.activity_last_28.length > 0 && <ActivityStrip days={p.activity_last_28} />}
++
++            {p.subjects.length === 0 ? (
++              <p className="mt-4 text-center text-sm text-slate-500">No lectures are published yet.</p>
++            ) : (
++              <div className="mt-5 space-y-5">
++                {p.subjects.map((sub) => (
++                  <div key={sub.subject}>
++                    <div className="mb-1 flex items-baseline justify-between text-sm">
++                      <span className="font-extrabold text-[#0F172A]">{subjectLabel(sub.subject)}</span>
++                      <span className="text-xs font-bold text-slate-500">
++                        {sub.completed}/{sub.total} · {sub.percent}%
++                      </span>
++                    </div>
++                    <Bar percent={sub.percent} color={SUBJECT_COLOR[sub.subject] || "#0369A1"} />
++                    <ul className="mt-2 space-y-1.5">
++                      {sub.chapters.map((c) => (
++                        <li key={c.chapter} className="flex items-center gap-2 text-xs">
++                          <span className="w-2/5 truncate text-slate-600" title={c.chapter}>
++                            {c.chapter}
++                          </span>
++                          <div className="flex-1">
++                            <Bar percent={c.percent} height="h-1.5" color={SUBJECT_COLOR[sub.subject] || "#0369A1"} />
++                          </div>
++                          <span className="w-10 shrink-0 text-right font-bold text-slate-600">
++                            {c.completed}/{c.total}
++                          </span>
++                        </li>
++                      ))}
++                    </ul>
++                  </div>
++                ))}
++              </div>
++            )}
++
++            {p.recent.length > 0 && (
++              <div className="mt-5">
++                <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">Recently watched</p>
++                <ul className="divide-y divide-[#E2EDF5]">
++                  {p.recent.map((r) => (
++                    <li key={r.lecture_id} className="flex items-center gap-3 py-2">
++                      <div className="min-w-0 flex-1">
++                        <p className="truncate text-sm font-semibold text-[#0F172A]">{r.title}</p>
++                        <p className="truncate text-[11px] text-slate-500">
++                          {subjectLabel(r.subject)} · {r.chapter} · {timeAgo(r.updated_at).toLowerCase()}
++                        </p>
++                      </div>
++                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${r.completed ? "bg-emerald-50 text-emerald-700" : "bg-sky-50 text-sky-700"}`}>
++                        {r.completed ? "Done" : `${r.watched_percent}%`}
++                      </span>
++                    </li>
++                  ))}
++                </ul>
++              </div>
++            )}
++          </Card>
++
++          {/* payments */}
++          <Card>
++            <SectionTitle>Payment history</SectionTitle>
++            {detail.payments.length === 0 ? (
++              <p className="py-3 text-center text-sm text-slate-500">No payment recorded yet.</p>
++            ) : (
++              <ul className="divide-y divide-[#E2EDF5]">
++                {detail.payments.map((pay) => (
++                  <li key={pay.id} className={`flex items-start gap-3 py-3 ${pay.voided ? "opacity-50" : ""}`}>
++                    <div className="min-w-0 flex-1">
++                      <p className={`text-sm font-bold text-[#0F172A] ${pay.voided ? "line-through" : ""}`}>
++                        +{pay.days_added} days{pay.amount != null ? ` · ৳${pay.amount.toLocaleString("en-US")}` : ""}
++                      </p>
++                      <p className="text-[11px] text-slate-500">
++                        {fmtDate(pay.created_at)} · until {fmtDate(pay.new_end)}
++                        {pay.voided ? " · undone" : ""}
++                      </p>
++                      {pay.note && <p className="mt-0.5 text-[11px] italic text-slate-500">{pay.note}</p>}
++                    </div>
++                    {pay.can_undo && (
++                      <button type="button" onClick={() => void undo(pay)} disabled={busy !== null} className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl border border-[#D3E3EF] px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
++                        {busy === `undo-${pay.id}` ? <Spinner /> : <Undo2 className="h-4 w-4" />} Undo
++                      </button>
++                    )}
++                  </li>
++                ))}
++              </ul>
++            )}
++          </Card>
++
++          {/* edit + danger */}
++          <Card>
++            <SectionTitle
++              aside={
++                !editing ? (
++                  <button type="button" onClick={startEdit} className="inline-flex min-h-[44px] items-center gap-1.5 px-2 text-xs font-bold text-[#075985] hover:underline">
++                    <Pencil className="h-4 w-4" /> Edit
++                  </button>
++                ) : null
++              }
++            >
++              Details
++            </SectionTitle>
++            {editing ? (
++              <div className="space-y-2">
++                {(
++                  [
++                    ["full_name", "Full name"],
++                    ["school", "School"],
++                    ["grade_class", "Class"],
++                    ["batch_no", "Batch"],
++                  ] as const
++                ).map(([key, label]) => (
++                  <label key={key} className="block text-xs font-bold text-slate-500">
++                    {label}
++                    <input value={form[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} className={`${inputClass} mt-1`} />
++                  </label>
++                ))}
++                <div className="flex gap-2 pt-1">
++                  <button type="button" onClick={() => setEditing(false)} className={`${btnGhost} flex-1`}>
++                    Cancel
++                  </button>
++                  <button type="button" onClick={() => void saveEdit()} disabled={busy !== null} className={`${btnAccent} flex-1`}>
++                    {busy === "edit" ? <Spinner /> : null} Save
++                  </button>
++                </div>
++              </div>
++            ) : (
++              <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
++                <Row k="Batch" v={s.batch_no} />
++                <Row k="Class" v={s.grade_class} />
++                <Row k="School" v={s.school} />
++                <Row k="Joined" v={fmtDate(s.created_at)} />
++              </dl>
++            )}
++            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#E2EDF5] pt-4">
++              <button type="button" onClick={() => void revoke()} disabled={busy !== null || s.status === "pending"} className={`${btnGhost} text-amber-700`}>
++                {busy === "revoke" ? <Spinner /> : <Ban className="h-4 w-4" />} Revoke access
++              </button>
++              <button type="button" onClick={() => void remove()} disabled={busy !== null} className={`${btnGhost} text-rose-700`}>
++                {busy === "delete" ? <Spinner /> : <Trash2 className="h-4 w-4" />} Delete
++              </button>
++            </div>
++          </Card>
++        </>
++      ) : null}
++    </Sheet>
++  );
++}
++
++function Row({ k, v }: { k: string; v?: string | null }) {
++  return (
++    <div className="min-w-0">
++      <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{k}</dt>
++      <dd className="truncate font-semibold text-[#0F172A]">{v || "-"}</dd>
++    </div>
++  );
++}
++
++function MiniStat({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
++  return (
++    <div className="rounded-xl bg-[#F3F8FC] px-2 py-2.5">
++      <div className="flex items-center justify-center gap-1 text-[#075985]">
++        {icon}
++        <span className="text-lg font-black text-[#0F172A]">{value}</span>
++      </div>
++      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
++    </div>
++  );
++}
++
++/** 28 small squares, oldest first. `days` holds the active dates as YYYY-MM-DD. */
++function ActivityStrip({ days }: { days: string[] }) {
++  const active = new Set(days.map((d) => d.slice(0, 10)));
++  const cells: { key: string; on: boolean }[] = [];
++  const today = new Date();
++  for (let i = 27; i >= 0; i--) {
++    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i));
++    const key = d.toISOString().slice(0, 10);
++    cells.push({ key, on: active.has(key) });
++  }
++  return (
++    <div className="mt-4" aria-label="Activity in the last 28 days">
++      <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(14, minmax(0, 1fr))" }}>
++        {cells.map((c) => (
++          <span key={c.key} title={c.key} className={`aspect-square rounded-[4px] ${c.on ? "bg-[#0369A1]" : "bg-[#E2EDF5]"}`} />
++        ))}
++      </div>
++      <p className="mt-1 text-[10px] font-semibold text-slate-400">Last 28 days, newest on the right</p>
++    </div>
++  );
++}
+diff --git a/frontend/src/components/admin/StudentsTab.tsx b/frontend/src/components/admin/StudentsTab.tsx
+new file mode 100644
+index 0000000..c8262f0
+--- /dev/null
++++ b/frontend/src/components/admin/StudentsTab.tsx
+@@ -0,0 +1,208 @@
++"use client";
++
++import React, { useMemo, useState } from "react";
++import { RefreshCw, Search } from "lucide-react";
++import api from "@/lib/api";
++import { errorText, fmtDate, initials, STATUS_META, timeAgo } from "./format";
++import type { Student, SubStatus } from "./types";
++import { Bar, btnGhost, Card, inputClass, Skeleton, Spinner, StatusPill, useUi } from "./ui";
++
++type Filter = SubStatus | "ALL";
++type Sort = "newest" | "name" | "days" | "progress";
++
++const PAGE = 40;
++
++interface Props {
++  students: Student[];
++  loading: boolean;
++  error: string | null;
++  filter: Filter;
++  onFilter: (f: Filter) => void;
++  onOpen: (id: string) => void;
++  onChanged: () => void;
++  onRetry: () => void;
++}
++
++export default function StudentsTab({ students, loading, error, filter, onFilter, onOpen, onChanged, onRetry }: Props) {
++  const { toast, confirm } = useUi();
++  const [query, setQuery] = useState("");
++  const [batch, setBatch] = useState("ALL");
++  const [sort, setSort] = useState<Sort>("newest");
++  const [shown, setShown] = useState(PAGE);
++  const [busyId, setBusyId] = useState<string | null>(null);
++
++  const batches = useMemo(() => Array.from(new Set(students.map((s) => (s.batch_no || "General").trim() || "General"))).sort(), [students]);
++
++  const counts = useMemo(() => {
++    const c: Record<Filter, number> = { ALL: students.length, active: 0, expiring: 0, expired: 0, pending: 0 };
++    students.forEach((s) => (c[s.status] += 1));
++    return c;
++  }, [students]);
++
++  const rows = useMemo(() => {
++    const q = query.trim().toLowerCase();
++    const list = students.filter((s) => {
++      if (filter !== "ALL" && s.status !== filter) return false;
++      if (batch !== "ALL" && ((s.batch_no || "General").trim() || "General") !== batch) return false;
++      if (!q) return true;
++      return [s.full_name, s.email, s.school, s.grade_class].some((v) => (v || "").toLowerCase().includes(q));
++    });
++    const by: Record<Sort, (a: Student, b: Student) => number> = {
++      newest: (a, b) => (b.created_at || "").localeCompare(a.created_at || ""),
++      name: (a, b) => a.full_name.localeCompare(b.full_name),
++      days: (a, b) => (a.status === "pending" ? 9999 : a.days_left) - (b.status === "pending" ? 9999 : b.days_left),
++      progress: (a, b) => b.progress_percent - a.progress_percent,
++    };
++    return [...list].sort(by[sort]);
++  }, [students, filter, batch, query, sort]);
++
++  const quickRenew = async (s: Student) => {
++    const ok = await confirm({
++      title: `Renew ${s.full_name} for 30 days?`,
++      message: "Only do this after you have received the cash. It will be saved in the payment history, and you can undo it.",
++      confirmLabel: "Yes, cash received",
++    });
++    if (!ok) return;
++    setBusyId(s.id);
++    try {
++      const { data } = await api.post(`/api/v1/admin/students/${s.id}/renew`, { days: 30 });
++      toast("success", `${s.full_name} is active until ${fmtDate(data.subscription_end_date)}.`);
++      onChanged();
++    } catch (err) {
++      toast("error", errorText(err));
++    } finally {
++      setBusyId(null);
++    }
++  };
++
++  const chips: Filter[] = ["ALL", "active", "expiring", "expired", "pending"];
++
++  return (
++    <div className="space-y-4">
++      <Card className="space-y-3">
++        <div className="relative">
++          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
++          <input
++            type="search"
++            value={query}
++            onChange={(e) => {
++              setQuery(e.target.value);
++              setShown(PAGE);
++            }}
++            placeholder="Search name, email, school or class"
++            aria-label="Search students"
++            className={`${inputClass} pl-9`}
++          />
++        </div>
++        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Filter by subscription">
++          {chips.map((c) => (
++            <button
++              key={c}
++              type="button"
++              role="tab"
++              aria-selected={filter === c}
++              onClick={() => {
++                onFilter(c);
++                setShown(PAGE);
++              }}
++              className={`min-h-[40px] shrink-0 rounded-full border px-3.5 text-xs font-bold transition-colors ${
++                filter === c ? "border-[#075985] bg-[#075985] text-white" : "border-[#D3E3EF] bg-white text-slate-700 hover:bg-slate-50"
++              }`}
++            >
++              {c === "ALL" ? "All" : STATUS_META[c].label} <span className={filter === c ? "text-sky-100" : "text-slate-400"}>{counts[c]}</span>
++            </button>
++          ))}
++        </div>
++        <div className="grid grid-cols-2 gap-2">
++          <select value={batch} onChange={(e) => setBatch(e.target.value)} aria-label="Batch" className={inputClass}>
++            <option value="ALL">All batches</option>
++            {batches.map((b) => (
++              <option key={b} value={b}>
++                {b}
++              </option>
++            ))}
++          </select>
++          <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort" className={inputClass}>
++            <option value="newest">Newest first</option>
++            <option value="name">Name A to Z</option>
++            <option value="days">Ending soonest</option>
++            <option value="progress">Most progress</option>
++          </select>
++        </div>
++      </Card>
++
++      {loading && students.length === 0 ? (
++        <div className="space-y-3" aria-busy="true">
++          {[0, 1, 2, 3].map((i) => (
++            <Skeleton key={i} className="h-24 w-full" />
++          ))}
++        </div>
++      ) : error && students.length === 0 ? (
++        <Card className="text-center">
++          <p className="text-sm font-semibold text-slate-600">{error}</p>
++          <button type="button" onClick={onRetry} className={`${btnGhost} mt-3`}>
++            <RefreshCw className="h-4 w-4" /> Try again
++          </button>
++        </Card>
++      ) : rows.length === 0 ? (
++        <Card className="py-10 text-center text-sm text-slate-500">{students.length === 0 ? "No students have registered yet." : "No student matches these filters."}</Card>
++      ) : (
++        <>
++          <p className="px-1 text-xs font-semibold text-slate-500">
++            {rows.length} {rows.length === 1 ? "student" : "students"}. Tap a name to see their progress.
++          </p>
++          <ul className="space-y-3">
++            {rows.slice(0, shown).map((s) => (
++              <li key={s.id} className="rounded-2xl border border-[#D3E3EF] bg-white p-3 shadow-sm sm:p-4">
++                <div className="flex items-start gap-3">
++                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sm font-black text-[#075985]" aria-hidden="true">
++                    {initials(s.full_name)}
++                  </div>
++                  <div className="min-w-0 flex-1">
++                    <button type="button" onClick={() => onOpen(s.id)} className="block max-w-full truncate text-left text-[15px] font-extrabold text-[#075985] hover:underline">
++                      {s.full_name}
++                    </button>
++                    <p className="truncate text-xs text-slate-500">
++                      {s.email} · {s.batch_no || "General"}
++                    </p>
++                    <div className="mt-2.5 flex items-center gap-2">
++                      <Bar percent={s.progress_percent} color={s.progress_percent >= 100 ? "#16A34A" : "#0369A1"} />
++                      <span className="w-9 shrink-0 text-right text-xs font-black text-[#0F172A]">{s.progress_percent}%</span>
++                    </div>
++                    <p className="mt-1 text-[11px] text-slate-500">
++                      {s.completed_lectures} lectures done · active {timeAgo(s.last_active).toLowerCase()}
++                    </p>
++                  </div>
++                  <div className="flex shrink-0 flex-col items-end gap-1.5">
++                    <StatusPill status={s.status} small />
++                    <span className="text-[11px] font-semibold text-slate-500">
++                      {s.status === "pending" ? "Not paid" : s.days_left > 0 ? `${s.days_left} day${s.days_left === 1 ? "" : "s"} left` : `Ended ${fmtDate(s.subscription_end_date)}`}
++                    </span>
++                  </div>
++                </div>
++                <div className="mt-3 flex gap-2">
++                  <button type="button" onClick={() => onOpen(s.id)} className={`${btnGhost} flex-1 !min-h-[42px] text-xs`}>
++                    Progress & details
++                  </button>
++                  <button
++                    type="button"
++                    onClick={() => void quickRenew(s)}
++                    disabled={busyId === s.id}
++                    className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-xl bg-[#CC310E] px-3 text-xs font-bold text-white transition-colors hover:bg-[#A8270B] disabled:opacity-60"
++                  >
++                    {busyId === s.id ? <Spinner /> : null} Renew 30 days
++                  </button>
++                </div>
++              </li>
++            ))}
++          </ul>
++          {rows.length > shown && (
++            <button type="button" onClick={() => setShown((n) => n + PAGE)} className={`${btnGhost} w-full`}>
++              Show more ({rows.length - shown} left)
++            </button>
++          )}
++        </>
++      )}
++    </div>
++  );
++}
+diff --git a/frontend/src/components/admin/format.ts b/frontend/src/components/admin/format.ts
+new file mode 100644
+index 0000000..7af5334
+--- /dev/null
++++ b/frontend/src/components/admin/format.ts
+@@ -0,0 +1,80 @@
++import { isAxiosError } from "axios";
++import type { SubStatus } from "./types";
++
++export const STATUS_META: Record<SubStatus, { label: string; hint: string; bar: string; pill: string }> = {
++  active: { label: "Active", hint: "Paid, more than 7 days left", bar: "#0369A1", pill: "bg-sky-50 text-sky-800 border-sky-200" },
++  expiring: { label: "Expiring", hint: "7 days or fewer left", bar: "#F59E0B", pill: "bg-amber-50 text-amber-800 border-amber-200" },
++  expired: { label: "Expired", hint: "Paid before, now locked", bar: "#CC310E", pill: "bg-rose-50 text-[#CC310E] border-rose-200" },
++  pending: { label: "Not paid", hint: "Never paid, locked", bar: "#94A3B8", pill: "bg-slate-100 text-slate-600 border-slate-200" },
++};
++
++export const SUBJECT_COLOR: Record<string, string> = {
++  PHYSICS: "#0369A1",
++  CHEMISTRY: "#CC310E",
++  HIGHER_MATH: "#075985",
++};
++
++export const subjectLabel = (s: string) => (s === "HIGHER_MATH" ? "Higher Math" : s.charAt(0) + s.slice(1).toLowerCase());
++
++export function fmtDate(iso?: string | null): string {
++  if (!iso) return "-";
++  const d = new Date(iso);
++  if (Number.isNaN(d.getTime())) return "-";
++  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
++}
++
++export function timeAgo(iso?: string | null, now: number = Date.now()): string {
++  if (!iso) return "Never";
++  const t = new Date(iso.length === 10 ? iso + "T12:00:00" : iso).getTime();
++  if (Number.isNaN(t)) return "Never";
++  const days = Math.floor((now - t) / 86_400_000);
++  if (days <= 0) return "Today";
++  if (days === 1) return "Yesterday";
++  if (days < 30) return `${days} days ago`;
++  const months = Math.floor(days / 30);
++  return months === 1 ? "1 month ago" : `${months} months ago`;
++}
++
++export function initials(name: string): string {
++  const parts = name.trim().split(/\s+/).filter(Boolean);
++  if (!parts.length) return "?";
++  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
++}
++
++/** The most useful sentence we can show for a failed request. */
++export function errorText(err: unknown, fallback = "Something went wrong. Please try again."): string {
++  if (isAxiosError(err)) {
++    if (!err.response) return "Can't reach the server. It may be waking up, so wait a few seconds and try again.";
++    const d = err.response.data?.detail;
++    if (typeof d === "string") return d;
++    if (d && typeof d === "object" && !Array.isArray(d) && typeof d.message === "string") return d.message;
++    if (Array.isArray(d) && d[0]?.msg) return String(d[0].msg);
++    if (err.response.status === 401) return "Your login has expired. Please sign in again.";
++    if (err.response.status === 403) return "You don't have permission to do that.";
++  }
++  return fallback;
++}
++
++export function httpStatus(err: unknown): number | null {
++  return isAxiosError(err) && err.response ? err.response.status : null;
++}
++
++/** YouTube video id from a pasted link, or null. */
++export function youtubeId(url: string): string | null {
++  try {
++    const u = new URL(url.trim());
++    const host = u.hostname.replace(/^www\./, "");
++    if (host === "youtu.be") return /^[\w-]{6,}$/.test(u.pathname.slice(1)) ? u.pathname.slice(1) : null;
++    if (host.endsWith("youtube.com")) {
++      const v = u.searchParams.get("v");
++      if (v && /^[\w-]{6,}$/.test(v)) return v;
++      const m = u.pathname.match(/^\/(?:embed|shorts|live)\/([\w-]{6,})/);
++      return m ? m[1] : null;
++    }
++  } catch {
++    // not a URL yet
++  }
++  return null;
++}
++
++export const isDriveLink = (url: string) => /^https:\/\/(drive|docs)\.google\.com\//.test(url);
+diff --git a/frontend/src/components/admin/types.ts b/frontend/src/components/admin/types.ts
+new file mode 100644
+index 0000000..24b0281
+--- /dev/null
++++ b/frontend/src/components/admin/types.ts
+@@ -0,0 +1,101 @@
++export type SubStatus = "active" | "expiring" | "expired" | "pending";
++
++export interface Student {
++  id: string;
++  full_name: string;
++  email: string;
++  school?: string | null;
++  grade_class?: string | null;
++  batch_no?: string | null;
++  is_approved: boolean;
++  subscription_end_date?: string | null;
++  days_left: number;
++  status: SubStatus;
++  created_at?: string | null;
++  completed_lectures: number;
++  progress_percent: number;
++  last_active?: string | null;
++}
++
++export interface Overview {
++  totals: { students: number; paid_now: number; active: number; expiring: number; expired: number; pending: number };
++  new_this_week: number;
++  attention: { id: string; full_name: string; batch_no: string; status: SubStatus; days_left: number; reason: "expiring" | "recently_expired" | "new_unpaid" }[];
++  batches: { batch: string; total: number; paid: number; expired: number; pending: number }[];
++  lectures: { total: number; published: number; by_subject: Record<string, number> };
++  materials: { total: number; published: number; by_subject: Record<string, number> };
++  ai: { messages_7d: number; students_7d: number };
++  collected_this_month: { payments: number; amount: number; amounts_recorded: number };
++}
++
++export interface ProgressChapter {
++  chapter: string;
++  total: number;
++  completed: number;
++  percent: number;
++}
++export interface ProgressSubject {
++  subject: string;
++  total: number;
++  completed: number;
++  percent: number;
++  chapters: ProgressChapter[];
++}
++export interface ProgressSummary {
++  total_lectures: number;
++  completed_lectures: number;
++  percent: number;
++  streak: number;
++  active_days_28: number;
++  activity_last_28: string[];
++  last_active: string | null;
++  notes_count: number;
++  plans_count: number;
++  subjects: ProgressSubject[];
++  recent: { lecture_id: string; title: string; subject: string; chapter: string; completed: boolean; watched_percent: number; updated_at: string | null }[];
++}
++
++export interface PaymentRow {
++  id: string;
++  days_added: number;
++  amount: number | null;
++  method: string;
++  note: string | null;
++  previous_end: string | null;
++  new_end: string;
++  recorded_by: string | null;
++  created_at: string;
++  voided: boolean;
++  can_undo: boolean;
++}
++
++export interface StudentDetail {
++  student: Student;
++  payments: PaymentRow[];
++  progress: ProgressSummary;
++}
++
++export interface Lecture {
++  id: string;
++  lecture_no: number;
++  title: string;
++  chapter: string;
++  subject: string;
++  video_url: string;
++  is_published: boolean;
++}
++
++export interface MaterialRow {
++  id: string;
++  title: string;
++  chapter: string;
++  subject: string;
++  file_url: string;
++  is_published: boolean;
++}
++
++export interface NoticeRow {
++  id: string;
++  content: string;
++  created_at: string;
++}
+diff --git a/frontend/src/components/admin/ui.tsx b/frontend/src/components/admin/ui.tsx
+new file mode 100644
+index 0000000..19e2113
+--- /dev/null
++++ b/frontend/src/components/admin/ui.tsx
+@@ -0,0 +1,234 @@
++"use client";
++
++import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
++import { AlertTriangle, CheckCircle2, Loader2, X, XCircle } from "lucide-react";
++import { STATUS_META } from "./format";
++import type { SubStatus } from "./types";
++
++// ---------------------------------------------------------------- toasts + confirm dialogs
++
++interface ConfirmOptions {
++  title: string;
++  message?: string;
++  confirmLabel?: string;
++  danger?: boolean;
++}
++interface UiApi {
++  toast: (kind: "success" | "error", text: string) => void;
++  confirm: (opts: ConfirmOptions) => Promise<boolean>;
++}
++const UiContext = createContext<UiApi | null>(null);
++
++export function useUi(): UiApi {
++  const ctx = useContext(UiContext);
++  if (!ctx) throw new Error("useUi must be used inside <AdminUiProvider>");
++  return ctx;
++}
++
++export function AdminUiProvider({ children }: { children: React.ReactNode }) {
++  const [toasts, setToasts] = useState<{ id: number; kind: "success" | "error"; text: string }[]>([]);
++  const nextId = useRef(1);
++  const [dialog, setDialog] = useState<(ConfirmOptions & { resolve: (v: boolean) => void }) | null>(null);
++
++  const toast = useCallback((kind: "success" | "error", text: string) => {
++    const id = nextId.current++;
++    setToasts((t) => [...t.slice(-3), { id, kind, text }]);
++    window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), kind === "error" ? 7000 : 3500);
++  }, []);
++
++  const confirm = useCallback(
++    (opts: ConfirmOptions) => new Promise<boolean>((resolve) => setDialog({ ...opts, resolve })),
++    []
++  );
++  const answer = (v: boolean) => {
++    dialog?.resolve(v);
++    setDialog(null);
++  };
++
++  const api = useMemo(() => ({ toast, confirm }), [toast, confirm]);
++
++  return (
++    <UiContext.Provider value={api}>
++      {children}
++
++      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[80] flex flex-col items-center gap-2 px-4" aria-live="polite">
++        {toasts.map((t) => (
++          <div
++            key={t.id}
++            role={t.kind === "error" ? "alert" : "status"}
++            className={`pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold shadow-xl ${
++              t.kind === "error" ? "border-rose-200 bg-rose-50 text-rose-900" : "border-sky-200 bg-white text-[#075985]"
++            }`}
++          >
++            {t.kind === "error" ? <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#CC310E]" /> : <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />}
++            <span className="min-w-0 flex-1 break-words">{t.text}</span>
++          </div>
++        ))}
++      </div>
++
++      {dialog && (
++        <div className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-900/50 p-4 sm:items-center" onClick={() => answer(false)}>
++          <div role="alertdialog" aria-modal="true" aria-label={dialog.title} className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
++            <div className="flex items-start gap-3">
++              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${dialog.danger ? "bg-rose-50 text-[#CC310E]" : "bg-sky-50 text-sky-700"}`}>
++                <AlertTriangle className="h-5 w-5" />
++              </div>
++              <div className="min-w-0">
++                <h3 className="text-base font-extrabold text-[#0F172A]">{dialog.title}</h3>
++                {dialog.message && <p className="mt-1 text-sm leading-relaxed text-slate-600">{dialog.message}</p>}
++              </div>
++            </div>
++            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
++              <button type="button" onClick={() => answer(false)} className="min-h-[44px] rounded-xl border border-[#D3E3EF] px-4 text-sm font-bold text-slate-700 hover:bg-slate-50">
++                Cancel
++              </button>
++              <button
++                type="button"
++                autoFocus
++                onClick={() => answer(true)}
++                className={`min-h-[44px] rounded-xl px-4 text-sm font-bold text-white ${dialog.danger ? "bg-[#CC310E] hover:bg-[#A8270B]" : "bg-[#075985] hover:bg-[#0C4A6E]"}`}
++              >
++                {dialog.confirmLabel || "Confirm"}
++              </button>
++            </div>
++          </div>
++        </div>
++      )}
++    </UiContext.Provider>
++  );
++}
++
++// ---------------------------------------------------------------- small pieces
++
++export function Spinner({ className = "h-4 w-4" }: { className?: string }) {
++  return <Loader2 className={`${className} animate-spin`} aria-hidden="true" />;
++}
++
++export function StatusPill({ status, small = false }: { status: SubStatus; small?: boolean }) {
++  const m = STATUS_META[status];
++  return (
++    <span className={`inline-flex shrink-0 items-center rounded-full border font-bold ${small ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-xs"} ${m.pill}`}>
++      {m.label}
++    </span>
++  );
++}
++
++export function Bar({ percent, color = "#0369A1", height = "h-2" }: { percent: number; color?: string; height?: string }) {
++  const p = Math.max(0, Math.min(100, percent));
++  return (
++    <div className={`w-full overflow-hidden rounded-full bg-[#E2EDF5] ${height}`} role="progressbar" aria-valuenow={p} aria-valuemin={0} aria-valuemax={100}>
++      <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${p}%`, backgroundColor: color }} />
++    </div>
++  );
++}
++
++export function Skeleton({ className = "h-4 w-full" }: { className?: string }) {
++  return <div className={`animate-pulse rounded-lg bg-[#E2EDF5] ${className}`} />;
++}
++
++export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
++  return <section className={`rounded-2xl border border-[#D3E3EF] bg-white p-4 shadow-sm sm:p-5 ${className}`}>{children}</section>;
++}
++
++export function SectionTitle({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
++  return (
++    <div className="mb-3 flex items-center justify-between gap-3">
++      <h2 className="text-sm font-extrabold uppercase tracking-wider text-[#075985]">{children}</h2>
++      {aside}
++    </div>
++  );
++}
++
++export const inputClass =
++  "w-full min-h-[44px] rounded-xl border border-[#D3E3EF] bg-white px-3 text-sm text-[#0F172A] placeholder:text-slate-400 focus:border-[#0369A1] focus:outline-none focus:ring-2 focus:ring-sky-100";
++export const btnPrimary =
++  "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#075985] px-4 text-sm font-bold text-white transition-colors hover:bg-[#0C4A6E] disabled:cursor-not-allowed disabled:opacity-50";
++export const btnAccent =
++  "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#CC310E] px-4 text-sm font-bold text-white transition-colors hover:bg-[#A8270B] disabled:cursor-not-allowed disabled:opacity-50";
++export const btnGhost =
++  "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[#D3E3EF] bg-white px-4 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50";
++
++/** Side panel on large screens, full-height sheet on phones. */
++export function Sheet({
++  open,
++  onClose,
++  title,
++  children,
++}: {
++  open: boolean;
++  onClose: () => void;
++  title: string;
++  children: React.ReactNode;
++}) {
++  useEffect(() => {
++    if (!open) return;
++    const prev = document.body.style.overflow;
++    document.body.style.overflow = "hidden";
++    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
++    window.addEventListener("keydown", onKey);
++    return () => {
++      document.body.style.overflow = prev;
++      window.removeEventListener("keydown", onKey);
++    };
++  }, [open, onClose]);
++
++  if (!open) return null;
++  return (
++    <div className="fixed inset-0 z-[60] flex justify-end bg-slate-900/40" onClick={onClose}>
++      <aside
++        role="dialog"
++        aria-modal="true"
++        aria-label={title}
++        className="flex h-full w-full flex-col bg-[#F3F8FC] shadow-2xl sm:max-w-xl"
++        onClick={(e) => e.stopPropagation()}
++      >
++        <div className="flex items-center justify-between gap-3 border-b border-[#D3E3EF] bg-white px-4 py-3">
++          <h2 className="min-w-0 truncate text-base font-extrabold text-[#075985]">{title}</h2>
++          <button type="button" onClick={onClose} aria-label="Close" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100">
++            <X className="h-5 w-5" />
++          </button>
++        </div>
++        <div className="flex-1 space-y-4 overflow-y-auto p-4 pb-10">{children}</div>
++      </aside>
++    </div>
++  );
++}
++
++export function Modal({
++  open,
++  onClose,
++  title,
++  children,
++}: {
++  open: boolean;
++  onClose: () => void;
++  title: string;
++  children: React.ReactNode;
++}) {
++  useEffect(() => {
++    if (!open) return;
++    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
++    window.addEventListener("keydown", onKey);
++    return () => window.removeEventListener("keydown", onKey);
++  }, [open, onClose]);
++  if (!open) return null;
++  return (
++    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-900/50 p-0 sm:items-center sm:p-4" onClick={onClose}>
++      <div
++        role="dialog"
++        aria-modal="true"
++        aria-label={title}
++        className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-lg sm:rounded-2xl"
++        onClick={(e) => e.stopPropagation()}
++      >
++        <div className="mb-4 flex items-center justify-between gap-3">
++          <h3 className="text-base font-extrabold text-[#075985]">{title}</h3>
++          <button type="button" onClick={onClose} aria-label="Close" className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100">
++            <X className="h-5 w-5" />
++          </button>
++        </div>
++        {children}
++      </div>
++    </div>
++  );
++}
+diff --git a/frontend/src/components/dashboard/LockedScreen.tsx b/frontend/src/components/dashboard/LockedScreen.tsx
+new file mode 100644
+index 0000000..80a5035
+--- /dev/null
++++ b/frontend/src/components/dashboard/LockedScreen.tsx
+@@ -0,0 +1,56 @@
++"use client";
++
++import { CreditCard, Lock, LogOut, MessageCircle, RefreshCw } from "lucide-react";
++import { TEACHER } from "@/lib/social";
++
++interface Props {
++  name: string;
++  status: "expired" | "pending";
++  checking: boolean;
++  onRecheck: () => void;
++  onLogout: () => void;
++}
++
++const COPY = {
++  pending: {
++    title: "আপনার সাবস্ক্রিপশন এখনও চালু হয়নি",
++    body: "ক্লাস ভিডিও, স্টাডি শিট ও AI টিউটর ব্যবহার করতে সাবস্ক্রিপশন চালু করতে হবে। স্যারকে ফি নগদ জমা দিন, জমা দেওয়ার পর আপনার অ্যাকাউন্ট চালু করে দেওয়া হবে।",
++  },
++  expired: {
++    title: "আপনার সাবস্ক্রিপশনের মেয়াদ শেষ হয়েছে",
++    body: "আবার ক্লাস ভিডিও, স্টাডি শিট ও AI টিউটর ব্যবহার করতে সাবস্ক্রিপশন নবায়ন করুন। স্যারকে ফি নগদ জমা দিন, জমা দেওয়ার পর আপনার অ্যাকাউন্ট আবার চালু করে দেওয়া হবে। আপনার এ পর্যন্ত করা সব প্রগ্রেস সংরক্ষিত আছে।",
++  },
++} as const;
++
++/** The only thing an unpaid student sees: one renewal notice. */
++export default function LockedScreen({ name, status, checking, onRecheck, onLogout }: Props) {
++  const text = COPY[status];
++  const first = name.trim().split(/\s+/)[0] || "";
++  return (
++    <div className="flex min-h-screen items-center justify-center bg-[#F3F8FC] p-4 font-sans">
++      <div className="w-full max-w-md rounded-3xl border border-[#D3E3EF] bg-white p-6 text-center shadow-xl sm:p-8" role="alert">
++        <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 text-[#CC310E]">
++          <Lock className="h-8 w-8" />
++        </span>
++        {first && <p className="mt-4 text-sm font-semibold text-slate-500">হ্যালো, {first}</p>}
++        <h1 className="mt-1 text-xl font-black leading-snug text-[#075985]">{text.title}</h1>
++        <p className="mt-3 text-[15px] leading-relaxed text-slate-600">{text.body}</p>
++
++        <div className="mt-6 space-y-3">
++          <a href={TEACHER.whatsapp} target="_blank" rel="noopener noreferrer" className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#CC310E] px-5 text-sm font-bold text-white shadow-md hover:bg-[#A8270B]">
++            <MessageCircle className="h-5 w-5" /> স্যারকে হোয়াটসঅ্যাপে জানান
++          </a>
++          <button type="button" onClick={onRecheck} disabled={checking} className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl border border-[#D3E3EF] bg-white px-5 text-sm font-bold text-[#075985] hover:bg-slate-50 disabled:opacity-60">
++            <RefreshCw className={`h-5 w-5 ${checking ? "animate-spin" : ""}`} /> ফি জমা দিয়েছি, আবার চেক করুন
++          </button>
++          <button type="button" onClick={onLogout} className="flex min-h-[48px] w-full items-center justify-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-700">
++            <LogOut className="h-4 w-4" /> লগ আউট
++          </button>
++        </div>
++        <p className="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
++          <CreditCard className="h-3.5 w-3.5" /> শুধু নগদ টাকায় ফি নেওয়া হয়
++        </p>
++      </div>
++    </div>
++  );
++}
+diff --git a/frontend/src/components/dashboard/NotificationBanner.tsx b/frontend/src/components/dashboard/NotificationBanner.tsx
+new file mode 100644
+index 0000000..a53b01d
+--- /dev/null
++++ b/frontend/src/components/dashboard/NotificationBanner.tsx
+@@ -0,0 +1,26 @@
++"use client";
++
++import { BellRing, CheckCircle2, X } from "lucide-react";
++import type { AppNotification } from "@/lib/dashboard-types";
++
++/** Shows the newest unread message (renewal warning / renewed) at the top of the dashboard. */
++export default function NotificationBanner({ items, onDismiss }: { items: AppNotification[]; onDismiss: () => void }) {
++  const latest = items.find((n) => !n.read);
++  if (!latest) return null;
++  const good = latest.kind === "renewed";
++  return (
++    <div
++      role="status"
++      className={`flex items-start gap-3 border-b px-4 py-3 sm:px-8 ${good ? "border-sky-200 bg-sky-50 text-sky-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}
++    >
++      {good ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" /> : <BellRing className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />}
++      <div className="min-w-0 flex-1">
++        <p className="text-sm font-extrabold">{latest.title}</p>
++        <p className="mt-0.5 text-[13px] leading-snug text-slate-700">{latest.body}</p>
++      </div>
++      <button type="button" onClick={onDismiss} aria-label="বন্ধ করুন" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-white/60">
++        <X className="h-5 w-5" />
++      </button>
++    </div>
++  );
++}
+diff --git a/frontend/src/hooks/useDashboardData.ts b/frontend/src/hooks/useDashboardData.ts
+index 8c68e39..f85e2b3 100644
+--- a/frontend/src/hooks/useDashboardData.ts
++++ b/frontend/src/hooks/useDashboardData.ts
+@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
+ import api from "@/lib/api";
+ import type { Material, Notice, UserProfile, VideoLecture } from "@/lib/dashboard-types";
+ 
+-const CONTENT_KEY = "azs_content_v1";
++export const CONTENT_KEY = "azs_content_v1";
+ 
+ interface Cached {
+   videos: VideoLecture[];
+diff --git a/frontend/src/hooks/useNotifications.ts b/frontend/src/hooks/useNotifications.ts
+new file mode 100644
+index 0000000..ee7693f
+--- /dev/null
++++ b/frontend/src/hooks/useNotifications.ts
+@@ -0,0 +1,42 @@
++"use client";
++
++import { useCallback, useEffect, useState } from "react";
++import api from "@/lib/api";
++import type { AppNotification } from "@/lib/dashboard-types";
++
++/**
++ * The student's in-app messages (renewal warnings at 7, 3 and 1 days left, expiry, renewal).
++ * The server creates a warning the first time it is due, i.e. when the student opens the app.
++ */
++export function useNotifications(enabled: boolean) {
++  const [items, setItems] = useState<AppNotification[]>([]);
++  const [unread, setUnread] = useState(0);
++
++  const load = useCallback(async () => {
++    try {
++      const { data } = await api.get<{ unread: number; items: AppNotification[] }>("/api/v1/notifications/me");
++      setItems(Array.isArray(data.items) ? data.items : []);
++      setUnread(Number(data.unread) || 0);
++    } catch {
++      // Messages are a courtesy; never block the dashboard on them.
++    }
++  }, []);
++
++  useEffect(() => {
++    if (!enabled) return;
++    // eslint-disable-next-line react-hooks/set-state-in-effect
++    void load();
++  }, [enabled, load]);
++
++  const markAllRead = useCallback(async () => {
++    setItems((list) => list.map((n) => ({ ...n, read: true })));
++    setUnread(0);
++    try {
++      await api.post("/api/v1/notifications/read-all");
++    } catch {
++      // It will simply show again next time.
++    }
++  }, []);
++
++  return { items, unread, markAllRead, reload: load };
++}
+diff --git a/frontend/src/lib/dashboard-types.ts b/frontend/src/lib/dashboard-types.ts
+index 3f07e47..7efb9a3 100644
+--- a/frontend/src/lib/dashboard-types.ts
++++ b/frontend/src/lib/dashboard-types.ts
+@@ -10,6 +10,7 @@ export interface UserProfile {
+   role?: string;
+   days_left?: number;
+   is_approved?: boolean;
++  subscription_status?: "active" | "expiring" | "expired" | "pending";
+ }
+ 
+ export interface VideoLecture extends LectureLite {
+@@ -34,3 +35,12 @@ export interface Notice {
+ 
+ export type Subject = "PHYSICS" | "CHEMISTRY";
+ export type View = "dashboard" | "lectures" | "materials" | "ai";
++
++export interface AppNotification {
++  id: string;
++  kind: string;
++  title: string;
++  body: string;
++  created_at: string;
++  read: boolean;
++}
+-- 
+2.43.0
+

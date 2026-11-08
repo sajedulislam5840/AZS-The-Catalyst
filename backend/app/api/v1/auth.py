@@ -1,24 +1,26 @@
-import os
 import uuid
 import hashlib
 import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from passlib.context import CryptContext
-from jose import jwt, JWTError
+from jose import jwt
 
+from app.core.access import days_left, get_current_user, is_admin_user, subscription_status
+from app.core.config import ADMIN_EMAIL, ALGORITHM, SECRET_KEY  # SECRET_KEY/ALGORITHM stay importable from here
 from app.core.database import get_db
 from app.models.user import User
+from app.services.throttle import Throttle
 
 router = APIRouter(tags=["Authentication"])
 
-SECRET_KEY = os.getenv("SECRET_KEY", "edutrack-super-secret-jwt-key-2025")
-ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30 days session
+
+LOGIN_FAILURES = Throttle(limit=10, window_seconds=600)
 
 pwd_context = CryptContext(
     schemes=["bcrypt", "sha256_crypt", "md5_crypt", "des_crypt"],
@@ -59,6 +61,8 @@ class UserMeOut(BaseModel):
     is_admin: bool = False
     is_approved: bool = False
     subscription_end_date: Optional[datetime] = None
+    days_left: int = 0
+    subscription_status: str = "pending"  # active | expiring | expired | pending
 
 
 # --- MULTI-ENGINE COMPATIBLE VERIFIER ---
@@ -140,7 +144,7 @@ async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
             detail="An account with this email already exists."
         )
 
-    is_admin_account = clean_email == "rabbi@edutrack.com"
+    is_admin_account = clean_email == ADMIN_EMAIL
     user_role = "ADMIN" if is_admin_account else "STUDENT"
 
     hashed_pw = get_password_hash(payload.password)
@@ -192,11 +196,23 @@ async def login(request: Request, db: AsyncSession = Depends(get_db)):
     if not email_val or not password_val:
         raise HTTPException(status_code=400, detail="Email and password are required.")
 
+    # Slow down password guessing: 10 wrong tries per email and address, then a 10 minute wait.
+    forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    throttle_key = f"{email_val}|{forwarded or (request.client.host if request.client else '')}"
+    wait = LOGIN_FAILURES.wait_seconds(throttle_key)
+    if wait:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"অনেকবার ভুল চেষ্টা হয়েছে। {wait} সেকেন্ড পর আবার চেষ্টা করো।",
+            headers={"Retry-After": str(wait)},
+        )
+
     stmt = select(User).where(func.lower(User.email) == email_val)
     res = await db.execute(stmt)
     user = res.scalar_one_or_none()
 
     if not user:
+        LOGIN_FAILURES.record(throttle_key)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Account not found. Please verify your email."
@@ -205,16 +221,14 @@ async def login(request: Request, db: AsyncSession = Depends(get_db)):
     # Multi-engine check on the exact stored hash
     is_valid_pw = verify_password(password_val, getattr(user, "password_hash", "") or "")
     if not is_valid_pw:
+        LOGIN_FAILURES.record(throttle_key)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect password. Please try again."
         )
 
-    is_admin = bool(
-        getattr(user, "is_admin", False) or 
-        str(getattr(user, "role", "")).upper() == "ADMIN" or 
-        user.email == "rabbi@edutrack.com"
-    )
+    LOGIN_FAILURES.clear(throttle_key)
+    is_admin = is_admin_user(user)
     role_str = "ADMIN" if is_admin else "STUDENT"
 
     access_token = create_access_token(data={"sub": user.email, "role": role_str})
@@ -231,44 +245,9 @@ async def login(request: Request, db: AsyncSession = Depends(get_db)):
 # --- 3. CURRENT USER IDENTITY HANDSHAKE (/me) ---
 @router.get("/me", response_model=UserMeOut)
 @router.get("/auth/me", response_model=UserMeOut)
-async def get_me(
-    authorization: Optional[str] = Header(None),
-    db: AsyncSession = Depends(get_db)
-):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication token required.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    token = authorization.split(" ")[1].strip()
-
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
-        email = payload.get("sub")
-        if not email:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token identity.")
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token invalid or expired.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    stmt = select(User).where(func.lower(User.email) == email.strip().lower())
-    res = await db.execute(stmt)
-    user = res.scalar_one_or_none()
-
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User account not found.")
-
-    is_admin = bool(
-        getattr(user, "is_admin", False) or 
-        str(getattr(user, "role", "")).upper() == "ADMIN" or 
-        user.email == "rabbi@edutrack.com"
-    )
-    role_str = "ADMIN" if is_admin else "STUDENT"
+async def get_me(user: User = Depends(get_current_user)):
+    is_admin = is_admin_user(user)
+    state = "active" if is_admin else subscription_status(user)
 
     return UserMeOut(
         id=str(user.id),
@@ -277,8 +256,10 @@ async def get_me(
         school=user.school,
         grade_class=user.grade_class,
         batch_no=user.batch_no,
-        role=role_str,
+        role="ADMIN" if is_admin else "STUDENT",
         is_admin=is_admin,
-        is_approved=bool(user.is_approved),
-        subscription_end_date=user.subscription_end_date
+        is_approved=is_admin or state in ("active", "expiring"),
+        subscription_end_date=user.subscription_end_date,
+        days_left=days_left(user),
+        subscription_status=state,
     )

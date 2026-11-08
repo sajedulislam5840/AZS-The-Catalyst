@@ -10,6 +10,7 @@ No network is used: the AI provider is replaced by a fake.
 import asyncio
 import os
 import uuid
+from datetime import datetime, timedelta
 
 import httpx
 import pytest
@@ -168,8 +169,11 @@ def env(tmp_path, monkeypatch):
         async with maker() as s:
             s.add_all(
                 [
-                    User(id=uuid.uuid4(), email="Ana@Example.com", full_name="Ana", is_active=True),
-                    User(id=uuid.uuid4(), email="ben@example.com", full_name="Ben", is_active=True),
+                    User(id=uuid.uuid4(), email="Ana@Example.com", full_name="Ana", is_active=True, is_approved=True,
+                         subscription_end_date=datetime.utcnow() + timedelta(days=30)),
+                    User(id=uuid.uuid4(), email="ben@example.com", full_name="Ben", is_active=True, is_approved=True,
+                         subscription_end_date=datetime.utcnow() + timedelta(days=30)),
+                    User(id=uuid.uuid4(), email="cara@example.com", full_name="Cara", is_active=True, is_approved=False),
                 ]
             )
             await s.commit()
@@ -200,7 +204,7 @@ def env(tmp_path, monkeypatch):
         return {"Authorization": f"Bearer {create_access_token({'sub': email})}"}
 
     with TestClient(app) as client:
-        yield client, headers("ana@example.com"), headers("ben@example.com"), calls, state
+        yield client, headers("ana@example.com"), headers("ben@example.com"), calls, state, headers("cara@example.com")
 
 
 def chat(client, hdrs, prompt="নিউটনের সূত্র কী?", **extra):
@@ -208,10 +212,18 @@ def chat(client, hdrs, prompt="নিউটনের সূত্র কী?", *
 
 
 def test_chat_requires_login(env):
-    client, _, _, calls, _ = env
+    client, _, _, calls, _, _ = env
     assert chat(client, {}).status_code == 401
     assert client.post("/api/v1/ai/sessions", json={}).status_code == 401
     assert client.get("/api/v1/ai/sessions").json() == []  # listing stays quiet for guests
+    assert calls == []
+
+
+def test_unpaid_students_cannot_use_the_tutor(env):
+    client, _, _, calls, _, cara = env
+    r = chat(client, cara)
+    assert r.status_code == 403 and r.json()["detail"]["code"] == "subscription_required"
+    assert client.get("/api/v1/ai/sessions", headers=cara).json() == []
     assert calls == []
 
 
@@ -221,7 +233,7 @@ def test_login_email_case_does_not_matter(env):
 
 
 def test_chat_roundtrip_and_history_from_database(env):
-    client, ana, _, calls, state = env
+    client, ana, _, calls, state, _ = env
     first = chat(client, ana, "প্রথম প্রশ্ন").json()
     assert first["reply"] == "উত্তর" and first["title"] == "প্রথম প্রশ্ন" and first["model"] == "deepseek"
     sid = first["session_id"]
@@ -244,7 +256,7 @@ def test_chat_roundtrip_and_history_from_database(env):
 
 
 def test_failed_answer_leaves_nothing_behind(env):
-    client, ana, _, _, state = env
+    client, ana, _, _, state, _ = env
     state["error"] = ai_tutor.AIUnavailable(502, "ব্যর্থ")
     r = chat(client, ana)
     assert r.status_code == 502 and r.json()["detail"] == "ব্যর্থ"
@@ -252,13 +264,13 @@ def test_failed_answer_leaves_nothing_behind(env):
 
 
 def test_off_topic_marker_becomes_polite_refusal(env):
-    client, ana, _, _, state = env
+    client, ana, _, _, state, _ = env
     state["reply"] = ai_tutor.OFF_TOPIC_MARK
     assert chat(client, ana, "write me a poem about football").json()["reply"] == ai_tutor.OFF_TOPIC_REPLY
 
 
 def test_sessions_are_private(env):
-    client, ana, ben, calls, _ = env
+    client, ana, ben, calls, _, _ = env
     sid = chat(client, ana).json()["session_id"]
     assert client.get(f"/api/v1/ai/sessions/{sid}").status_code == 401
     assert client.get(f"/api/v1/ai/sessions/{sid}", headers=ben).status_code == 404
@@ -276,7 +288,7 @@ def test_sessions_are_private(env):
 
 
 def test_input_limits(env):
-    client, ana, _, calls, _ = env
+    client, ana, _, calls, _, _ = env
     assert chat(client, ana, "   ").status_code == 400
     assert chat(client, ana, "ক" * (ai_tutor.MAX_PROMPT_CHARS + 1)).status_code == 400
     assert calls == []

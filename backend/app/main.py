@@ -1,3 +1,4 @@
+import logging
 import os
 import urllib.parse
 from pathlib import Path
@@ -12,12 +13,14 @@ from app.models.user import User
 import app.models.academic
 import app.models.chat
 import app.models.progress
+import app.models.billing
 from app.api.v1.auth import router as auth_router
 # Updated import from admin_academic.py
 from app.api.v1.admin_academic import router as admin_router
 from app.api.v1.academic import router as academic_router
 from app.api.v1.chat import router as chat_router
 from app.api.v1.progress import router as progress_router
+from app.api.v1.notifications import router as notifications_router
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "static"
@@ -84,11 +87,10 @@ async def custom_cors_middleware(request: Request, call_next):
     else:
         try:
             response = await call_next(request)
-        except Exception as exc:
-            response = JSONResponse(
-                status_code=500,
-                content={"detail": f"Internal server error: {str(exc)}"},
-            )
+        except Exception:
+            # Details go to the server log only; callers must not see internals.
+            logging.getLogger("azs.api").exception("Unhandled error on %s %s", request.method, request.url.path)
+            response = JSONResponse(status_code=500, content={"detail": "Internal server error."})
 
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
@@ -125,6 +127,7 @@ app.include_router(admin_router, prefix="/api/v1")
 app.include_router(academic_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
 app.include_router(progress_router, prefix="/api/v1")
+app.include_router(notifications_router, prefix="/api/v1")
 
 
 @app.get("/")

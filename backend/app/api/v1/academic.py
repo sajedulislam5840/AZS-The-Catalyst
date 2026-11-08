@@ -1,23 +1,17 @@
-import os
-import shutil
-import uuid
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Header, UploadFile, File, Form
-from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, or_
-from jose import jwt
 
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import desc, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.access import require_subscriber
 from app.core.database import get_db
+from app.models.academic import Material, Notice, VideoLecture
 from app.models.user import User
-from app.models.academic import VideoLecture, Material, SubjectEnum
-from app.api.v1.auth import SECRET_KEY, ALGORITHM
 
 router = APIRouter(prefix="/academic", tags=["Academic Content"])
-
-UPLOAD_DIR = "static/materials"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 class VideoOut(BaseModel):
@@ -52,25 +46,6 @@ class NoticeOut(BaseModel):
     created_at: str
 
 
-async def get_optional_user(
-    authorization: Optional[str] = Header(None),
-    db: AsyncSession = Depends(get_db)
-) -> Optional[User]:
-    if not authorization or not authorization.startswith("Bearer "):
-        return None
-    token = authorization.split(" ")[1].strip()
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
-        email = payload.get("sub")
-        if email:
-            stmt = select(User).where(User.email == email)
-            res = await db.execute(stmt)
-            return res.scalar_one_or_none()
-    except Exception:
-        pass
-    return None
-
-
 def get_subject_name(subj) -> str:
     if hasattr(subj, "value"):
         return str(subj.value).upper()
@@ -85,7 +60,10 @@ def get_subject_name(subj) -> str:
 # --- 1. VIDEOS FEED (DUAL ROUTE: /videos & /lectures FOR ZERO BREAKAGE) ---
 @router.get("/videos", response_model=List[VideoOut])
 @router.get("/lectures", response_model=List[VideoOut])
-async def list_published_videos(db: AsyncSession = Depends(get_db)):
+async def list_published_videos(
+    user: User = Depends(require_subscriber),
+    db: AsyncSession = Depends(get_db),
+):
     stmt = (
         select(VideoLecture)
         .where(or_(VideoLecture.is_published == True, VideoLecture.is_published.is_(None)))
@@ -119,7 +97,10 @@ async def list_published_videos(db: AsyncSession = Depends(get_db)):
 
 # --- 2. MATERIALS FEED ---
 @router.get("/materials", response_model=List[MaterialOut])
-async def list_published_materials(db: AsyncSession = Depends(get_db)):
+async def list_published_materials(
+    user: User = Depends(require_subscriber),
+    db: AsyncSession = Depends(get_db),
+):
     stmt = (
         select(Material)
         .where(or_(Material.is_published == True, Material.is_published.is_(None)))
@@ -144,47 +125,27 @@ async def list_published_materials(db: AsyncSession = Depends(get_db)):
     return output
 
 
-# --- 3. NOTICE ENDPOINT ---
-@router.get("/notice")
-async def get_active_notice(db: AsyncSession = Depends(get_db)):
-    return None
-
-
-# --- 4. MATERIAL FILE UPLOAD ---
-@router.post("/materials/upload")
-async def upload_material_file(
-    title: str = Form(...),
-    chapter: str = Form(...),
-    subject: str = Form(...),
-    file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db)
+# --- 3. NOTICE ENDPOINT (latest announcement, for students whose subscription is running) ---
+@router.get("/notice", response_model=Optional[NoticeOut])
+async def get_active_notice(
+    user: User = Depends(require_subscriber),
+    db: AsyncSession = Depends(get_db),
 ):
-    file_extension = os.path.splitext(file.filename)[1]
-    saved_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{file.filename.replace(' ', '_')}"
-    file_path = os.path.join(UPLOAD_DIR, saved_filename)
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    backend_base = os.getenv("BACKEND_URL", "https://edutrack-backend-qjxg.onrender.com").rstrip("/")
-    file_url = f"{backend_base}/static/materials/{saved_filename}"
-
-    s = subject.strip().upper().replace(" ", "_")
-    subj_enum = SubjectEnum.PHYSICS
-    if "CHEM" in s:
-        subj_enum = SubjectEnum.CHEMISTRY
-    elif "MATH" in s:
-        subj_enum = SubjectEnum.HIGHER_MATH
-
-    material = Material(
-        title=title.strip(),
-        chapter=chapter.strip(),
-        subject=subj_enum,
-        pdf_url=file_url,
-        is_published=True
+    res = await db.execute(select(Notice).order_by(desc(Notice.created_at)).limit(1))
+    notice = res.scalar_one_or_none()
+    if not notice:
+        return None
+    return NoticeOut(
+        id=str(notice.id),
+        content=notice.content,
+        created_at=(notice.created_at or datetime.utcnow()).isoformat() + "Z",
     )
-    db.add(material)
-    await db.commit()
-    await db.refresh(material)
 
-    return {"message": "File uploaded successfully.", "file_url": file_url}
+
+# --- 4. FILE UPLOAD IS CLOSED: materials are Google Drive links added from the admin panel ---
+@router.post("/materials/upload", status_code=410)
+async def upload_material_file_closed():
+    raise HTTPException(
+        status_code=410,
+        detail="File upload is closed. Add the study sheet as a Google Drive link from the admin panel.",
+    )

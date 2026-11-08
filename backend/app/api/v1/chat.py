@@ -2,13 +2,12 @@ import uuid
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
-from jose import jwt
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import delete, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.auth import ALGORITHM, SECRET_KEY
+from app.core.access import get_optional_user, require_subscriber
 from app.core.database import get_db
 from app.models.academic import Material, VideoLecture
 from app.models.chat import ChatMessage, ChatSession
@@ -77,36 +76,6 @@ class CreateSessionRequest(BaseModel):
     model: Optional[str] = "deepseek"
 
 
-# --- Authentication helpers ---
-async def get_optional_user(
-    authorization: Optional[str] = Header(None),
-    db: AsyncSession = Depends(get_db),
-) -> Optional[User]:
-    """Resolve the logged-in user, or None. Mirrors /auth/me: expiry is not enforced, email match is case-insensitive."""
-    if not authorization or not authorization.startswith("Bearer "):
-        return None
-    token = authorization.split(" ", 1)[1].strip()
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
-        email = payload.get("sub")
-        if email:
-            res = await db.execute(select(User).where(func.lower(User.email) == email.strip().lower()))
-            return res.scalar_one_or_none()
-    except Exception:
-        pass
-    return None
-
-
-async def get_current_user(user: Optional[User] = Depends(get_optional_user)) -> User:
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="AI টিউটর ব্যবহার করতে লগইন করো।",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
-
-
 def _parse_uuid(value: str) -> uuid.UUID:
     try:
         return uuid.UUID(value)
@@ -163,7 +132,7 @@ async def list_chat_sessions(
 @router.post("/sessions", response_model=SessionOut, status_code=status.HTTP_201_CREATED)
 async def create_chat_session(
     payload: CreateSessionRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_subscriber),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a fresh chat thread."""
@@ -193,7 +162,7 @@ async def create_chat_session(
 @router.get("/sessions/{session_id}", response_model=SessionDetailOut)
 async def get_session_history(
     session_id: str,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_subscriber),
     db: AsyncSession = Depends(get_db),
 ):
     """Load messages of one of the student's own sessions."""
@@ -218,7 +187,7 @@ async def get_session_history(
 @router.delete("/sessions/{session_id}", status_code=status.HTTP_200_OK)
 async def delete_chat_session(
     session_id: str,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_subscriber),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete one of the student's own sessions and its messages."""
@@ -248,7 +217,7 @@ async def _platform_context(db: AsyncSession) -> tuple:
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_edutrack_ai(
     payload: ChatRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_subscriber),
     db: AsyncSession = Depends(get_db),
 ):
     user_text = payload.prompt.strip()

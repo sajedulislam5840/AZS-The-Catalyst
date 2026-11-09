@@ -12,3 +12,5 @@ build/
 dist/
 .DS_Store
 *.log
+# patch files sent for git am
+*.patch

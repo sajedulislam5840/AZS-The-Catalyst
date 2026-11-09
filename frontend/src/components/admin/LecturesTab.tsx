@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Eye, EyeOff, ListOrdered, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ExternalLink, Eye, EyeOff, ListOrdered, Pencil, Play, Plus, Trash2 } from "lucide-react";
 import api from "@/lib/api";
+import { getYouTubeEmbedUrl } from "@/lib/media";
 import { errorText, SUBJECT_COLOR, subjectLabel, youtubeId } from "./format";
 import type { Lecture } from "./types";
 import { btnAccent, btnGhost, btnPrimary, Card, inputClass, Modal, Skeleton, Spinner, useUi } from "./ui";
@@ -34,6 +35,7 @@ export default function LecturesTab({ lectures, loading, error, onChanged, onRet
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [watching, setWatching] = useState<Lecture | null>(null);
 
   const chapters = useMemo(
     () => Array.from(new Set(lectures.filter((l) => subject === "ALL" || l.subject === subject).map((l) => l.chapter))).sort(),
@@ -178,14 +180,21 @@ export default function LecturesTab({ lectures, loading, error, onChanged, onRet
                     <IconBtn label="Move down" disabled={!next || busy} onClick={() => move(l, next)}><ArrowDown className="h-4 w-4" /></IconBtn>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setWatching(l)}
+                  className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-[#075985] text-sm font-extrabold text-white shadow-sm transition hover:bg-[#0369A1] active:scale-[0.98]"
+                >
+                  <Play className="h-4 w-4 fill-current" /> Watch video
+                </button>
                 <div className="mt-2 grid grid-cols-3 gap-2">
-                  <button type="button" onClick={() => void togglePublish(l)} disabled={busy} className={`${btnGhost} !min-h-[44px] text-xs`}>
+                  <button type="button" onClick={() => void togglePublish(l)} disabled={busy} className={actionBtn}>
                     {busy ? <Spinner /> : l.is_published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />} {l.is_published ? "Hide" : "Publish"}
                   </button>
-                  <button type="button" onClick={() => setDraft({ id: l.id, lecture_no: String(l.lecture_no), title: l.title, chapter: l.chapter, subject: l.subject, video_url: l.video_url })} className={`${btnGhost} !min-h-[44px] text-xs`}>
+                  <button type="button" onClick={() => setDraft({ id: l.id, lecture_no: String(l.lecture_no), title: l.title, chapter: l.chapter, subject: l.subject, video_url: l.video_url })} className={actionBtn}>
                     <Pencil className="h-4 w-4" /> Edit
                   </button>
-                  <button type="button" onClick={() => void remove(l)} disabled={busy} className={`${btnGhost} !min-h-[44px] text-xs text-rose-700`}>
+                  <button type="button" onClick={() => void remove(l)} disabled={busy} className={`${actionBtn} text-rose-700`}>
                     <Trash2 className="h-4 w-4" /> Delete
                   </button>
                 </div>
@@ -194,6 +203,30 @@ export default function LecturesTab({ lectures, loading, error, onChanged, onRet
           })}
         </ul>
       )}
+
+      <Modal open={!!watching} onClose={() => setWatching(null)} title={watching ? `${watching.lecture_no}. ${watching.title}` : "Lecture"}>
+        {watching && (
+          <div className="space-y-3">
+            <div className="aspect-video w-full overflow-hidden rounded-xl bg-slate-900">
+              <iframe
+                src={getYouTubeEmbedUrl(watching.video_url, 0, true)}
+                title={watching.title}
+                className="h-full w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
+            <p className="text-[11px] text-slate-500">
+              {subjectLabel(watching.subject)} · {watching.chapter}
+              {!watching.is_published && " · Hidden from students"}. Watching here is not counted as student progress.
+            </p>
+            <a href={watching.video_url} target="_blank" rel="noopener noreferrer" className={`${btnGhost} w-full`}>
+              <ExternalLink className="h-4 w-4" /> Open on YouTube
+            </a>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={!!draft} onClose={() => !saving && setDraft(null)} title={draft?.id ? "Edit lecture" : "Add lecture"}>
         {draft && (
@@ -233,6 +266,9 @@ export default function LecturesTab({ lectures, loading, error, onChanged, onRet
     </div>
   );
 }
+
+// Three actions share one row on a phone, so the icon sits above a short label.
+const actionBtn = `${btnGhost} !min-h-[52px] !flex-col !gap-0.5 !px-1 text-[11px]`;
 
 function IconBtn({ label, disabled, onClick, children }: { label: string; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (

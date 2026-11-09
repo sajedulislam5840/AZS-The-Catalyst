@@ -218,6 +218,9 @@ ADMIN_ROUTES = [
     ("POST", f"/admin/students/{uuid.uuid4()}/revoke-access"),
     ("DELETE", f"/admin/students/{uuid.uuid4()}"),
     ("POST", f"/admin/payments/{uuid.uuid4()}/undo"),
+    ("GET", "/admin/payments?start=2026-11-01T00:00:00Z&end=2026-12-01T00:00:00Z"),
+    ("POST", f"/admin/students/{uuid.uuid4()}/reset-password"),
+    ("POST", "/admin/students/bulk-renew"),
     ("GET", "/admin/lectures"),
     ("POST", "/admin/lectures"),
     ("PUT", f"/admin/lectures/{uuid.uuid4()}"),
@@ -717,3 +720,130 @@ def test_notices(env):
     assert call(env, "GET", "/academic/notice", Env.auth("paid@x.com")).json()["content"] == "Exam on Friday"
     assert call(env, "DELETE", f"/admin/notices/{n.json()['id']}", admin).status_code == 200
     assert call(env, "GET", "/admin/notices", admin).json() == []
+
+
+# ======================================================================= password reset
+
+def test_admin_resets_a_forgotten_password(env):
+    env.seed(make_admin(), student("kid@x.com", pw="old-password-1"))
+    admin = Env.auth(ADMIN)
+    sid = call(env, "GET", "/admin/students", admin).json()[0]["id"]
+
+    r = call(env, "POST", f"/admin/students/{sid}/reset-password", admin)
+    assert r.status_code == 200
+    temp = r.json()["temporary_password"]
+    assert r.json()["email"] == "kid@x.com"
+    assert len(temp) == 14 and temp.count("-") == 2 and not set(temp) & set("01ilo")
+
+    login = lambda pw: env.client.post("/api/v1/login", json={"email": "kid@x.com", "password": pw})  # noqa: E731
+    assert login("old-password-1").status_code == 401
+    assert login(temp).status_code == 200
+
+    # A second reset gives a different password and the first one stops working.
+    temp2 = call(env, "POST", f"/admin/students/{sid}/reset-password", admin).json()["temporary_password"]
+    assert temp2 != temp and login(temp).status_code == 401 and login(temp2).status_code == 200
+
+    stored = env.query(lambda s: _user(s, "kid@x.com"))
+    assert stored.password_hash == stored.hashed_password and temp2 not in stored.password_hash
+
+
+def test_admin_password_cannot_be_reset_from_the_student_screen(env):
+    env.seed(make_admin())
+    admin_id = env.query(lambda s: _user(s, ADMIN)).id
+    assert call(env, "POST", f"/admin/students/{admin_id}/reset-password", Env.auth(ADMIN)).status_code == 404
+
+
+async def _user(s, email):
+    from sqlalchemy import select
+
+    return (await s.execute(select(User).where(User.email == email))).scalar_one()
+
+
+# ======================================================================= bulk renewal
+
+def test_bulk_renew_gives_each_student_their_own_payment(env):
+    env.seed(
+        make_admin(),
+        student("a@x.com", "Asha"),
+        student("b@x.com", "Bilal", end=datetime.utcnow() + timedelta(days=5)),
+        student("c@x.com", "Chaity"),
+    )
+    admin = Env.auth(ADMIN)
+    ids = {s["email"]: s["id"] for s in call(env, "GET", "/admin/students", admin).json()}
+    ghost = str(uuid.uuid4())
+
+    r = call(
+        env,
+        "POST",
+        "/admin/students/bulk-renew",
+        admin,
+        {"student_ids": [ids["a@x.com"], ids["b@x.com"], ids["a@x.com"], ghost], "days": 30, "amount": 1000, "note": "Nov batch"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert sorted(x["full_name"] for x in body["renewed"]) == ["Asha", "Bilal"]  # duplicate id counted once
+    assert body["failed"] == [{"id": ghost, "full_name": None, "reason": "Student not found."}]
+
+    by_email = {s["email"]: s for s in call(env, "GET", "/admin/students", admin).json()}
+    assert by_email["a@x.com"]["days_left"] in (30, 31)
+    assert by_email["b@x.com"]["days_left"] in (35, 36)  # added on top of the 5 days still running
+    assert by_email["c@x.com"]["status"] == "pending"  # not selected, untouched
+
+    detail = call(env, "GET", f"/admin/students/{ids['a@x.com']}", admin).json()
+    assert len(detail["payments"]) == 1 and detail["payments"][0]["amount"] == 1000 and detail["payments"][0]["can_undo"]
+
+    # Tapping the button twice must not double anyone's days.
+    again = call(env, "POST", "/admin/students/bulk-renew", admin, {"student_ids": [ids["a@x.com"], ids["c@x.com"]], "days": 30}).json()
+    assert [x["full_name"] for x in again["renewed"]] == ["Chaity"]
+    assert again["failed"][0]["full_name"] == "Asha"
+
+
+def test_bulk_renew_validates_input(env):
+    env.seed(make_admin(), student("a@x.com"))
+    admin = Env.auth(ADMIN)
+    sid = call(env, "GET", "/admin/students", admin).json()[0]["id"]
+    admin_id = str(env.query(lambda s: _user(s, ADMIN)).id)
+    assert call(env, "POST", "/admin/students/bulk-renew", admin, {"student_ids": [], "days": 30}).status_code == 422
+    assert call(env, "POST", "/admin/students/bulk-renew", admin, {"student_ids": [sid], "days": 0}).status_code == 422
+    assert call(env, "POST", "/admin/students/bulk-renew", admin, {"student_ids": ["nope"], "days": 30}).status_code == 400
+    r = call(env, "POST", "/admin/students/bulk-renew", admin, {"student_ids": [admin_id], "days": 30}).json()
+    assert r["renewed"] == [] and r["failed"][0]["reason"] == "Student not found."
+
+
+# ======================================================================= payment ledger
+
+def test_payment_ledger_lists_a_month_and_skips_undone_payments_in_totals(env):
+    a, b = student("a@x.com", "Asha", batch="B1"), student("b@x.com", "Bilal", batch="B2")
+    env.seed(make_admin(), a, b)
+    nov = datetime(2026, 11, 10, 6, 0)
+
+    async def pay(s):
+        sa = await s.get(User, a.id)
+        sb = await s.get(User, b.id)
+        await renew_student(s, sb, ADMIN, 30, amount=900, now=datetime(2026, 10, 31, 17, 0))  # still October in Dhaka
+        await renew_student(s, sa, ADMIN, 30, amount=1200, note="cash", now=nov)
+        await renew_student(s, sb, ADMIN, 30, now=nov + timedelta(hours=1))  # no amount entered
+        p = await renew_student(s, sa, ADMIN, 30, amount=1200, now=nov + timedelta(days=1))
+        await undo_payment(s, p)  # a mistake, taken back
+
+    env.query(pay)
+    admin = Env.auth(ADMIN)
+    # November in Dhaka (UTC+6) starts at 18:00 UTC on 31 October.
+    r = call(env, "GET", "/admin/payments?start=2026-10-31T18:00:00Z&end=2026-11-30T18:00:00Z", admin)
+    assert r.status_code == 200
+    body = r.json()
+    assert [p["full_name"] for p in body["payments"]] == ["Asha", "Bilal", "Asha"]
+    assert [p["voided"] for p in body["payments"]] == [False, False, True]
+    assert body["payments"][0]["batch_no"] == "B1" and body["payments"][0]["note"] == "cash"
+    assert body["totals"] == {"payments": 2, "voided": 1, "students": 2, "amount": 1200, "amounts_recorded": 1}
+
+    wider = call(env, "GET", "/admin/payments?start=2026-10-31T00:00:00Z&end=2026-11-30T18:00:00Z", admin).json()
+    assert wider["totals"]["amount"] == 2100  # the 31 October 17:00 UTC payment is inside this range
+
+
+def test_payment_ledger_rejects_bad_ranges(env):
+    env.seed(make_admin())
+    admin = Env.auth(ADMIN)
+    assert call(env, "GET", "/admin/payments?start=2026-12-01T00:00:00Z&end=2026-11-01T00:00:00Z", admin).status_code == 422
+    assert call(env, "GET", "/admin/payments?start=2024-01-01T00:00:00Z&end=2026-01-01T00:00:00Z", admin).status_code == 422
+    assert call(env, "GET", "/admin/payments", admin).status_code == 422

@@ -1,16 +1,17 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { RefreshCw, Search } from "lucide-react";
+import { CheckSquare, RefreshCw, Search, Square, X } from "lucide-react";
 import api from "@/lib/api";
 import { errorText, fmtDate, initials, STATUS_META, timeAgo } from "./format";
-import type { Student, SubStatus } from "./types";
-import { Bar, btnGhost, Card, inputClass, Skeleton, Spinner, StatusPill, useUi } from "./ui";
+import type { BulkRenewResult, Student, SubStatus } from "./types";
+import { Bar, btnAccent, btnGhost, btnPrimary, Card, inputClass, Modal, Skeleton, Spinner, StatusPill, useUi } from "./ui";
 
 type Filter = SubStatus | "ALL";
 type Sort = "newest" | "name" | "days" | "progress";
 
 const PAGE = 40;
+const BULK_DAYS = [30, 60, 90];
 
 interface Props {
   students: Student[];
@@ -30,6 +31,14 @@ export default function StudentsTab({ students, loading, error, filter, onFilter
   const [sort, setSort] = useState<Sort>("newest");
   const [shown, setShown] = useState(PAGE);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Bulk renewal: tick several students, then renew them together.
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [bulkDays, setBulkDays] = useState(30);
+  const [bulkAmount, setBulkAmount] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkFailed, setBulkFailed] = useState<BulkRenewResult["failed"]>([]);
 
   const batches = useMemo(() => Array.from(new Set(students.map((s) => (s.batch_no || "General").trim() || "General"))).sort(), [students]);
 
@@ -72,6 +81,48 @@ export default function StudentsTab({ students, loading, error, filter, onFilter
       toast("error", errorText(err));
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const togglePick = (id: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const stopSelecting = () => {
+    setSelecting(false);
+    setPicked(new Set());
+    setBulkAmount("");
+  };
+
+  const allPicked = rows.length > 0 && rows.every((s) => picked.has(s.id));
+
+  const bulkRenew = async () => {
+    const ids = Array.from(picked);
+    if (ids.length === 0) return;
+    const amount = bulkAmount.trim() !== "" && Number.isFinite(Number(bulkAmount)) ? Math.max(0, Math.round(Number(bulkAmount))) : undefined;
+    const ok = await confirm({
+      title: `Renew ${ids.length} ${ids.length === 1 ? "student" : "students"} for ${bulkDays} days?`,
+      message: `Only do this after you have received the cash from every one of them${amount !== undefined ? ` (৳${amount.toLocaleString("en-US")} each)` : ""}. Each renewal is saved in that student's payment history and can be undone there.`,
+      confirmLabel: "Yes, cash received",
+    });
+    if (!ok) return;
+    setBulkBusy(true);
+    try {
+      const body: { student_ids: string[]; days: number; amount?: number } = { student_ids: ids, days: bulkDays };
+      if (amount !== undefined) body.amount = amount;
+      const { data } = await api.post<BulkRenewResult>("/api/v1/admin/students/bulk-renew", body);
+      if (data.renewed.length) toast("success", `Renewed ${data.renewed.length} ${data.renewed.length === 1 ? "student" : "students"} for ${bulkDays} days.`);
+      setBulkFailed(data.failed);
+      stopSelecting();
+      onChanged();
+    } catch (err) {
+      toast("error", errorText(err));
+    } finally {
+      setBulkBusy(false);
     }
   };
 
@@ -129,6 +180,20 @@ export default function StudentsTab({ students, loading, error, filter, onFilter
             <option value="progress">Most progress</option>
           </select>
         </div>
+        {selecting ? (
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setPicked(allPicked ? new Set() : new Set(rows.map((s) => s.id)))} disabled={rows.length === 0} className={btnGhost}>
+              {allPicked ? <Square className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />} {allPicked ? "Clear all" : `Select all ${rows.length}`}
+            </button>
+            <button type="button" onClick={stopSelecting} className={btnGhost}>
+              <X className="h-4 w-4" /> Cancel
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setSelecting(true)} disabled={students.length === 0} className={`${btnGhost} w-full`}>
+            <CheckSquare className="h-4 w-4" /> Renew many students at once
+          </button>
+        )}
       </Card>
 
       {loading && students.length === 0 ? (
@@ -149,19 +214,49 @@ export default function StudentsTab({ students, loading, error, filter, onFilter
       ) : (
         <>
           <p className="px-1 text-xs font-semibold text-slate-500">
-            {rows.length} {rows.length === 1 ? "student" : "students"}. Tap a name to see their progress.
+            {rows.length} {rows.length === 1 ? "student" : "students"}. {selecting ? "Tap the students who paid." : "Tap a name to see their progress."}
           </p>
-          <ul className="space-y-3">
-            {rows.slice(0, shown).map((s) => (
-              <li key={s.id} className="rounded-2xl border border-[#D3E3EF] bg-white p-3 shadow-sm sm:p-4">
+          <ul className={`space-y-3 ${selecting ? "pb-44" : ""}`}>
+            {rows.slice(0, shown).map((s) => {
+              const on = picked.has(s.id);
+              return (
+              <li
+                key={s.id}
+                onClick={selecting ? () => togglePick(s.id) : undefined}
+                className={`rounded-2xl border bg-white p-3 shadow-sm transition-colors sm:p-4 ${selecting ? "cursor-pointer select-none" : ""} ${
+                  on ? "border-[#075985] ring-2 ring-sky-200" : "border-[#D3E3EF]"
+                }`}
+              >
                 <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sm font-black text-[#075985]" aria-hidden="true">
-                    {initials(s.full_name)}
-                  </div>
+                  {selecting ? (
+                    <span
+                      role="checkbox"
+                      aria-checked={on}
+                      aria-label={`Select ${s.full_name}`}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === " " || e.key === "Enter") {
+                          e.preventDefault();
+                          togglePick(s.id);
+                        }
+                      }}
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 ${on ? "border-[#075985] bg-[#075985] text-white" : "border-[#D3E3EF] bg-white text-transparent"}`}
+                    >
+                      <CheckSquare className="h-5 w-5" />
+                    </span>
+                  ) : (
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sm font-black text-[#075985]" aria-hidden="true">
+                      {initials(s.full_name)}
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
-                    <button type="button" onClick={() => onOpen(s.id)} className="block max-w-full truncate text-left text-[15px] font-extrabold text-[#075985] hover:underline">
-                      {s.full_name}
-                    </button>
+                    {selecting ? (
+                      <p className="truncate text-[15px] font-extrabold text-[#075985]">{s.full_name}</p>
+                    ) : (
+                      <button type="button" onClick={() => onOpen(s.id)} className="block max-w-full truncate text-left text-[15px] font-extrabold text-[#075985] hover:underline">
+                        {s.full_name}
+                      </button>
+                    )}
                     <p className="truncate text-xs text-slate-500">
                       {s.email} · {s.batch_no || "General"}
                     </p>
@@ -180,6 +275,7 @@ export default function StudentsTab({ students, loading, error, filter, onFilter
                     </span>
                   </div>
                 </div>
+                {!selecting && (
                 <div className="mt-3 flex gap-2">
                   <button type="button" onClick={() => onOpen(s.id)} className={`${btnGhost} flex-1 !min-h-[42px] text-xs`}>
                     Progress & details
@@ -193,8 +289,10 @@ export default function StudentsTab({ students, loading, error, filter, onFilter
                     {busyId === s.id ? <Spinner /> : null} Renew 30 days
                   </button>
                 </div>
+                )}
               </li>
-            ))}
+              );
+            })}
           </ul>
           {rows.length > shown && (
             <button type="button" onClick={() => setShown((n) => n + PAGE)} className={`${btnGhost} w-full`}>
@@ -203,6 +301,57 @@ export default function StudentsTab({ students, loading, error, filter, onFilter
           )}
         </>
       )}
+
+      {selecting && (
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[#D3E3EF] bg-white/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.25)] backdrop-blur">
+          <div className="mx-auto max-w-5xl space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-extrabold text-[#0F172A]">{picked.size} selected</span>
+              <div className="ml-auto flex gap-1" role="radiogroup" aria-label="Days to add">
+                {BULK_DAYS.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    role="radio"
+                    aria-checked={bulkDays === d}
+                    onClick={() => setBulkDays(d)}
+                    className={`min-h-[40px] rounded-lg border px-3 text-xs font-bold ${bulkDays === d ? "border-[#075985] bg-[#075985] text-white" : "border-[#D3E3EF] bg-white text-slate-700"}`}
+                  >
+                    {d}d
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={bulkAmount}
+                onChange={(e) => setBulkAmount(e.target.value)}
+                placeholder="৳ each (optional)"
+                aria-label="Amount each student paid, optional"
+                className={inputClass}
+              />
+              <button type="button" onClick={() => void bulkRenew()} disabled={picked.size === 0 || bulkBusy} className={btnAccent}>
+                {bulkBusy ? <Spinner /> : null} Renew {picked.size || ""}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Modal open={bulkFailed.length > 0} onClose={() => setBulkFailed([])} title={`${bulkFailed.length} not renewed`}>
+        <ul className="space-y-2">
+          {bulkFailed.map((f) => (
+            <li key={f.id} className="rounded-xl border border-[#D3E3EF] bg-[#F3F8FC] p-3">
+              <p className="text-sm font-extrabold text-[#0F172A]">{f.full_name || "Unknown student"}</p>
+              <p className="text-xs text-slate-600">{f.reason}</p>
+            </li>
+          ))}
+        </ul>
+        <button type="button" onClick={() => setBulkFailed([])} className={`${btnPrimary} mt-4 w-full`}>OK</button>
+      </Modal>
     </div>
   );
 }

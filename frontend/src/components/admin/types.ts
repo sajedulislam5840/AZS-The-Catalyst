@@ -99,3 +99,29 @@ export interface NoticeRow {
   content: string;
   created_at: string;
 }
+
+export interface LedgerRow {
+  id: string;
+  student_id: string;
+  full_name: string;
+  email: string;
+  batch_no: string;
+  days_added: number;
+  amount: number | null;
+  method: string;
+  note: string | null;
+  new_end: string;
+  recorded_by: string | null;
+  created_at: string;
+  voided: boolean;
+}
+
+export interface Ledger {
+  payments: LedgerRow[];
+  totals: { payments: number; voided: number; students: number; amount: number; amounts_recorded: number };
+}
+
+export interface BulkRenewResult {
+  renewed: { id: string; full_name: string; subscription_end_date: string }[];
+  failed: { id: string; full_name: string | null; reason: string }[];
+}

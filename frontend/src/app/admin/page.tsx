@@ -2,24 +2,26 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, FileText, LogOut, Megaphone, RefreshCw, ShieldCheck, Users, Video } from "lucide-react";
+import { BarChart3, FileText, LogOut, Megaphone, RefreshCw, ShieldCheck, Users, Video, Wallet } from "lucide-react";
 import api from "@/lib/api";
 import SiteFooter from "@/components/SiteFooter";
 import LecturesTab from "@/components/admin/LecturesTab";
 import MaterialsTab from "@/components/admin/MaterialsTab";
 import NoticesTab from "@/components/admin/NoticesTab";
 import OverviewTab from "@/components/admin/OverviewTab";
+import PaymentsTab from "@/components/admin/PaymentsTab";
 import StudentDrawer from "@/components/admin/StudentDrawer";
 import StudentsTab from "@/components/admin/StudentsTab";
 import { errorText, httpStatus } from "@/components/admin/format";
 import type { Lecture, MaterialRow, NoticeRow, Overview, Student, SubStatus } from "@/components/admin/types";
 import { AdminUiProvider, Spinner } from "@/components/admin/ui";
 
-type Tab = "overview" | "students" | "lectures" | "materials" | "notices";
+type Tab = "overview" | "students" | "payments" | "lectures" | "materials" | "notices";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "overview", label: "Overview", icon: <BarChart3 className="h-4 w-4" /> },
   { id: "students", label: "Students", icon: <Users className="h-4 w-4" /> },
+  { id: "payments", label: "Payments", icon: <Wallet className="h-4 w-4" /> },
   { id: "lectures", label: "Lectures", icon: <Video className="h-4 w-4" /> },
   { id: "materials", label: "Sheets", icon: <FileText className="h-4 w-4" /> },
   { id: "notices", label: "Notices", icon: <Megaphone className="h-4 w-4" /> },
@@ -75,6 +77,8 @@ function AdminShell() {
   const [filter, setFilter] = useState<SubStatus | "ALL">("ALL");
   const [openId, setOpenId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Bumped when a renewal or undo happens, so the Payments tab shows it the next time it opens.
+  const [paymentsKey, setPaymentsKey] = useState(0);
 
   useEffect(() => {
     const token = localStorage.getItem("token") || localStorage.getItem("access_token");
@@ -115,11 +119,13 @@ function AdminShell() {
   const studentsChanged = useCallback(() => {
     void overview.reload();
     void students.reload();
+    setPaymentsKey((k) => k + 1);
   }, [overview, students]);
 
   const refreshAll = async () => {
     setRefreshing(true);
     await Promise.allSettled([overview.reload(), students.reload(), lectures.reload(), materials.reload(), notices.reload()]);
+    setPaymentsKey((k) => k + 1);
     setRefreshing(false);
   };
 
@@ -201,6 +207,7 @@ function AdminShell() {
             onRetry={students.retry}
           />
         )}
+        {tab === "payments" && <PaymentsTab key={paymentsKey} onOpenStudent={setOpenId} />}
         {tab === "lectures" && (
           <LecturesTab
             lectures={lectures.data ?? []}

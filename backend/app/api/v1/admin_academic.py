@@ -1,3 +1,4 @@
+import secrets
 import uuid
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
@@ -7,7 +8,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.auth import get_password_hash
 from app.core.access import days_left, is_admin_user, require_admin, subscription_status
+from app.core.dbtypes import naive_utc
 from app.core.database import get_db
 from app.models.academic import Material, Notice, SubjectEnum, VideoLecture
 from app.models.billing import SubscriptionPayment
@@ -54,6 +57,10 @@ class RenewIn(BaseModel):
     days: int = Field(ge=1, le=366)
     amount: Optional[int] = Field(default=None, ge=0, le=10_000_000)  # taka received, optional
     note: Optional[str] = Field(default=None, max_length=200)
+
+
+class BulkRenewIn(RenewIn):
+    student_ids: List[str] = Field(min_length=1, max_length=300)
 
 
 class LectureCreate(BaseModel):
@@ -161,6 +168,15 @@ def _student_out(u: User, now: datetime, completed: int = 0, total: int = 0, las
         progress_percent=round(100 * completed / total) if total else 0,
         last_active=last_active.isoformat() + "Z" if last_active else None,
     )
+
+
+# No 0/O, 1/l/I: the teacher reads this password out loud or writes it on paper.
+_PW_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
+
+
+def _temporary_password() -> str:
+    groups = ["".join(secrets.choice(_PW_ALPHABET) for _ in range(4)) for _ in range(3)]
+    return "-".join(groups)  # e.g. "k7mq-x3fa-9tpe": about 60 bits, easy to type on a phone
 
 
 async def _all_students(db: AsyncSession) -> List[User]:
@@ -417,6 +433,70 @@ async def undo_renewal(payment_id: str, admin: User = Depends(verify_admin_token
     return {"message": "Payment undone.", "days_left": days_left(student)}
 
 
+@router.get("/payments")
+async def payment_ledger(
+    start: datetime,
+    end: datetime,
+    admin: User = Depends(verify_admin_token),
+    db: AsyncSession = Depends(get_db),
+):
+    """Every cash payment recorded between start and end (the browser sends its own month, so Dhaka time is right).
+
+    Undone payments are listed too, marked voided, and left out of the totals.
+    """
+    start, end = naive_utc(start), naive_utc(end)
+    if end <= start:
+        raise HTTPException(status_code=422, detail="The end date must be after the start date.")
+    if end - start > timedelta(days=400):
+        raise HTTPException(status_code=422, detail="Pick a range of about a year or less.")
+
+    rows = (
+        await db.execute(
+            select(SubscriptionPayment, User)
+            .join(User, User.id == SubscriptionPayment.user_id)
+            .where(SubscriptionPayment.created_at >= start, SubscriptionPayment.created_at < end)
+            .order_by(SubscriptionPayment.created_at)
+        )
+    ).all()
+
+    items, total, with_amount, students = [], 0, 0, set()
+    for p, u in rows:
+        voided = p.voided_at is not None
+        if not voided:
+            students.add(u.id)
+            if p.amount is not None:
+                total += p.amount
+                with_amount += 1
+        items.append(
+            {
+                "id": str(p.id),
+                "student_id": str(u.id),
+                "full_name": u.full_name or "Student",
+                "email": u.email,
+                "batch_no": (u.batch_no or "General").strip() or "General",
+                "days_added": p.days_added,
+                "amount": p.amount,
+                "method": p.method,
+                "note": p.note,
+                "new_end": p.new_end.isoformat() + "Z",
+                "recorded_by": p.recorded_by,
+                "created_at": p.created_at.isoformat() + "Z",
+                "voided": voided,
+            }
+        )
+    counted = sum(1 for i in items if not i["voided"])
+    return {
+        "payments": items,
+        "totals": {
+            "payments": counted,
+            "voided": len(items) - counted,
+            "students": len(students),
+            "amount": total,
+            "amounts_recorded": with_amount,
+        },
+    }
+
+
 @router.post("/students/{student_id}/revoke-access")
 async def mark_student_unpaid(student_id: str, admin: User = Depends(verify_admin_token), db: AsyncSession = Depends(get_db)):
     student = await _get_student(db, student_id)
@@ -425,6 +505,46 @@ async def mark_student_unpaid(student_id: str, admin: User = Depends(verify_admi
     student.current_session_token = None
     await db.commit()
     return {"message": f"Student {student.email} marked as Unpaid."}
+
+
+@router.post("/students/{student_id}/reset-password")
+async def reset_student_password(student_id: str, admin: User = Depends(verify_admin_token), db: AsyncSession = Depends(get_db)):
+    """Give a student who forgot their password a new one. It is returned once and never stored in plain text."""
+    student = await _get_student(db, student_id)
+    password = _temporary_password()
+    hashed = get_password_hash(password)
+    student.password_hash = hashed
+    student.hashed_password = hashed  # legacy column, kept in step
+    student.current_session_token = None
+    await db.commit()
+    return {"message": "Password reset.", "email": student.email, "temporary_password": password}
+
+
+@router.post("/students/bulk-renew")
+async def bulk_renew(payload: BulkRenewIn, admin: User = Depends(verify_admin_token), db: AsyncSession = Depends(get_db)):
+    """Record the same cash payment for many students at once. Each one gets its own payment row, so Undo still works."""
+    ids: List[uuid.UUID] = []
+    for raw in payload.student_ids:
+        sid = _uuid(raw, "student")
+        if sid not in ids:
+            ids.append(sid)
+    found = {u.id: u for u in (await db.execute(select(User).where(User.id.in_(ids)))).scalars().all()}
+
+    renewed, failed = [], []
+    for sid in ids:
+        student = found.get(sid)
+        if student is None or is_admin_user(student):
+            failed.append({"id": str(sid), "full_name": None, "reason": "Student not found."})
+            continue
+        name = student.full_name or "Student"
+        try:
+            # Every check in renew_student runs before anything is written, so a refusal leaves nothing behind.
+            payment = await renew_student(db, student, admin.email, payload.days, payload.amount, payload.note)
+        except RenewalError as exc:
+            failed.append({"id": str(sid), "full_name": name, "reason": exc.message})
+            continue
+        renewed.append({"id": str(sid), "full_name": name, "subscription_end_date": payment.new_end.isoformat() + "Z"})
+    return {"renewed": renewed, "failed": failed}
 
 
 @router.delete("/students/{student_id}")

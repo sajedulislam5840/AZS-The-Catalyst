@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Ban, BookOpen, Flame, Pencil, RefreshCw, Trash2, Undo2 } from "lucide-react";
+import { Ban, BookOpen, Check, Copy, Flame, KeyRound, Pencil, RefreshCw, Trash2, Undo2 } from "lucide-react";
 import api from "@/lib/api";
 import { errorText, fmtDate, SUBJECT_COLOR, subjectLabel, timeAgo } from "./format";
 import type { PaymentRow, StudentDetail } from "./types";
-import { Bar, btnAccent, btnGhost, Card, inputClass, SectionTitle, Sheet, Skeleton, Spinner, StatusPill, useUi } from "./ui";
+import { Bar, btnAccent, btnGhost, btnPrimary, Card, inputClass, Modal, SectionTitle, Sheet, Skeleton, Spinner, StatusPill, useUi } from "./ui";
 
 const PRESETS = [30, 60, 90];
 
@@ -25,6 +25,9 @@ export default function StudentDrawer({ studentId, onClose, onChanged }: Props) 
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+
+  const [newPassword, setNewPassword] = useState<{ email: string; password: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ full_name: "", school: "", grade_class: "", batch_no: "" });
@@ -123,6 +126,36 @@ export default function StudentDrawer({ studentId, onClose, onChanged }: Props) 
       toast("error", errorText(err));
     } finally {
       setBusy(null);
+    }
+  };
+
+  const resetPassword = async () => {
+    if (!detail) return;
+    const ok = await confirm({
+      title: `Reset ${detail.student.full_name}'s password?`,
+      message: "Their old password stops working right away. You will see a new password once, to give to the student.",
+      confirmLabel: "Reset password",
+    });
+    if (!ok) return;
+    setBusy("reset");
+    try {
+      const { data } = await api.post<{ email: string; temporary_password: string }>(`/api/v1/admin/students/${detail.student.id}/reset-password`);
+      setCopied(false);
+      setNewPassword({ email: data.email, password: data.temporary_password });
+    } catch (err) {
+      toast("error", errorText(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const copyPassword = async () => {
+    if (!newPassword) return;
+    try {
+      await navigator.clipboard.writeText(`Email: ${newPassword.email}\nPassword: ${newPassword.password}`);
+      setCopied(true);
+    } catch {
+      toast("error", "Could not copy. Write the password down instead.");
     }
   };
 
@@ -404,6 +437,9 @@ export default function StudentDrawer({ studentId, onClose, onChanged }: Props) 
               </dl>
             )}
             <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#E2EDF5] pt-4">
+              <button type="button" onClick={() => void resetPassword()} disabled={busy !== null} className={`${btnGhost} col-span-2 text-[#075985]`}>
+                {busy === "reset" ? <Spinner /> : <KeyRound className="h-4 w-4" />} Reset password
+              </button>
               <button type="button" onClick={() => void revoke()} disabled={busy !== null || s.status === "pending"} className={`${btnGhost} text-amber-700`}>
                 {busy === "revoke" ? <Spinner /> : <Ban className="h-4 w-4" />} Revoke access
               </button>
@@ -414,6 +450,26 @@ export default function StudentDrawer({ studentId, onClose, onChanged }: Props) 
           </Card>
         </>
       ) : null}
+
+      <Modal open={!!newPassword} onClose={() => setNewPassword(null)} title="New password">
+        {newPassword && (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">Give this to the student. It is shown only once: after you close this, nobody can see it again.</p>
+            <div className="rounded-xl border border-[#D3E3EF] bg-[#F3F8FC] p-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Email</p>
+              <p className="break-all text-sm font-semibold text-[#0F172A]">{newPassword.email}</p>
+              <p className="mt-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Password</p>
+              <p className="select-all font-mono text-2xl font-black tracking-wider text-[#075985]">{newPassword.password}</p>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => void copyPassword()} className={`${btnGhost} flex-1`}>
+                {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />} {copied ? "Copied" : "Copy"}
+              </button>
+              <button type="button" onClick={() => setNewPassword(null)} className={`${btnPrimary} flex-1`}>Done</button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </Sheet>
   );
 }

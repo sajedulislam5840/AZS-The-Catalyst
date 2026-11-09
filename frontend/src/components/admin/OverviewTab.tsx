@@ -21,7 +21,7 @@ interface Props {
   onRetry: () => void;
   onOpenStudent: (id: string) => void;
   onFilter: (status: SubStatus | "ALL") => void;
-  onTab: (tab: "lectures" | "materials") => void;
+  onTab: (tab: "lectures" | "materials" | "payments") => void;
 }
 
 export default function OverviewTab({ data, loading, error, onRetry, onOpenStudent, onFilter, onTab }: Props) {
@@ -177,7 +177,7 @@ export default function OverviewTab({ data, loading, error, onRetry, onOpenStude
       </div>
 
       {data.collected_this_month.amounts_recorded > 0 && (
-        <MiniCard icon={<Wallet className="h-5 w-5" />} title="Cash recorded this month">
+        <MiniCard icon={<Wallet className="h-5 w-5" />} title="Cash recorded this month" onClick={() => onTab("payments")}>
           <b>৳{data.collected_this_month.amount.toLocaleString("en-US")}</b>
           <span className="block text-xs text-slate-500">
             from {data.collected_this_month.payments} renewals ({data.collected_this_month.amounts_recorded} with an amount entered)
